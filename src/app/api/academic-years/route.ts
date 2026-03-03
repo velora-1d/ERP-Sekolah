@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const list = await prisma.academicYear.findMany({
       where: { deletedAt: null },
-      orderBy: [{ name: "desc" }, { semester: "asc" }],
+      orderBy: { year: "desc" },
     });
 
     return NextResponse.json({ success: true, data: list });

@@ -5,21 +5,20 @@ export async function GET() {
   try {
     const classrooms = await prisma.classroom.findMany({
       where: { deletedAt: null },
-      orderBy: [{ level: "asc" }, { name: "asc" }],
+      orderBy: [{ name: "asc" }],
     });
 
     // Count students per classroom
     const classroomsWithCount = await Promise.all(
       classrooms.map(async (cls: any) => {
         const studentCount = await prisma.student.count({
-          where: { classroomId: cls.id, deletedAt: null },
+          where: { classroomId: cls.id.toString(), deletedAt: null },
         });
         return {
           id: cls.id,
           name: cls.name,
-          level: cls.level,
-          wali_kelas: cls.wali_kelas,
-          infaq_nominal: cls.infaq_nominal,
+          academicYearId: cls.academicYearId,
+          waliKelasId: cls.waliKelasId,
           student_count: studentCount,
         };
       })

@@ -11,36 +11,42 @@ export async function GET(request: Request) {
     const bills = await prisma.infaqBill.findMany({
       where: {
         deletedAt: null,
-        ...(month && { month: parseInt(month) }),
+        ...(month && { month }),
         ...(status && { status }),
-        ...(search && {
-          student: {
-            name: { contains: search, mode: "insensitive" }
-          }
-        })
-      },
-      include: {
-        student: {
-          include: {
-            classroom: true
-          }
-        },
-        academicYear: true
       },
       orderBy: [{ createdAt: "desc" }],
       take: 100, // Limit for performance demo
     });
 
-    const formattedBills = bills.map(b => ({
-      id: b.id,
-      student_name: b.student?.name,
-      nisn: b.student?.nisn,
-      classroom: b.student?.classroom?.name,
-      academic_year: b.academicYear?.name,
-      month: b.month,
-      nominal: b.nominal,
-      status: b.status,
-    }));
+    const studentIds = bills.map(b => parseInt(b.studentId)).filter(id => !isNaN(id));
+    const students = await prisma.student.findMany({
+      where: { id: { in: studentIds } },
+    });
+    const academicYearIds = bills.map(b => parseInt(b.academicYearId)).filter(id => !isNaN(id));
+    const academicYears = await prisma.academicYear.findMany({
+      where: { id: { in: academicYearIds } },
+    });
+
+    const formattedBills = bills.map(b => {
+      const student = students.find(s => s.id === parseInt(b.studentId));
+      const year = academicYears.find(y => y.id === parseInt(b.academicYearId));
+      
+      // Filter by search term manually if search is provided
+      if (search && student && !student.name.toLowerCase().includes(search.toLowerCase())) {
+        return null;
+      }
+
+      return {
+        id: b.id,
+        student_name: student?.name || "Unknown",
+        nisn: student?.nisn || "-",
+        classroom: student?.classroomId || "-",
+        academic_year: year?.year || "-",
+        month: b.month,
+        nominal: b.nominal,
+        status: b.status,
+      };
+    }).filter(Boolean); // Remove nulls from search filter
 
     return NextResponse.json({ success: true, data: formattedBills });
   } catch (error) {

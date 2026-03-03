@@ -11,14 +11,12 @@ export async function GET(request: Request) {
         deletedAt: null,
         OR: search
           ? [
-              { student_name: { contains: search, mode: "insensitive" } },
-              { parent_name: { contains: search, mode: "insensitive" } },
-              { form_no: { contains: search } },
+              { name: { contains: search, mode: "insensitive" } },
+              { fatherName: { contains: search, mode: "insensitive" } },
+              { motherName: { contains: search, mode: "insensitive" } },
+              { formNo: { contains: search } },
             ]
           : undefined,
-      },
-      include: {
-        payment: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -27,28 +25,14 @@ export async function GET(request: Request) {
     const diterima = list.filter((r) => r.status === "diterima").length;
     const ditolak = list.filter((r) => r.status === "ditolak").length;
 
-    // Hitung Stats Payment (misal biaya admin default atau ambil dari settings, 
-    // tapi karena DB schema belum ada tabel dinamis settings untuk PPDB selain hardcoded 
-    // kita sementara pakai data payment yang ada di DB table ppdb_payments.)
-    // Asumsi biaya standard jika tidak ada di DB:
+    // Hitung Stats Payment
     let totalFee = 0, countFee = 0;
     let totalBooks = 0, countBooks = 0;
     let totalUniform = 0, countUniform = 0;
 
-    // Untuk demo / preview, kita ambil fee_amount dari record pertama yang ada, atau fallback
-    const samplePayment = list.find(r => r.payment)?.payment;
-    const currentFee = samplePayment?.fee_amount || 0;
-    const currentBooks = samplePayment?.books_fee_amount || 0;
-    const currentUniform = samplePayment?.uniform_fee_amount || 0;
-
-    list.forEach(r => {
-      const p = r.payment;
-      if (p) {
-        if (p.is_fee_paid) { totalFee += p.fee_amount; countFee++; }
-        if (p.is_books_paid) { totalBooks += p.books_fee_amount; countBooks++; }
-        if (p.is_uniform_paid) { totalUniform += p.uniform_fee_amount; countUniform++; }
-      }
-    });
+    const currentFee = 0;
+    const currentBooks = 0;
+    const currentUniform = 0;
 
     const stats = {
       total: list.length,
