@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Swal from "sweetalert2";
 
 export default function JournalPage() {
   const [data, setData] = useState<any[]>([]);
@@ -89,6 +90,77 @@ export default function JournalPage() {
     } catch { showToast("Gagal void transaksi", "error"); }
   }
 
+  // === Edit Transaksi ===
+  const handleEdit = (tx: any) => {
+    let catOptions = '<option value="">-- Tanpa Kategori --</option>';
+    categories.forEach(c => { catOptions += `<option value="${c.id}" ${tx.categoryId === c.id ? 'selected' : ''}>${c.name}</option>`; });
+
+    Swal.fire({
+      title: "Edit Transaksi Jurnal",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <div><label style="font-size:0.75rem;font-weight:600;">Jumlah (Rp)</label>
+          <input type="number" id="swal-tx-amount" class="swal2-input" value="${tx.amount}" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Tipe</label>
+            <select id="swal-tx-type" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
+              <option value="in" ${tx.type === 'in' ? 'selected' : ''}>Pemasukan (In)</option>
+              <option value="out" ${tx.type === 'out' ? 'selected' : ''}>Pengeluaran (Out)</option>
+            </select>
+          </div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Kategori</label>
+            <select id="swal-tx-cat" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
+              ${catOptions}
+            </select>
+          </div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Tanggal</label>
+          <input type="date" id="swal-tx-date" class="swal2-input" value="${tx.date.split('T')[0]}" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Keterangan</label>
+          <input type="text" id="swal-tx-desc" class="swal2-input" value="${tx.description || ''}" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      confirmButtonColor: "#10b981",
+      preConfirm: () => ({
+        amount: (document.getElementById("swal-tx-amount") as HTMLInputElement).value,
+        type: (document.getElementById("swal-tx-type") as HTMLSelectElement).value,
+        categoryId: (document.getElementById("swal-tx-cat") as HTMLSelectElement).value,
+        date: (document.getElementById("swal-tx-date") as HTMLInputElement).value,
+        description: (document.getElementById("swal-tx-desc") as HTMLInputElement).value
+      })
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch(`/api/journal/${tx.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Transaksi diperbarui", "success"); loadData(); loadCashAccounts(); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  // === Hapus Transaksi ===
+  const handleDelete = async (txId: number) => {
+    Swal.fire({
+      title: "Hapus Transaksi?",
+      text: "Data yang dihapus tidak bisa dikembalikan dan saldo akan dikembalikan!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      confirmButtonText: "Ya, Hapus"
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch(`/api/journal/${txId}`, { method: "DELETE" });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Transaksi Dihapus", "success"); loadData(); loadCashAccounts(); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
   const thStyle: React.CSSProperties = { padding: "0.875rem 1.5rem", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" };
 
   return (
@@ -170,7 +242,7 @@ export default function JournalPage() {
                 <th style={thStyle}>Keterangan & Kategori</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Penerimaan</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Pengeluaran</th>
-                <th style={{ ...thStyle, textAlign: "center", width: 80 }}>Aksi</th>
+                <th style={{ ...thStyle, textAlign: "center", width: 160 }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -209,7 +281,11 @@ export default function JournalPage() {
                     </td>
                     <td style={{ padding: "0.875rem 1.5rem", textAlign: "center" }}>
                       {!isVoid ? (
-                        <button onClick={() => handleVoid(e.id)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Void</button>
+                        <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
+                          <button onClick={() => handleEdit(e)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-indigo-100 transition-colors">Edit</button>
+                          <button onClick={() => handleDelete(e.id)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Hapus</button>
+                          <button onClick={() => handleVoid(e.id)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-amber-100 transition-colors">Void</button>
+                        </div>
                       ) : <span style={{ color: "#cbd5e1", fontSize: "0.75rem" }}>—</span>}
                     </td>
                   </tr>

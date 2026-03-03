@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 
 export default function TransactionCategoriesPage() {
   const [data, setData] = useState<any[]>([]);
@@ -22,6 +23,100 @@ export default function TransactionCategoriesPage() {
     loadData();
   }, []);
 
+  const handleAdd = () => {
+    Swal.fire({
+      title: "Tambah Kategori",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <div><label style="font-size:0.75rem;font-weight:600;">Nama Kategori</label>
+          <input type="text" id="swal-cat-name" class="swal2-input" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Tipe</label>
+            <select id="swal-cat-type" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
+              <option value="in">Pemasukan (In)</option>
+              <option value="out">Pengeluaran (Out)</option>
+            </select>
+          </div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Keterangan</label>
+          <textarea id="swal-cat-desc" class="swal2-textarea" style="margin:0;width:100%;height:4rem;padding:0.5rem;font-size:0.875rem;"></textarea></div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      confirmButtonColor: "#10b981",
+      preConfirm: () => ({
+        name: (document.getElementById("swal-cat-name") as HTMLInputElement).value,
+        type: (document.getElementById("swal-cat-type") as HTMLSelectElement).value,
+        description: (document.getElementById("swal-cat-desc") as HTMLTextAreaElement).value
+      })
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch("/api/transaction-categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Kategori ditambahkan", "success"); loadData(); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  const handleEdit = (cat: any) => {
+    Swal.fire({
+      title: "Edit Kategori",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <div><label style="font-size:0.75rem;font-weight:600;">Nama Kategori</label>
+          <input type="text" id="swal-cat-name" class="swal2-input" value="${cat.name}" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Tipe</label>
+            <select id="swal-cat-type" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
+              <option value="in" ${cat.type === 'in' ? 'selected' : ''}>Pemasukan (In)</option>
+              <option value="out" ${cat.type === 'out' ? 'selected' : ''}>Pengeluaran (Out)</option>
+            </select>
+          </div>
+          <div><label style="font-size:0.75rem;font-weight:600;">Keterangan</label>
+          <textarea id="swal-cat-desc" class="swal2-textarea" style="margin:0;width:100%;height:4rem;padding:0.5rem;font-size:0.875rem;">${cat.description || ''}</textarea></div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      confirmButtonColor: "#10b981",
+      preConfirm: () => ({
+        name: (document.getElementById("swal-cat-name") as HTMLInputElement).value,
+        type: (document.getElementById("swal-cat-type") as HTMLSelectElement).value,
+        description: (document.getElementById("swal-cat-desc") as HTMLTextAreaElement).value
+      })
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch(`/api/transaction-categories?id=${cat.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Kategori diperbarui", "success"); loadData(); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  const handleDelete = async (id: number) => {
+    Swal.fire({
+      title: "Hapus Kategori?",
+      text: "Data yang dihapus tidak bisa dikembalikan.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      confirmButtonText: "Ya, Hapus"
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch(`/api/transaction-categories?id=${id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Dihapus", "success"); loadData(); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
   const inCats = data.filter((c: any) => c.type === 'in');
   const outCats = data.filter((c: any) => c.type === 'out');
 
@@ -42,7 +137,7 @@ export default function TransactionCategoriesPage() {
                 <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola kategori pemasukan & pengeluaran madrasah.</p>
               </div>
             </div>
-            <button style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", transition: "all 0.2s ease" }} className="hover:bg-white/30">
+            <button onClick={handleAdd} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", transition: "all 0.2s ease" }} className="hover:bg-white/30">
               <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah
             </button>
           </div>
@@ -80,8 +175,8 @@ export default function TransactionCategoriesPage() {
                       <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", color: "#64748b" }}>{c.description || "-"}</td>
                       <td style={{ padding: "0.875rem 1.5rem", textAlign: "center" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                          <button style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
-                          <button style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
+                          <button onClick={() => handleEdit(c)} style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
+                          <button onClick={() => handleDelete(c.id)} style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
                         </div>
                       </td>
                     </tr>
@@ -122,8 +217,8 @@ export default function TransactionCategoriesPage() {
                       <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", color: "#64748b" }}>{c.description || "-"}</td>
                       <td style={{ padding: "0.875rem 1.5rem", textAlign: "center" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                          <button style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
-                          <button style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
+                          <button onClick={() => handleEdit(c)} style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
+                          <button onClick={() => handleDelete(c.id)} style={{ display: "inline-flex", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
                         </div>
                       </td>
                     </tr>

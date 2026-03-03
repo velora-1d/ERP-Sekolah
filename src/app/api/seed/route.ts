@@ -30,24 +30,46 @@ export async function POST() {
     }
     const allKelas = await prisma.classroom.findMany({ where: { deletedAt: null } });
 
-    // 4. Guru (6 orang)
-    const guruNames = ["Ustadzah Fatimah", "Ustadz Ahmad", "Ustadzah Khadijah", "Ustadz Bilal", "Ustadzah Aisyah", "Ustadz Umar"];
-    for (let i = 0; i < guruNames.length; i++) {
-      const exists = await prisma.employee.findFirst({ where: { name: guruNames[i], deletedAt: null } });
+    // 4. Guru (12 orang: 6 wali kelas + 6 guru mapel)
+    const guruData = [
+      { name: "Ustadzah Fatimah", position: "Wali Kelas 1" },
+      { name: "Ustadz Ahmad", position: "Wali Kelas 2" },
+      { name: "Ustadzah Khadijah", position: "Wali Kelas 3" },
+      { name: "Ustadz Bilal", position: "Wali Kelas 4" },
+      { name: "Ustadzah Aisyah", position: "Wali Kelas 5" },
+      { name: "Ustadz Umar", position: "Wali Kelas 6" },
+      { name: "Ustadz Hamzah", position: "Guru Al-Quran" },
+      { name: "Ustadzah Ruqayyah", position: "Guru Fiqih" },
+      { name: "Ustadz Zaid", position: "Guru Bahasa Arab" },
+      { name: "Ustadzah Halimah", position: "Guru Matematika" },
+      { name: "Ustadz Muaz", position: "Guru IPA" },
+      { name: "Ustadzah Safiyyah", position: "Guru Bahasa Indonesia" },
+    ];
+    for (let i = 0; i < guruData.length; i++) {
+      const exists = await prisma.employee.findFirst({ where: { name: guruData[i].name, deletedAt: null } });
       if (!exists) {
         await prisma.employee.create({
-          data: { name: guruNames[i], nip: `G00${i + 1}`, type: "guru", position: `Wali ${kelasNames[i]}`, status: "aktif", phone: `08${1100000 + i}`, baseSalary: 2500000 + (i * 100000) },
+          data: { name: guruData[i].name, nip: `G${String(i + 1).padStart(3, "0")}`, type: "guru", position: guruData[i].position, status: "aktif", phone: `08${1100000 + i}`, baseSalary: 2500000 + (i * 100000) },
         });
       }
     }
 
-    // 5. Staf (5 orang)
-    const stafNames = ["Pak Ridwan (TU)", "Bu Sri (Bendahara)", "Pak Joko (Penjaga)", "Bu Ani (Perpus)", "Pak Dedi (IT)"];
-    for (let i = 0; i < stafNames.length; i++) {
-      const exists = await prisma.employee.findFirst({ where: { name: stafNames[i], deletedAt: null } });
+    // 5. Staf (8 orang)
+    const stafData = [
+      { name: "Pak Ridwan", position: "Kepala TU" },
+      { name: "Bu Sri", position: "Bendahara" },
+      { name: "Pak Joko", position: "Penjaga Sekolah" },
+      { name: "Bu Ani", position: "Pustakawan" },
+      { name: "Pak Dedi", position: "IT Support" },
+      { name: "Bu Lestari", position: "Admin Keuangan" },
+      { name: "Pak Hendra", position: "Satpam" },
+      { name: "Bu Rina", position: "Staf Administrasi" },
+    ];
+    for (let i = 0; i < stafData.length; i++) {
+      const exists = await prisma.employee.findFirst({ where: { name: stafData[i].name, deletedAt: null } });
       if (!exists) {
         await prisma.employee.create({
-          data: { name: stafNames[i], nip: `S00${i + 1}`, type: "staf", position: stafNames[i].split("(")[1]?.replace(")", "") || "Staf", status: "aktif", phone: `08${2200000 + i}`, baseSalary: 2000000 + (i * 50000) },
+          data: { name: stafData[i].name, nip: `S${String(i + 1).padStart(3, "0")}`, type: "staf", position: stafData[i].position, status: "aktif", phone: `08${2200000 + i}`, baseSalary: 2000000 + (i * 50000) },
         });
       }
     }
@@ -83,8 +105,12 @@ export async function POST() {
       }
     }
 
-    // 7. PPDB (10 pendaftar)
-    const ppdbNames = ["Zahra Putri", "Rafi Ahmad", "Nadia Safira", "Faris Hakim", "Siti Aminah", "Usman Fadli", "Layla Nur", "Hamza Rizki", "Dina Rahma", "Yusuf Akbar"];
+    // 7. PPDB (15 pendaftar)
+    const ppdbNames = [
+      "Zahra Putri", "Rafi Ahmad", "Nadia Safira", "Faris Hakim", "Siti Aminah",
+      "Usman Fadli", "Layla Nur", "Hamza Rizki", "Dina Rahma", "Yusuf Akbar",
+      "Salma Azzahra", "Khalid Fauzan", "Nabila Husna", "Ilham Maulana", "Aqila Rahmah",
+    ];
     for (let i = 0; i < ppdbNames.length; i++) {
       const exists = await prisma.ppdbRegistration.findFirst({ where: { name: ppdbNames[i], deletedAt: null } });
       if (!exists) {
@@ -94,29 +120,20 @@ export async function POST() {
             name: ppdbNames[i],
             gender: i % 2 === 0 ? "P" : "L",
             birthPlace: "Bandung",
-            birthDate: `201${8 + (i % 2)}-0${(i % 9) + 1}-${10 + i}`,
+            birthDate: `201${8 + (i % 2)}-0${(i % 9) + 1}-${String(10 + (i % 20)).padStart(2, "0")}`,
             fatherName: `Bapak ${ppdbNames[i].split(" ")[1]}`,
             motherName: `Ibu ${ppdbNames[i].split(" ")[1]}`,
             phone: `08${3300000 + i}`,
             address: `Jl. Contoh No. ${i + 1}`,
-            status: i < 5 ? "pending" : "diterima",
+            status: i < 5 ? "pending" : i < 10 ? "diterima" : "pending",
             registrationSource: "offline",
           },
         });
       }
     }
 
-    // 8. Kategori Keuangan
-    const cats = [
-      { name: "Infaq / SPP", type: "in" }, { name: "Wakaf", type: "in" }, { name: "Donasi Umum", type: "in" },
-      { name: "Gaji Pengajar", type: "out" }, { name: "Operasional", type: "out" }, { name: "Perawatan Gedung", type: "out" },
-    ];
-    for (const cat of cats) {
-      const exists = await prisma.transactionCategory.findFirst({ where: { name: cat.name, deletedAt: null } });
-      if (!exists) {
-        await prisma.transactionCategory.create({ data: cat });
-      }
-    }
+    // 8. Kategori Keuangan Dihapus agar user bisa mengisi sendiri
+
 
     // 9. Kas/Bank Account
     const cashAccounts = [
