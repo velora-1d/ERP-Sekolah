@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, AuthError } from "@/lib/rbac";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
-    const id = Number(params.id);
+    const resolvedParams = await params;
+    const id = Number(resolvedParams.id);
     if (!id) return NextResponse.json({ success: false, message: "ID tidak valid" }, { status: 400 });
 
     const body = await req.json();
@@ -77,10 +78,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth();
-    const id = Number(params.id);
+    const resolvedParams = await params;
+    const id = Number(resolvedParams.id);
     if (!id) return NextResponse.json({ success: false, message: "ID tidak valid" }, { status: 400 });
 
     const entry = await prisma.generalTransaction.findUnique({
