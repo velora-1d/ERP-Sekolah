@@ -1,311 +1,136 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import PageHeader from "@/components/ui/PageHeader";
+import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+import Modal from "@/components/ui/Modal";
+
+const WakafIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>;
+const PlusIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>;
+const TrashIcon = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 
 export default function WakafPage() {
-  const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, donatur, tujuan
+  const [activeTab, setActiveTab] = useState("riwayat");
   const [data, setData] = useState<any[]>([]);
   const [donors, setDonors] = useState<any[]>([]);
   const [purposes, setPurposes] = useState<any[]>([]);
   const [kpi, setKpi] = useState({ total: 0, monthly: 0, donorCount: 0, purposeCount: 0 });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (activeTab === "riwayat") loadData();
-    if (activeTab === "donatur" || activeTab === "riwayat") loadDonors();
-    if (activeTab === "tujuan" || activeTab === "riwayat") loadPurposes();
-  }, [activeTab]);
+  // Modal wakaf
+  const [showAddWakaf, setShowAddWakaf] = useState(false);
+  const [wForm, setWForm] = useState({ date: new Date().toISOString().split("T")[0], donor_id: "", purpose_id: "", amount: "" });
+  const [wLoading, setWLoading] = useState(false);
+  // Modal donatur
+  const [showAddDonor, setShowAddDonor] = useState(false);
+  const [dForm, setDForm] = useState({ name: "", phone: "", address: "" });
+  const [dLoading, setDLoading] = useState(false);
+  // Modal tujuan
+  const [showAddPurpose, setShowAddPurpose] = useState(false);
+  const [pForm, setPForm] = useState({ name: "", description: "" });
+  const [pLoading, setPLoading] = useState(false);
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/wakaf`);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.transactions || []);
-        setKpi(json.kpi || { total: 0, monthly: 0, donorCount: 0, purposeCount: 0 });
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => { if (activeTab === "riwayat") loadData(); if (activeTab === "donatur" || activeTab === "riwayat") loadDonors(); if (activeTab === "tujuan" || activeTab === "riwayat") loadPurposes(); }, [activeTab]);
+
+  async function loadData() { setLoading(true); try { const res = await fetch("/api/wakaf"); const json = await res.json(); if (json.success) { setData(json.transactions || []); setKpi(json.kpi || { total: 0, monthly: 0, donorCount: 0, purposeCount: 0 }); } } catch (e) { console.error(e); } finally { setLoading(false); } }
+  async function loadDonors() { try { const res = await fetch("/api/wakaf/donors"); const json = await res.json(); if (json.success) setDonors(json.data || []); } catch (e) { console.error(e); } }
+  async function loadPurposes() { try { const res = await fetch("/api/wakaf/purposes"); const json = await res.json(); if (json.success) setPurposes(json.data || []); } catch (e) { console.error(e); } }
+
+  const fmtRp = (n: number) => "Rp " + Number(n || 0).toLocaleString("id-ID");
+
+  // --- AKSI ---
+  async function handleAddWakaf() {
+    if (!wForm.donor_id || !wForm.purpose_id || !wForm.amount) return Swal.fire("Error", "Semua kolom wajib diisi!", "error");
+    setWLoading(true);
+    try { const res = await fetch("/api/wakaf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: wForm.date, donor_id: Number(wForm.donor_id), purpose_id: Number(wForm.purpose_id), amount: Number(wForm.amount) }) }); const json = await res.json(); if (res.ok && json.success) { Swal.fire({ icon: "success", title: "Berhasil", text: "Data wakaf disimpan", toast: true, position: "top-end", timer: 2000, showConfirmButton: false }); setShowAddWakaf(false); setWForm({ date: new Date().toISOString().split("T")[0], donor_id: "", purpose_id: "", amount: "" }); loadData(); } else Swal.fire("Gagal", json.error || "Gagal menyimpan", "error"); } catch { Swal.fire("Error", "Server error", "error"); } finally { setWLoading(false); }
   }
 
-  async function loadDonors() {
-    try {
-      const res = await fetch(`/api/wakaf/donors`);
-      const json = await res.json();
-      if (json.success) setDonors(json.data || []);
-    } catch (e) { console.error(e); }
+  async function handleDeleteWakaf(id: number) {
+    Swal.fire({ title: "Void Transaksi?", text: "Transaksi akan divoid dan saldo kas dikembalikan.", icon: "warning", showCancelButton: true, confirmButtonColor: "#ef4444", confirmButtonText: "Ya, Void", cancelButtonText: "Batal" }).then(async (r) => {
+      if (r.isConfirmed) { try { const res = await fetch(`/api/wakaf/${id}`, { method: "DELETE" }); const json = await res.json(); if (res.ok && json.success) { Swal.fire({ icon: "success", title: "Berhasil", text: "Transaksi di-void", toast: true, position: "top-end", timer: 2000, showConfirmButton: false }); loadData(); } else Swal.fire("Gagal", json.error, "error"); } catch { Swal.fire("Error", "Server error", "error"); } }
+    });
   }
 
-  async function loadPurposes() {
-    try {
-      const res = await fetch(`/api/wakaf/purposes`);
-      const json = await res.json();
-      if (json.success) setPurposes(json.data || []);
-    } catch (e) { console.error(e); }
+  async function handleAddDonor() {
+    if (!dForm.name.trim()) return Swal.fire("Error", "Nama wajib diisi", "error");
+    setDLoading(true);
+    try { const res = await fetch("/api/wakaf/donors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dForm) }); const json = await res.json(); if (res.ok && json.success) { Swal.fire({ icon: "success", title: "Berhasil", text: "Donatur ditambahkan", toast: true, position: "top-end", timer: 2000, showConfirmButton: false }); setShowAddDonor(false); setDForm({ name: "", phone: "", address: "" }); loadDonors(); } else Swal.fire("Gagal", json.error, "error"); } catch { Swal.fire("Error", "Server error", "error"); } finally { setDLoading(false); }
   }
 
-  function fmtRp(n: number) {
-    return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+  async function handleAddPurpose() {
+    if (!pForm.name.trim()) return Swal.fire("Error", "Nama wajib diisi", "error");
+    setPLoading(true);
+    try { const res = await fetch("/api/wakaf/purposes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pForm) }); const json = await res.json(); if (res.ok && json.success) { Swal.fire({ icon: "success", title: "Berhasil", text: "Tujuan ditambahkan", toast: true, position: "top-end", timer: 2000, showConfirmButton: false }); setShowAddPurpose(false); setPForm({ name: "", description: "" }); loadPurposes(); } else Swal.fire("Gagal", json.error, "error"); } catch { Swal.fire("Error", "Server error", "error"); } finally { setPLoading(false); }
   }
 
-  // --- ACTIONS TRANSAKSI ---
-  const handleAddWakaf = () => {
-    let donorOptions = '<option value="">-- Pilih Donatur --</option>';
-    donors.forEach(d => { donorOptions += `<option value="${d.id}">${d.name} (${d.phone || "-"})</option>`; });
-    
-    let purposeOptions = '<option value="">-- Pilih Tujuan --</option>';
-    purposes.forEach(p => { purposeOptions += `<option value="${p.id}">${p.name}</option>`; });
-
-    Swal.fire({
-      title: "Terima Wakaf",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <div>
-            <label style="font-size:0.75rem;font-weight:600;">Tanggal</label>
-            <input type="date" id="swal-w-date" class="swal2-input" style="margin:0;height:2.5rem;padding:0.5rem;font-size:0.875rem;width:100%" value="${new Date().toISOString().split('T')[0]}">
-          </div>
-          <div>
-            <label style="font-size:0.75rem;font-weight:600;">Donatur</label>
-            <select id="swal-w-donor" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">${donorOptions}</select>
-            <p style="font-size:0.7rem;color:#64748b;margin-top:0.25rem;">*Donatur baru? Tambah di tab Donatur dulu.</p>
-          </div>
-          <div>
-            <label style="font-size:0.75rem;font-weight:600;">Tujuan Wakaf</label>
-            <select id="swal-w-purpose" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">${purposeOptions}</select>
-          </div>
-          <div>
-            <label style="font-size:0.75rem;font-weight:600;">Nominal (Rp)</label>
-            <input type="number" id="swal-w-amount" class="swal2-input" style="margin:0;height:2.5rem;padding:0.5rem;font-size:0.875rem;width:100%">
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan Transaksi",
-      cancelButtonText: "Batal",
-      confirmButtonColor: "#10b981",
-      preConfirm: () => {
-        return {
-          date: (document.getElementById("swal-w-date") as HTMLInputElement).value,
-          donor_id: Number((document.getElementById("swal-w-donor") as HTMLSelectElement).value),
-          purpose_id: Number((document.getElementById("swal-w-purpose") as HTMLSelectElement).value),
-          amount: Number((document.getElementById("swal-w-amount") as HTMLInputElement).value)
-        };
-      }
-    }).then(async (r) => {
-      if (r.isConfirmed) {
-        const payload = r.value;
-        if (!payload.donor_id || !payload.purpose_id || !payload.amount) {
-          return Swal.fire("Error", "Semua kolom wajib diisi!", "error");
-        }
-        Swal.fire({ title: "Menyimpan...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        try {
-          const res = await fetch("/api/wakaf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-          const json = await res.json();
-          Swal.close();
-          if (res.ok && json.success) {
-            Swal.fire("Berhasil", "Data wakaf disimpan", "success");
-            loadData();
-          } else Swal.fire("Gagal", json.error || "Gagal menyimpan", "error");
-        } catch { Swal.fire("Error", "Terjadi kesalahan server", "error"); }
-      }
+  async function handleDeletePurpose(id: number) {
+    Swal.fire({ title: "Hapus Tujuan?", icon: "warning", showCancelButton: true, confirmButtonColor: "#ef4444", confirmButtonText: "Ya, Hapus", cancelButtonText: "Batal" }).then(async (r) => {
+      if (r.isConfirmed) { try { const res = await fetch(`/api/wakaf/purposes?id=${id}`, { method: "DELETE" }); const json = await res.json(); if (res.ok && json.success) { Swal.fire({ icon: "success", title: "Berhasil", text: "Dihapus", toast: true, position: "top-end", timer: 2000, showConfirmButton: false }); loadPurposes(); } else Swal.fire("Gagal", json.error, "error"); } catch { Swal.fire("Error", "Server error", "error"); } }
     });
-  };
+  }
 
-  const handleDeleteWakaf = async (id: number) => {
-    Swal.fire({
-      title: "Void Transaksi?",
-      text: "Transaksi ini akan divoid dan saldo kas akan dikembalikan.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#e11d48",
-      confirmButtonText: "Ya, Void"
-    }).then(async (r) => {
-      if (r.isConfirmed) {
-        try {
-          const res = await fetch(`/api/wakaf/${id}`, { method: "DELETE" });
-          const json = await res.json();
-          if (res.ok && json.success) {
-            Swal.fire("Berhasil", "Transaksi di-void.", "success");
-            loadData();
-          } else Swal.fire("Gagal", json.error || "Gagal", "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
-      }
-    });
-  };
+  const kpiItems = [
+    { label: "Total Wakaf", value: fmtRp(kpi.total), color: "text-emerald-600" },
+    { label: "Bulan Ini", value: fmtRp(kpi.monthly), color: "text-sky-600" },
+    { label: "Total Donatur", value: String(kpi.donorCount), color: "text-indigo-600" },
+    { label: "Program Tujuan", value: String(kpi.purposeCount), color: "text-amber-600" },
+  ];
 
-  // --- ACTIONS DONATUR ---
-  const handleAddDonor = () => {
-    Swal.fire({
-      title: "Tambah Donatur",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <div><label style="font-size:0.75rem;font-weight:600;">Nama Lengkap</label>
-          <input type="text" id="swal-d-name" class="swal2-input" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
-          <div><label style="font-size:0.75rem;font-weight:600;">No HP</label>
-          <input type="text" id="swal-d-phone" class="swal2-input" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
-          <div><label style="font-size:0.75rem;font-weight:600;">Alamat</label>
-          <textarea id="swal-d-address" class="swal2-textarea" style="margin:0;width:100%;height:4rem;padding:0.5rem;font-size:0.875rem;"></textarea></div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan",
-      confirmButtonColor: "#10b981",
-      preConfirm: () => ({
-        name: (document.getElementById("swal-d-name") as HTMLInputElement).value,
-        phone: (document.getElementById("swal-d-phone") as HTMLInputElement).value,
-        address: (document.getElementById("swal-d-address") as HTMLTextAreaElement).value
-      })
-    }).then(async (r) => {
-      if (r.isConfirmed) {
-        try {
-          const res = await fetch("/api/wakaf/donors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
-          const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur ditambahkan", "success"); loadDonors(); }
-          else Swal.fire("Gagal", json.error, "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
-      }
-    });
-  };
-
-  // --- ACTIONS TUJUAN ---
-  const handleAddPurpose = () => {
-    Swal.fire({
-      title: "Tambah Tujuan Wakaf",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <div><label style="font-size:0.75rem;font-weight:600;">Nama Program/Tujuan</label>
-          <input type="text" id="swal-p-name" class="swal2-input" placeholder="Misal: Pembangunan Masjid" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;"></div>
-          <div><label style="font-size:0.75rem;font-weight:600;">Deskripsi</label>
-          <textarea id="swal-p-desc" class="swal2-textarea" style="margin:0;width:100%;height:4rem;padding:0.5rem;font-size:0.875rem;"></textarea></div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan",
-      confirmButtonColor: "#10b981",
-      preConfirm: () => ({
-        name: (document.getElementById("swal-p-name") as HTMLInputElement).value,
-        description: (document.getElementById("swal-p-desc") as HTMLTextAreaElement).value
-      })
-    }).then(async (r) => {
-      if (r.isConfirmed) {
-        try {
-          const res = await fetch("/api/wakaf/purposes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
-          const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Tujuan ditambahkan", "success"); loadPurposes(); }
-          else Swal.fire("Gagal", json.error, "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
-      }
-    });
-  };
-
-  const handleDeletePurpose = async (id: number) => {
-    Swal.fire({
-      title: "Hapus Tujuan?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#e11d48",
-      confirmButtonText: "Ya, Hapus"
-    }).then(async (r) => {
-      if (r.isConfirmed) {
-        try {
-          const res = await fetch(`/api/wakaf/purposes?id=${id}`, { method: "DELETE" });
-          const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Dihapus", "success"); loadPurposes(); }
-          else Swal.fire("Gagal", json.error, "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
-      }
-    });
-  };
+  const tabs = [
+    { key: "riwayat", label: "Riwayat Wakaf" },
+    { key: "donatur", label: "Daftar Donatur" },
+    { key: "tujuan", label: "Tujuan / Program" },
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Hero Header */}
-      <div style={{ background: "linear-gradient(135deg,#059669 0%,#10b981 50%,#34d399 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
-        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }}></div>
-        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-             <div className="flex items-center gap-3">
-              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>
-              </div>
-              <div>
-                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Wakaf & Donasi</h2>
-                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola penerimaan wakaf dan donatur madrasah.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader title="Wakaf & Donasi" subtitle="Kelola penerimaan wakaf dan donatur madrasah." icon={<WakafIcon />} gradient="from-emerald-600 via-emerald-500 to-teal-400" />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div style={{ background: "#fff", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1.25rem" }}>
-          <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Wakaf</p>
-          <p style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "1.5rem", color: "#059669", marginTop: "0.25rem" }}>{fmtRp(kpi.total)}</p>
-        </div>
-        <div style={{ background: "#fff", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1.25rem" }}>
-          <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Bulan Ini</p>
-          <p style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "1.5rem", color: "#0ea5e9", marginTop: "0.25rem" }}>{fmtRp(kpi.monthly)}</p>
-        </div>
-        <div style={{ background: "#fff", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1.25rem" }}>
-          <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Donatur</p>
-          <p style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "1.5rem", color: "#6366f1", marginTop: "0.25rem" }}>{kpi.donorCount}</p>
-        </div>
-        <div style={{ background: "#fff", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1.25rem" }}>
-          <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Program Tujuan</p>
-          <p style={{ fontFamily: "var(--font-heading)", fontWeight: 800, fontSize: "1.5rem", color: "#d97706", marginTop: "0.25rem" }}>{kpi.purposeCount}</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpiItems.map((k, i) => (
+          <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{k.label}</p>
+            <p className={`font-heading font-extrabold text-xl m-0 mt-1 ${k.color}`}>{k.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-        <button onClick={() => setActiveTab("riwayat")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "riwayat" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>Riwayat Wakaf</button>
-        <button onClick={() => setActiveTab("donatur")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "donatur" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>Daftar Donatur</button>
-        <button onClick={() => setActiveTab("tujuan")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "tujuan" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>Tujuan / Program</button>
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === t.key ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>{t.label}</button>
+        ))}
       </div>
 
       {/* Panel Riwayat */}
       {activeTab === "riwayat" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h4 className="font-bold text-slate-800 text-sm">Riwayat Penerimaan Wakaf</h4>
-            <button onClick={handleAddWakaf} className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 shadow-sm">+ Catat Wakaf</button>
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Riwayat Penerimaan</h4></div>
+            <Button variant="primary" size="sm" icon={<PlusIcon />} onClick={() => setShowAddWakaf(true)}>Catat Wakaf</Button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                  <th className="px-6 py-3 border-b border-slate-200">Tanggal</th>
-                  <th className="px-6 py-3 border-b border-slate-200">Donatur</th>
-                  <th className="px-6 py-3 border-b border-slate-200">Tujuan</th>
-                  <th className="px-6 py-3 border-b border-slate-200 text-right">Nominal</th>
-                  <th className="px-6 py-3 border-b border-slate-200 text-center">Status</th>
-                  <th className="px-6 py-3 border-b border-slate-200 text-center">Aksi</th>
+                <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+                  {["Tanggal", "Donatur", "Tujuan", "Nominal", "Status", "Aksi"].map((h, i) => (
+                    <th key={h} className={`px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 3 ? "text-right" : i >= 4 ? "text-center" : "text-left"}`}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.map(t => (
-                  <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50" style={{ opacity: t.status === 'void' ? 0.5 : 1}}>
-                    <td className="px-6 py-3 text-sm">{new Date(t.date).toLocaleDateString("id-ID")}</td>
-                    <td className="px-6 py-3 text-sm font-semibold">{t.donor_name}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600">{t.purpose_name}</td>
-                    <td className="px-6 py-3 text-sm font-bold text-emerald-600 text-right">{fmtRp(t.amount)}</td>
-                    <td className="px-6 py-3 text-center">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${t.status === 'void' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>{t.status === 'void' ? 'VOID' : 'VALID'}</span>
-                    </td>
-                    <td className="px-6 py-3 text-center">
-                      {t.status !== 'void' && (
-                        <button onClick={() => handleDeleteWakaf(t.id)} className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded hover:bg-red-100 border border-red-200">Hapus/Void</button>
-                      )}
-                    </td>
+                {loading ? <tr><td colSpan={6} className="p-12 text-center text-sm text-slate-400">Memuat...</td></tr>
+                : data.length === 0 ? <tr><td colSpan={6} className="p-12 text-center"><p className="font-heading font-bold text-slate-700">Belum ada transaksi</p></td></tr>
+                : data.map(t => (
+                  <tr key={t.id} className={`hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0 ${t.status === "void" ? "opacity-40" : ""}`}>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{new Date(t.date).toLocaleDateString("id-ID")}</td>
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">{t.donor_name}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{t.purpose_name}</td>
+                    <td className="px-4 py-3.5 text-right text-sm font-bold text-emerald-600">{fmtRp(t.amount)}</td>
+                    <td className="px-4 py-3.5 text-center"><Badge variant={t.status === "void" ? "neutral" : "success"} dot>{t.status === "void" ? "VOID" : "VALID"}</Badge></td>
+                    <td className="px-4 py-3.5 text-center">{t.status !== "void" && <Button variant="danger" size="sm" onClick={() => handleDeleteWakaf(t.id)}>Void</Button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -316,26 +141,22 @@ export default function WakafPage() {
 
       {/* Panel Donatur */}
       {activeTab === "donatur" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h4 className="font-bold text-slate-800 text-sm">Daftar Donatur Wakaf</h4>
-            <button onClick={handleAddDonor} className="px-3 py-1.5 bg-sky-500 text-white rounded-lg text-xs font-bold hover:bg-sky-600 shadow-sm">+ Tambah Donatur</button>
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-sky-500 to-blue-500" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Donatur</h4></div>
+            <Button variant="primary" size="sm" icon={<PlusIcon />} onClick={() => setShowAddDonor(true)}>Tambah Donatur</Button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                  <th className="px-6 py-3 border-b border-slate-200">Nama Lengkap</th>
-                  <th className="px-6 py-3 border-b border-slate-200">No HP</th>
-                  <th className="px-6 py-3 border-b border-slate-200">Alamat</th>
-                </tr>
-              </thead>
+            <table className="w-full border-collapse">
+              <thead><tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+                {["Nama Lengkap", "No HP", "Alamat"].map(h => <th key={h} className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 text-left">{h}</th>)}
+              </tr></thead>
               <tbody>
-                {donors.length === 0 ? <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada donatur</td></tr> : donors.map(d => (
-                  <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-6 py-3 text-sm font-semibold">{d.name}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600">{d.phone || "-"}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600">{d.address || "-"}</td>
+                {donors.length === 0 ? <tr><td colSpan={3} className="p-12 text-center text-sm text-slate-400">Belum ada donatur</td></tr> : donors.map(d => (
+                  <tr key={d.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">{d.name}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{d.phone || "-"}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{d.address || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -346,30 +167,22 @@ export default function WakafPage() {
 
       {/* Panel Tujuan */}
       {activeTab === "tujuan" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h4 className="font-bold text-slate-800 text-sm">Program / Tujuan Wakaf</h4>
-            <button onClick={handleAddPurpose} className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 shadow-sm">+ Tambah Tujuan</button>
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-amber-500 to-orange-500" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Program / Tujuan</h4></div>
+            <Button variant="primary" size="sm" icon={<PlusIcon />} onClick={() => setShowAddPurpose(true)}>Tambah Tujuan</Button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                  <th className="px-6 py-3 border-b border-slate-200">Nama Program</th>
-                  <th className="px-6 py-3 border-b border-slate-200">Deskripsi</th>
-                  <th className="px-6 py-3 border-b border-slate-200 text-center">Aksi</th>
-                </tr>
-              </thead>
+            <table className="w-full border-collapse">
+              <thead><tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+                {["Nama Program", "Deskripsi", "Aksi"].map((h, i) => <th key={h} className={`px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 2 ? "text-center" : "text-left"}`}>{h}</th>)}
+              </tr></thead>
               <tbody>
-                {purposes.length === 0 ? <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada tujuan wakaf</td></tr> : purposes.map(p => (
-                  <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-6 py-3 text-sm font-semibold">{p.name}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600">{p.description || "-"}</td>
-                    <td className="px-6 py-3 text-center">
-                      <button onClick={() => handleDeletePurpose(p.id)} className="w-7 h-7 inline-flex items-center justify-center rounded bg-red-50 text-red-500 hover:bg-red-100 border border-red-200">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
-                    </td>
+                {purposes.length === 0 ? <tr><td colSpan={3} className="p-12 text-center text-sm text-slate-400">Belum ada tujuan wakaf</td></tr> : purposes.map(p => (
+                  <tr key={p.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">{p.name}</td>
+                    <td className="px-4 py-3.5 text-sm text-slate-600">{p.description || "-"}</td>
+                    <td className="px-4 py-3.5 text-center"><button onClick={() => handleDeletePurpose(p.id)} className="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 border border-rose-200 cursor-pointer transition-colors"><TrashIcon /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -378,6 +191,46 @@ export default function WakafPage() {
         </div>
       )}
 
+      {/* Modal Catat Wakaf */}
+      <Modal open={showAddWakaf} onClose={() => setShowAddWakaf(false)} title="Catat Penerimaan Wakaf" subtitle="Isi data transaksi wakaf."
+        footer={<><Button variant="secondary" onClick={() => setShowAddWakaf(false)}>Batal</Button><Button variant="primary" onClick={handleAddWakaf} loading={wLoading}>Simpan</Button></>}>
+        <div className="space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={wForm.date} onChange={e => setWForm({...wForm, date: e.target.value})} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all" /></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Donatur</label>
+            <select value={wForm.donor_id} onChange={e => setWForm({...wForm, donor_id: e.target.value})} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all bg-white">
+              <option value="">— Pilih Donatur —</option>
+              {donors.map(d => <option key={d.id} value={d.id}>{d.name} ({d.phone || "-"})</option>)}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">*Donatur baru? Tambah di tab Donatur dulu.</p>
+          </div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Tujuan Wakaf</label>
+            <select value={wForm.purpose_id} onChange={e => setWForm({...wForm, purpose_id: e.target.value})} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all bg-white">
+              <option value="">— Pilih Tujuan —</option>
+              {purposes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Nominal (Rp)</label><input type="number" value={wForm.amount} onChange={e => setWForm({...wForm, amount: e.target.value})} placeholder="0" className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-200 transition-all" /></div>
+        </div>
+      </Modal>
+
+      {/* Modal Tambah Donatur */}
+      <Modal open={showAddDonor} onClose={() => setShowAddDonor(false)} title="Tambah Donatur" subtitle="Data donatur baru."
+        footer={<><Button variant="secondary" onClick={() => setShowAddDonor(false)}>Batal</Button><Button variant="primary" onClick={handleAddDonor} loading={dLoading}>Simpan</Button></>}>
+        <div className="space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap</label><input value={dForm.name} onChange={e => setDForm({...dForm, name: e.target.value})} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all" /></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">No HP</label><input value={dForm.phone} onChange={e => setDForm({...dForm, phone: e.target.value})} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all" /></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Alamat</label><textarea value={dForm.address} onChange={e => setDForm({...dForm, address: e.target.value})} rows={3} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all resize-none" /></div>
+        </div>
+      </Modal>
+
+      {/* Modal Tambah Tujuan */}
+      <Modal open={showAddPurpose} onClose={() => setShowAddPurpose(false)} title="Tambah Tujuan Wakaf" subtitle="Program/tujuan baru."
+        footer={<><Button variant="secondary" onClick={() => setShowAddPurpose(false)}>Batal</Button><Button variant="primary" onClick={handleAddPurpose} loading={pLoading}>Simpan</Button></>}>
+        <div className="space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Program/Tujuan</label><input value={pForm.name} onChange={e => setPForm({...pForm, name: e.target.value})} placeholder="Misal: Pembangunan Masjid" className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all" /></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Deskripsi</label><textarea value={pForm.description} onChange={e => setPForm({...pForm, description: e.target.value})} rows={3} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-200 transition-all resize-none" /></div>
+        </div>
+      </Modal>
     </div>
   );
 }

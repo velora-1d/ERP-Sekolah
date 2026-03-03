@@ -1,5 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+import Modal from "@/components/ui/Modal";
+
+const TabunganIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
 export default function TabunganPage() {
   const [data, setData] = useState<any[]>([]);
@@ -7,8 +13,6 @@ export default function TabunganPage() {
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [classFilter, setClassFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-
-  // Modal setor/tarik
   const [showTransaction, setShowTransaction] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [txType, setTxType] = useState<"setor" | "tarik">("setor");
@@ -16,280 +20,143 @@ export default function TabunganPage() {
   const [txDate, setTxDate] = useState(new Date().toISOString().split("T")[0]);
   const [txDesc, setTxDesc] = useState("");
   const [txLoading, setTxLoading] = useState(false);
-
-  // Modal riwayat
   const [showHistory, setShowHistory] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<any>(null);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [historyBalance, setHistoryBalance] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
+  const showToast = (msg: string, type: "success" | "error" = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
   const fmtRp = (n: number) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
   const loadData = useCallback(async (filter = classFilter) => {
     setLoading(true);
-    try {
-      const res = await fetch(`/api/tabungan?classId=${filter}`);
-      const json = await res.json();
-      if (json.success) setData(json.data);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    try { const res = await fetch(`/api/tabungan?classId=${filter}`); const json = await res.json(); if (json.success) setData(json.data); } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [classFilter]);
 
-  async function loadClassrooms() {
-    try {
-      const res = await fetch("/api/classrooms");
-      const json = await res.json();
-      if (json.success) setClassrooms(json.data);
-    } catch (e) { console.error(e); }
-  }
-
+  async function loadClassrooms() { try { const res = await fetch("/api/classrooms"); const json = await res.json(); if (json.success) setClassrooms(json.data); } catch (e) { console.error(e); } }
   useEffect(() => { loadClassrooms(); loadData(); }, []);
 
-  // === Setor / Tarik ===
   async function handleTransaction() {
-    if (!selectedStudent || !txAmount || Number(txAmount) <= 0) { showToast("Jumlah harus lebih dari 0", "error"); return; }
+    if (!selectedStudent || !txAmount || Number(txAmount) <= 0) { showToast("Jumlah harus > 0", "error"); return; }
     setTxLoading(true);
-    try {
-      const res = await fetch("/api/tabungan/transaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: selectedStudent.id,
-          type: txType,
-          amount: Number(txAmount),
-          date: txDate,
-          description: txDesc,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        showToast(json.message);
-        setShowTransaction(false);
-        setSelectedStudent(null);
-        setTxAmount(""); setTxDesc("");
-        loadData();
-      } else {
-        showToast(json.message, "error");
-      }
-    } catch { showToast("Gagal memproses transaksi", "error"); }
-    finally { setTxLoading(false); }
+    try { const res = await fetch("/api/tabungan/transaction", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId: selectedStudent.id, type: txType, amount: Number(txAmount), date: txDate, description: txDesc }) }); const json = await res.json(); if (json.success) { showToast(json.message); setShowTransaction(false); setSelectedStudent(null); setTxAmount(""); setTxDesc(""); loadData(); } else showToast(json.message, "error"); } catch { showToast("Gagal", "error"); } finally { setTxLoading(false); }
   }
 
-  // === Riwayat Mutasi ===
   async function openHistory(student: any) {
-    setHistoryStudent(student);
-    setShowHistory(true);
-    setHistoryLoading(true);
-    try {
-      const res = await fetch(`/api/tabungan/${student.id}/history`);
-      const json = await res.json();
-      if (json.success) {
-        setHistoryData(json.history || []);
-        setHistoryBalance(json.balance || 0);
-      }
-    } catch { showToast("Gagal memuat riwayat", "error"); }
-    finally { setHistoryLoading(false); }
+    setHistoryStudent(student); setShowHistory(true); setHistoryLoading(true);
+    try { const res = await fetch(`/api/tabungan/${student.id}/history`); const json = await res.json(); if (json.success) { setHistoryData(json.history || []); setHistoryBalance(json.balance || 0); } } catch { showToast("Gagal memuat riwayat", "error"); } finally { setHistoryLoading(false); }
   }
 
-  function openTransaction(student: any, type: "setor" | "tarik") {
-    setSelectedStudent(student);
-    setTxType(type);
-    setTxAmount("");
-    setTxDesc("");
-    setShowTransaction(true);
-  }
+  function openTransaction(student: any, type: "setor" | "tarik") { setSelectedStudent(student); setTxType(type); setTxAmount(""); setTxDesc(""); setShowTransaction(true); }
 
   const totalSaldo = data.reduce((sum, s) => sum + (s.balance || 0), 0);
-  const thStyle: React.CSSProperties = { padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 9999, padding: "0.875rem 1.25rem", borderRadius: "0.75rem", background: toast.type === "success" ? "#059669" : "#e11d48", color: "#fff", fontWeight: 600, fontSize: "0.8125rem", boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
-          {toast.msg}
-        </div>
-      )}
+    <div className="space-y-5 animate-fade-in-up">
+      {toast && <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl text-white text-sm font-semibold shadow-xl" style={{ background: toast.type === "success" ? "#059669" : "#e11d48" }}>{toast.msg}</div>}
 
-      {/* Hero Header */}
-      <div style={{ background: "linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
-        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }} />
-        <div style={{ position: "absolute", right: 80, bottom: -40, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }} />
-        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
+      {/* Hero + total saldo & filter kelas */}
+      <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 rounded-2xl overflow-hidden relative shadow-lg">
+        <div className="absolute -right-5 -top-5 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="p-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              </div>
-              <div>
-                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Tabungan Siswa</h2>
-                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola setoran & penarikan tabungan seluruh siswa aktif.</p>
-              </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 shrink-0"><span className="text-white"><TabunganIcon /></span></div>
+              <div><h2 className="font-heading font-bold text-xl text-white m-0">Tabungan Siswa</h2><p className="text-sm text-white/70 mt-0.5">Kelola setoran & penarikan tabungan seluruh siswa aktif.</p></div>
             </div>
             <div className="flex items-center gap-3">
-              <div style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "0.75rem", padding: "0.75rem 1.25rem" }}>
-                <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Saldo</p>
-                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 800, color: "#fff", margin: 0 }}>{fmtRp(totalSaldo)}</p>
+              <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-white/70 uppercase tracking-wider">Total Saldo</p>
+                <p className="font-heading text-lg font-extrabold text-white m-0">{fmtRp(totalSaldo)}</p>
               </div>
-              <select value={classFilter} onChange={e => { setClassFilter(e.target.value); loadData(e.target.value); }} style={{ padding: "0.5rem 2rem 0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer", outline: "none" }}>
-                <option value="" style={{ color: "#1e293b" }}>Semua Kelas</option>
-                {classrooms.map((c: any) => <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>{c.name}</option>)}
+              <select value={classFilter} onChange={e => { setClassFilter(e.target.value); loadData(e.target.value); }}
+                className="px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-xl text-sm outline-none cursor-pointer [&>option]:text-slate-800">
+                <option value="">Semua Kelas</option>
+                {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabel Siswa & Saldo */}
-      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", borderRadius: "50%" }} />
-            <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Siswa & Saldo</h4>
-          </div>
-          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{data.length} Siswa</span>
+      {/* Tabel */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Siswa & Saldo</h4></div>
+          <Badge variant="info">{data.length} siswa</Badge>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)" }}>
-                <th style={thStyle}>No</th>
-                <th style={thStyle}>Siswa</th>
-                <th style={thStyle}>Kelas</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Saldo</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Aksi</th>
+              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+                {["No", "Siswa", "Kelas", "Saldo", "Aksi"].map((h, i) => (
+                  <th key={h} className={`px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 0 ? "text-center w-12" : i === 3 ? "text-right" : i === 4 ? "text-center" : "text-left"}`}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8" }}>Memuat data...</td></tr>
+                <tr><td colSpan={5} className="p-12 text-center"><svg className="animate-spin w-6 h-6 mx-auto mb-2 text-indigo-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg><p className="text-sm text-slate-400">Memuat...</p></td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
-                      <svg style={{ width: 28, height: 28, color: "#8b5cf6" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <tr><td colSpan={5} className="p-16 text-center"><p className="font-heading font-bold text-slate-700">Belum Ada Data Siswa</p></td></tr>
+              ) : data.map((s: any, i: number) => (
+                <tr key={s.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                  <td className="px-4 py-3.5 text-center text-sm text-slate-400 font-semibold">{i + 1}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-lg flex items-center justify-center font-bold text-sm text-indigo-600 shrink-0">{(s.name || "?").charAt(0).toUpperCase()}</div>
+                      <div><p className="font-semibold text-sm text-slate-800 m-0">{s.name}</p><p className="text-xs text-slate-400 mt-0.5">NISN: {s.nisn || "-"}</p></div>
                     </div>
-                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Siswa</p>
-                  </div>
-                </td></tr>
-              ) : data.map((s: any, i: number) => {
-                const initial = (s.name || "?").charAt(0).toUpperCase();
-                const saldoColor = (s.balance || 0) > 0 ? "#059669" : "#94a3b8";
-
-                return (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
-                    <td style={{ padding: "1rem 1.5rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{initial}</div>
-                        <div>
-                          <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{s.name}</p>
-                          <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>NISN: {s.nisn || "-"}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem" }}><span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{s.classroom || "-"}</span></td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
-                      <span style={{ fontWeight: 700, fontSize: "0.875rem", color: saldoColor }}>{fmtRp(s.balance || 0)}</span>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                        <button onClick={() => openHistory(s)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Mutasi</button>
-                        <button onClick={() => openTransaction(s, "setor")} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", cursor: "pointer" }}>Setor</button>
-                        <button onClick={() => openTransaction(s, "tarik")} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Tarik</button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                  </td>
+                  <td className="px-4 py-3.5"><Badge variant="info">{s.classroom || "-"}</Badge></td>
+                  <td className="px-4 py-3.5 text-right"><span className={`font-bold text-sm ${(s.balance || 0) > 0 ? "text-emerald-600" : "text-slate-400"}`}>{fmtRp(s.balance || 0)}</span></td>
+                  <td className="px-4 py-3.5 text-center">
+                    <div className="flex justify-center gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => openHistory(s)}>Mutasi</Button>
+                      <Button variant="outline" size="sm" onClick={() => openTransaction(s, "setor")} className="!text-emerald-600 !border-emerald-200 hover:!bg-emerald-50">Setor</Button>
+                      <Button variant="danger" size="sm" onClick={() => openTransaction(s, "tarik")}>Tarik</Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Modal Setor/Tarik */}
-      {showTransaction && selectedStudent && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowTransaction(false)} />
-          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 440, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-            <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>
-              {txType === "setor" ? "Setor" : "Tarik"} Tabungan
-            </h3>
-            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>{selectedStudent.name} — Saldo: <strong>{fmtRp(selectedStudent.balance || 0)}</strong></p>
-
-            <div style={{ marginTop: "1.25rem" }}>
-              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Jumlah (Rp)</label>
-              <input type="number" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="0" style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "1rem", fontWeight: 700, outline: "none" }} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3" style={{ marginTop: "0.75rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Tanggal</label>
-                <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Keterangan</label>
-                <input type="text" value={txDesc} onChange={e => setTxDesc(e.target.value)} placeholder="Opsional..." style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
-              </div>
-            </div>
-
-            <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-              <button onClick={() => setShowTransaction(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
-              <button onClick={handleTransaction} disabled={txLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: txLoading ? "#94a3b8" : txType === "setor" ? "linear-gradient(135deg,#059669,#047857)" : "linear-gradient(135deg,#e11d48,#be123c)", border: "none", borderRadius: "0.625rem", cursor: txLoading ? "not-allowed" : "pointer" }}>
-                {txLoading ? "Memproses..." : txType === "setor" ? "Setor Sekarang" : "Tarik Sekarang"}
-              </button>
-            </div>
+      <Modal open={showTransaction && !!selectedStudent} onClose={() => setShowTransaction(false)} title={`${txType === "setor" ? "Setor" : "Tarik"} Tabungan`} subtitle={selectedStudent ? `${selectedStudent.name} — Saldo: ${fmtRp(selectedStudent.balance || 0)}` : ""}
+        footer={<><Button variant="secondary" onClick={() => setShowTransaction(false)}>Batal</Button><Button variant={txType === "setor" ? "primary" : "danger"} onClick={handleTransaction} loading={txLoading}>{txType === "setor" ? "Setor Sekarang" : "Tarik Sekarang"}</Button></>}>
+        <div className="space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Jumlah (Rp)</label><input type="number" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="0" className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-200 transition-all" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-200 transition-all" /></div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Keterangan</label><input type="text" value={txDesc} onChange={e => setTxDesc(e.target.value)} placeholder="Opsional..." className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-200 transition-all" /></div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Modal Riwayat Mutasi */}
-      {showHistory && historyStudent && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowHistory(false)} />
-          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 560, maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-            <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
-              <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Riwayat Mutasi</h3>
-              <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.25rem" }}>{historyStudent.name} — Saldo: <strong style={{ color: "#059669" }}>{fmtRp(historyBalance)}</strong></p>
-            </div>
-            <div style={{ overflowY: "auto", flex: 1, padding: "1rem 2rem" }}>
-              {historyLoading ? (
-                <p style={{ textAlign: "center", color: "#94a3b8", padding: "2rem 0" }}>Memuat...</p>
-              ) : historyData.length === 0 ? (
-                <p style={{ textAlign: "center", color: "#94a3b8", padding: "2rem 0" }}>Belum ada transaksi.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {historyData.map((h: any) => (
-                    <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1rem", borderRadius: "0.625rem", background: h.type === "setor" ? "#f0fdf4" : "#fef2f2", border: `1px solid ${h.type === "setor" ? "#bbf7d0" : "#fecaca"}` }}>
-                      <div>
-                        <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>
-                          {h.type === "setor" ? "↓ Setoran" : "↑ Penarikan"}
-                        </p>
-                        <p style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "0.125rem" }}>{h.date} — {h.description || "-"}</p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <p style={{ fontWeight: 700, fontSize: "0.875rem", color: h.type === "setor" ? "#059669" : "#e11d48", margin: 0 }}>
-                          {h.type === "setor" ? "+" : "-"}{fmtRp(h.amount)}
-                        </p>
-                        <p style={{ fontSize: "0.625rem", color: "#94a3b8", marginTop: "0.125rem" }}>Saldo: {fmtRp(h.balanceAfter)}</p>
-                      </div>
-                    </div>
-                  ))}
+      <Modal open={showHistory && !!historyStudent} onClose={() => setShowHistory(false)} title="Riwayat Mutasi" subtitle={historyStudent ? `${historyStudent.name} — Saldo: ${fmtRp(historyBalance)}` : ""} size="lg"
+        footer={<Button variant="secondary" onClick={() => setShowHistory(false)} className="w-full">Tutup</Button>}>
+        <div>
+          {historyLoading ? (
+            <p className="text-center text-slate-400 py-8">Memuat...</p>
+          ) : historyData.length === 0 ? (
+            <p className="text-center text-slate-400 py-8">Belum ada transaksi.</p>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {historyData.map((h: any) => (
+                <div key={h.id} className={`flex items-center justify-between p-3 rounded-xl border ${h.type === "setor" ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+                  <div><p className="font-semibold text-sm text-slate-800 m-0">{h.type === "setor" ? "↓ Setoran" : "↑ Penarikan"}</p><p className="text-xs text-slate-500 mt-0.5">{h.date} — {h.description || "-"}</p></div>
+                  <div className="text-right"><p className={`font-bold text-sm m-0 ${h.type === "setor" ? "text-emerald-600" : "text-rose-600"}`}>{h.type === "setor" ? "+" : "-"}{fmtRp(h.amount)}</p><p className="text-[10px] text-slate-400 mt-0.5">Saldo: {fmtRp(h.balanceAfter)}</p></div>
                 </div>
-              )}
+              ))}
             </div>
-            <div style={{ padding: "1rem 2rem", borderTop: "1px solid #e2e8f0" }}>
-              <button onClick={() => setShowHistory(false)} style={{ width: "100%", padding: "0.625rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Tutup</button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
