@@ -1,0 +1,1 @@
+export default function Page() { return <div className="animate-fade-in-up"><div className="bg-white rounded-xl border border-slate-200 p-8"><h2 className="text-xl font-bold text-slate-800" style={{ fontFamily: "var(--font-heading)" }}>Reports</h2><p className="text-sm text-slate-500 mt-2">Halaman ini sedang dalam pengembangan.</p></div></div>; }
