@@ -3,6 +3,15 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import Pagination from "@/components/Pagination";
+import PageHeader from "@/components/ui/PageHeader";
+import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+
+const DownloadIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
+const UploadIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
+const ExportIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+const PlusIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>;
+const StudentsIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 
 export default function StudentsPage() {
   const [data, setData] = useState<any[]>([]);
@@ -27,9 +36,7 @@ export default function StudentsPage() {
     }
   }, [page, search]);
 
-  useEffect(() => {
-    loadStudents();
-  }, []);
+  useEffect(() => { loadStudents(); }, []);
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
@@ -48,7 +55,7 @@ export default function StudentsPage() {
   const handleDelete = (s: any) => {
     Swal.fire({
       title: "Hapus Siswa?",
-      text: `Semua data terkait "${s.name}" akan ikut terhapus.`,
+      text: `Semua data terkait "${s.name}" akan ikut dihapus.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
@@ -65,146 +72,152 @@ export default function StudentsPage() {
           } else {
             Swal.fire("Gagal", json.message || "Error", "error");
           }
-        } catch (error) {
+        } catch {
           Swal.fire("Error", "Gagal menghubungi server", "error");
         }
       }
     });
   };
 
-  const catColors: Record<string, string[]> = {
-    reguler: ["#f1f5f9", "#475569"],
-    yatim: ["#fef3c7", "#92400e"],
-    kurang_mampu: ["#ede9fe", "#6b21a8"],
+  const catBadge: Record<string, "neutral" | "warning" | "info"> = {
+    reguler: "neutral",
+    yatim: "warning",
+    kurang_mampu: "info",
   };
 
-  const statusColors: Record<string, string[]> = {
-    aktif: ["#d1fae5", "#047857"],
-    lulus: ["#cffafe", "#0e7490"],
-    pindah: ["#ffedd5", "#c2410c"],
-    nonaktif: ["#e5e7eb", "#6b7280"],
+  const statusBadge: Record<string, "success" | "info" | "warning" | "danger" | "neutral"> = {
+    aktif: "success",
+    lulus: "info",
+    pindah: "warning",
+    nonaktif: "neutral",
   };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* Hero Header */}
-      <div style={{ background: "linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
-        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }}></div>
-        <div style={{ position: "absolute", right: 80, bottom: -40, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }}></div>
-        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              </div>
-              <div>
-                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Manajemen Siswa</h2>
-                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola data siswa, kategorisasi biaya & penempatan kelas.</p>
-              </div>
-            </div>
-            <div className="flex gap-2 items-center flex-wrap">
-              <input type="text" placeholder="Cari nama/NISN..." value={search} onChange={handleSearch} style={{ padding: "0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", width: 180, outline: "none" }} className="placeholder-white/60 focus:bg-white/30 transition-colors" />
-              <button onClick={() => window.location.href = "/api/students/template"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
-                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Template
-              </button>
-              <label style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
-                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Import
-                <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const fd = new FormData();
-                  fd.append("file", file);
-                  try {
-                    const res = await fetch("/api/students/import", { method: "POST", body: fd });
-                    const json = await res.json();
-                    Swal.fire(json.success ? "Berhasil" : "Gagal", json.message, json.success ? "success" : "error");
-                    if (json.success) loadStudents();
-                  } catch { Swal.fire("Error", "Gagal import", "error"); }
-                  e.target.value = "";
-                }} />
-              </label>
-              <button onClick={() => window.location.href = "/api/students/export"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
-                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Export
-              </button>
-              <Link href="/students/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/35 transition-all">
-                <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Hero Header — pakai PageHeader reusable */}
+      <PageHeader
+        title="Manajemen Siswa"
+        subtitle="Kelola data siswa, kategorisasi biaya & penempatan kelas."
+        icon={<StudentsIcon />}
+        gradient="from-indigo-600 via-violet-600 to-purple-600"
+        actions={
+          <>
+            <input
+              type="text"
+              placeholder="Cari nama/NISN..."
+              value={search}
+              onChange={handleSearch}
+              className="px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-xl text-sm outline-none placeholder-white/60 focus:bg-white/30 transition-colors w-44"
+            />
+            <Button variant="ghost" size="sm" icon={<DownloadIcon />} onClick={() => window.location.href = "/api/students/template"} className="!text-white !bg-white/10 border border-white/20 hover:!bg-white/25">
+              Template
+            </Button>
+            <label className="cursor-pointer">
+              <Button variant="ghost" size="sm" icon={<UploadIcon />} className="!text-white !bg-white/10 border border-white/20 hover:!bg-white/25 pointer-events-none" as-child="true">
+                Import
+              </Button>
+              <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const fd = new FormData();
+                fd.append("file", file);
+                try {
+                  const res = await fetch("/api/students/import", { method: "POST", body: fd });
+                  const json = await res.json();
+                  Swal.fire(json.success ? "Berhasil" : "Gagal", json.message, json.success ? "success" : "error");
+                  if (json.success) loadStudents();
+                } catch { Swal.fire("Error", "Gagal import", "error"); }
+                e.target.value = "";
+              }} />
+            </label>
+            <Button variant="ghost" size="sm" icon={<ExportIcon />} onClick={() => window.location.href = "/api/students/export"} className="!text-white !bg-white/15 border border-white/25 hover:!bg-white/30">
+              Export
+            </Button>
+            <Link href="/students/new">
+              <Button variant="ghost" size="sm" icon={<PlusIcon />} className="!text-white !bg-white/20 border border-white/30 hover:!bg-white/35 !font-bold !uppercase !tracking-wider">
+                Tambah
+              </Button>
+            </Link>
+          </>
+        }
+      />
 
       {/* Tabel Siswa */}
-      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", borderRadius: "50%" }}></div>
-          <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Siswa</h4>
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600" />
+          <h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Siswa</h4>
+          <Badge variant="info" className="ml-2">{pagination.total} siswa</Badge>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)" }}>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0", width: 50 }}>No</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Siswa</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Kategorisasi</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Kelas</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Status</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Aksi</th>
+              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+                {["No", "Siswa", "Kategorisasi", "Kelas", "Status", "Aksi"].map((h, i) => (
+                  <th key={h} className={`px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 0 || i >= 3 ? "text-center" : "text-left"}`}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: "3rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontStyle: "italic" }}>
-                  <svg className="animate-spin" style={{ width: 24, height: 24, margin: "0 auto 8px", display: "block" }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                  Memuat data...
+                <tr><td colSpan={6} className="p-12 text-center">
+                  <svg className="animate-spin w-6 h-6 mx-auto mb-2 text-indigo-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  <p className="text-sm text-slate-400 font-medium">Memuat data...</p>
                 </td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: "4rem 2rem", textAlign: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
-                      <svg style={{ width: 28, height: 28, color: "#8b5cf6" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <tr><td colSpan={6} className="p-16 text-center">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-50 to-violet-100 rounded-2xl flex items-center justify-center mb-4">
+                      <svg className="w-7 h-7 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     </div>
-                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Siswa</p>
-                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Klik tombol "Tambah" untuk menambahkan data siswa.</p>
+                    <p className="font-heading font-bold text-slate-700">Belum Ada Data Siswa</p>
+                    <p className="text-sm text-slate-400 mt-1">Klik tombol "Tambah" untuk menambahkan data siswa.</p>
                   </div>
                 </td></tr>
               ) : (
                 data.map((s, i) => {
                   const idx = ((pagination.page - 1) * pagination.limit) + i + 1;
+                  const initial = (s.name || "?").charAt(0).toUpperCase();
                   const genderLabel = s.gender === "L" ? "♂ Laki-laki" : "♀ Perempuan";
-                  const cc = catColors[s.category] || catColors.reguler;
-                  const sc = statusColors[s.status] || statusColors.nonaktif;
-                  const catLabel = (s.category || "reguler").replace("_", " ").replace(/\b\w/g, (l:string) => l.toUpperCase());
+                  const catVar = catBadge[s.category] || "neutral";
+                  const statVar = statusBadge[s.status] || "neutral";
+                  const catLabel = (s.category || "reguler").replace("_", " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
 
                   return (
-                    <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{idx}</td>
-                      <td style={{ padding: "1rem 1.5rem", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                          <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{(s.name || "?").charAt(0).toUpperCase()}</div>
+                    <tr key={s.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                      <td className="px-5 py-4 text-center text-sm text-slate-400 font-semibold">{idx}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-full flex items-center justify-center font-bold text-sm text-indigo-600 shrink-0">
+                            {initial}
+                          </div>
                           <div>
-                            <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{s.name || "-"}</p>
-                            <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>NISN: {s.nisn || "-"} · {genderLabel}</p>
+                            <p className="font-semibold text-sm text-slate-800">{s.name || "-"}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">NISN: {s.nisn || "-"} · {genderLabel}</p>
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: "1rem 1.5rem" }}>
-                        <span style={{ display: "inline-flex", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, borderRadius: 999, background: cc[0], color: cc[1] }}>{catLabel}</span>
+                      <td className="px-5 py-4">
+                        <Badge variant={catVar}>{catLabel}</Badge>
                       </td>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
+                      <td className="px-5 py-4 text-center">
                         {(s.classroom && s.classroom.name) ? (
-                          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{s.classroom.name}</span>
+                          <Badge variant="info">{s.classroom.name}</Badge>
                         ) : (
-                          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", padding: "0.25rem 0.625rem", borderRadius: 999 }}>Tanpa Kelas</span>
+                          <Badge variant="danger">Tanpa Kelas</Badge>
                         )}
                       </td>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                        <span style={{ display: "inline-flex", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, borderRadius: 999, textTransform: "capitalize", background: sc[0], color: sc[1] }}>{s.status || "-"}</span>
+                      <td className="px-5 py-4 text-center">
+                        <Badge variant={statVar} dot>{s.status || "-"}</Badge>
                       </td>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                        <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                          <Link href={`/students/${s.id}/edit`} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }} className="hover:bg-indigo-100 transition-colors">Edit</Link>
-                          <button onClick={() => handleDelete(s)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Hapus</button>
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex justify-center gap-2">
+                          <Link href={`/students/${s.id}/edit`}>
+                            <Button variant="outline" size="sm">Edit</Button>
+                          </Link>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(s)}>Hapus</Button>
                         </div>
                       </td>
                     </tr>
