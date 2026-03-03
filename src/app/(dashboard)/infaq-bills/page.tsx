@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 const monthNames: Record<number, string> = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
 const monthShort: Record<number, string> = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Mei',6:'Jun',7:'Jul',8:'Agu',9:'Sep',10:'Okt',11:'Nov',12:'Des'};
 
 export default function InfaqBillsPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -113,9 +115,36 @@ export default function InfaqBillsPage() {
     finally { setPayLoading(false); }
   }
 
+  // === Edit Nominal Tagihan ===
+  async function handleEditNominal(bill: any) {
+    const newNominal = prompt(`Edit nominal tagihan ${bill.student_name}:`, String(bill.nominal));
+    if (!newNominal || isNaN(Number(newNominal))) return;
+    try {
+      const res = await fetch(`/api/infaq-bills/${bill.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nominal: Number(newNominal) }),
+      });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast("Gagal edit tagihan", "error"); }
+  }
+
+  // === Hapus Tagihan ===
+  async function handleDelete(billId: number) {
+    if (!confirm("Yakin ingin HAPUS tagihan ini? Tagihan yang sudah ada pembayaran tidak bisa dihapus.")) return;
+    try {
+      const res = await fetch(`/api/infaq-bills/${billId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast("Gagal hapus tagihan", "error"); }
+  }
+
   // === Void Tagihan ===
   async function handleVoid(billId: number) {
-    if (!confirm("Yakin ingin VOID tagihan ini? Semua pembayaran terkait juga akan dibatalkan.")) return;
+    if (!confirm("Yakin ingin VOID tagihan ini?")) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}/void`, { method: "POST" });
       const json = await res.json();
@@ -126,7 +155,7 @@ export default function InfaqBillsPage() {
 
   // === Revert Tagihan ===
   async function handleRevert(billId: number) {
-    if (!confirm("Yakin ingin REVERT tagihan ini? Semua pembayaran akan dihapus dan status kembali ke belum lunas.")) return;
+    if (!confirm("Yakin ingin REVERT tagihan ini? Status kembali ke belum lunas.")) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}/revert`, { method: "POST" });
       const json = await res.json();
@@ -282,17 +311,20 @@ export default function InfaqBillsPage() {
                     </td>
                     <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>{statusBadge}</td>
                     <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
+                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem", flexWrap: "wrap" }}>
                         {b.status === "belum_lunas" || b.status === "sebagian" ? (
                           <>
-                            <button onClick={() => { setSelectedBill(b); setPayAmount(String(b.nominal)); setShowPayment(true); }} style={btnStyle("#059669", "#ecfdf5", "#a7f3d0")}>Bayar</button>
+                            <button onClick={() => { setSelectedBill(b); setPayAmount(String(b.nominal - (b.total_paid || 0))); setShowPayment(true); }} style={btnStyle("#059669", "#ecfdf5", "#a7f3d0")}>Bayar</button>
+                            <button onClick={() => handleEditNominal(b)} style={btnStyle("#6366f1", "#eef2ff", "#c7d2fe")}>Edit</button>
                             <button onClick={() => handleVoid(b.id)} style={btnStyle("#e11d48", "#fff1f2", "#fecdd3")}>Void</button>
+                            <button onClick={() => handleDelete(b.id)} style={btnStyle("#64748b", "#f8fafc", "#e2e8f0")}>Hapus</button>
                           </>
                         ) : b.status === "lunas" ? (
                           <button onClick={() => handleRevert(b.id)} style={btnStyle("#d97706", "#fef3c7", "#fde68a")}>Revert</button>
                         ) : (
                           <span style={{ color: "#cbd5e1" }}>—</span>
                         )}
+                        {b.student_id && <button onClick={() => router.push(`/infaq-bills/tracking/${b.student_id}`)} style={btnStyle("#0ea5e9", "#f0f9ff", "#bae6fd")}>Tracking</button>}
                       </div>
                     </td>
                   </tr>

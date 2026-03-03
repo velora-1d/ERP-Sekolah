@@ -20,6 +20,7 @@ export async function GET() {
       academicYear: cls.academicYear?.year || "-",
       waliKelasId: cls.waliKelasId,
       waliKelas: cls.waliKelas?.name || "-",
+      infaqNominal: cls.infaqNominal || 0,
       student_count: cls._count.students,
     }));
 

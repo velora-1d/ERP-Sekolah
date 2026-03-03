@@ -26,6 +26,10 @@ export async function GET(request: Request) {
         academicYear: {
           select: { id: true, year: true },
         },
+        payments: {
+          where: { deletedAt: null },
+          select: { amountPaid: true },
+        },
       },
       orderBy: [{ createdAt: "desc" }],
     });
@@ -44,14 +48,19 @@ export async function GET(request: Request) {
       if (search && !studentName.toLowerCase().includes(search.toLowerCase())) {
         return null;
       }
+      const totalPaid = b.payments.reduce((sum, p) => sum + p.amountPaid, 0);
       return {
         id: b.id,
+        student_id: b.studentId,
         student_name: studentName,
         nisn: b.student?.nisn || "-",
         classroom: b.student?.classroomId ? classMap[b.student.classroomId] || "-" : "-",
         academic_year: b.academicYear?.year || "-",
         month: b.month,
+        year: b.year,
         nominal: b.nominal,
+        total_paid: totalPaid,
+        remaining: Math.max(0, b.nominal - totalPaid),
         status: b.status,
       };
     }).filter(Boolean);

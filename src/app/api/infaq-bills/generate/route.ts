@@ -95,15 +95,17 @@ export async function POST(request: Request) {
         let billStatus = "belum_lunas";
 
         if (student.infaqStatus === "gratis") {
+          // Hanya gratis yang auto lunas
           nominal = 0;
           billStatus = "lunas";
         } else if (student.infaqStatus === "subsidi") {
+          // Subsidi: pakai nominal siswa
           nominal = student.infaqNominal || 0;
-          if (nominal <= 0) billStatus = "lunas";
         } else {
-          // reguler — nominal dari kelas
-          nominal = student.classroom?.infaqNominal || 0;
-          if (nominal <= 0) billStatus = "lunas";
+          // Reguler: prioritas nominal kelas, fallback ke nominal siswa
+          nominal = (student.classroom?.infaqNominal || 0) > 0
+            ? student.classroom!.infaqNominal
+            : (student.infaqNominal || 0);
         }
 
         billsToCreate.push({
