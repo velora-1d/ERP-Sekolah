@@ -1,12 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import PageHeader from "@/components/ui/PageHeader";
-import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
-import Modal from "@/components/ui/Modal";
-
-const PpdbIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>;
-const ExportIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 
 export default function PpdbPage() {
   const [data, setData] = useState<any[]>([]);
@@ -15,6 +8,8 @@ export default function PpdbPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  // Modal konversi
   const [showConvert, setShowConvert] = useState(false);
   const [convertReg, setConvertReg] = useState<any>(null);
   const [convertClassroom, setConvertClassroom] = useState("");
@@ -22,91 +17,178 @@ export default function PpdbPage() {
   const [convertLoading, setConvertLoading] = useState(false);
   const [classrooms, setClassrooms] = useState<any[]>([]);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadData = useCallback(async (q = search) => {
     setLoading(true);
-    try { const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}`); const json = await res.json(); if (json.success) { setData(json.data); setStats(json.stats); } } catch (e) { console.error(e); } finally { setLoading(false); }
+    try {
+      const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}`);
+      const json = await res.json();
+      if (json.success) {
+        setData(json.data);
+        setStats(json.stats);
+      }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   }, [search]);
 
   async function loadClassrooms() {
-    try { const res = await fetch("/api/classrooms"); const json = await res.json(); if (json.success) setClassrooms(json.data); } catch (e) { console.error(e); }
+    try {
+      const res = await fetch("/api/classrooms");
+      const json = await res.json();
+      if (json.success) setClassrooms(json.data);
+    } catch (e) { console.error(e); }
   }
 
   useEffect(() => { loadData(); loadClassrooms(); }, []);
 
   let debounceTimer: ReturnType<typeof setTimeout>;
-  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) { const q = e.target.value; setSearch(q); clearTimeout(debounceTimer); debounceTimer = setTimeout(() => loadData(q), 400); }
-
-  async function handleApprove(reg: any) { if (!confirm(`Terima ${reg.name}?`)) return; try { const res = await fetch(`/api/ppdb/${reg.id}/approve`, { method: "POST" }); const json = await res.json(); if (json.success) { showToast(json.message); loadData(); } else showToast(json.message, "error"); } catch { showToast("Gagal", "error"); } }
-  async function handleReject(reg: any) { if (!confirm(`Tolak ${reg.name}?`)) return; try { const res = await fetch(`/api/ppdb/${reg.id}/reject`, { method: "POST" }); const json = await res.json(); if (json.success) { showToast(json.message); loadData(); } else showToast(json.message, "error"); } catch { showToast("Gagal", "error"); } }
-  function openConvert(reg: any) { setConvertReg(reg); setConvertClassroom(""); setConvertInfaq(""); setShowConvert(true); }
-
-  async function handleConvert() {
-    if (!convertReg) return; setConvertLoading(true);
-    try { const res = await fetch(`/api/ppdb/${convertReg.id}/convert`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classroomId: convertClassroom ? Number(convertClassroom) : undefined, infaqNominal: convertInfaq ? Number(convertInfaq) : 0 }) }); const json = await res.json(); if (json.success) { showToast(json.message); setShowConvert(false); loadData(); } else showToast(json.message, "error"); } catch { showToast("Gagal konversi", "error"); } finally { setConvertLoading(false); }
+  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
+    const q = e.target.value;
+    setSearch(q);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => loadData(q), 400);
   }
 
+  // === Terima  ===
+  async function handleApprove(reg: any) {
+    if (!confirm(`Terima ${reg.name}? Payment items akan dibuat otomatis.`)) return;
+    try {
+      const res = await fetch(`/api/ppdb/${reg.id}/approve`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast("Gagal menerima pendaftar", "error"); }
+  }
+
+  // === Tolak ===
+  async function handleReject(reg: any) {
+    if (!confirm(`Tolak ${reg.name}?`)) return;
+    try {
+      const res = await fetch(`/api/ppdb/${reg.id}/reject`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast("Gagal menolak pendaftar", "error"); }
+  }
+
+  // === Konversi ===
+  function openConvert(reg: any) {
+    setConvertReg(reg);
+    setConvertClassroom("");
+    setConvertInfaq("");
+    setShowConvert(true);
+  }
+
+  async function handleConvert() {
+    if (!convertReg) return;
+    setConvertLoading(true);
+    try {
+      const res = await fetch(`/api/ppdb/${convertReg.id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classroomId: convertClassroom ? Number(convertClassroom) : undefined,
+          infaqNominal: convertInfaq ? Number(convertInfaq) : 0,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message);
+        setShowConvert(false);
+        setConvertReg(null);
+        loadData();
+      } else {
+        showToast(json.message, "error");
+      }
+    } catch { showToast("Gagal konversi ke siswa", "error"); }
+    finally { setConvertLoading(false); }
+  }
+
+  // === Toggle Payment ===
   async function handleTogglePayment(paymentId: number, paymentType: string) {
-    try { const res = await fetch(`/api/quick-payment/${paymentId}/toggle`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }); const json = await res.json(); if (json.success) { showToast(json.message); loadData(); } else showToast(json.message, "error"); } catch { showToast(`Gagal toggle ${paymentType}`, "error"); }
+    try {
+      const res = await fetch(`/api/quick-payment/${paymentId}/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast(`Gagal toggle ${paymentType}`, "error"); }
   }
 
   const filtered = statusFilter ? data.filter(d => d.status === statusFilter) : data;
 
-  const statusMap: Record<string, { variant: "warning" | "success" | "danger" | "info" | "neutral"; label: string }> = {
-    menunggu: { variant: "warning", label: "⏳ Menunggu" }, pending: { variant: "warning", label: "⏳ Pending" },
-    diterima: { variant: "success", label: "✓ Diterima" }, ditolak: { variant: "danger", label: "✗ Ditolak" },
-    converted: { variant: "info", label: "⇌ Siswa" },
-  };
-
-  const kpiItems = stats ? [
-    { label: "Total", value: stats.total, bg: "bg-white/10 border-white/20" },
-    { label: "Menunggu", value: stats.pending, bg: "bg-amber-400/20 border-amber-400/30" },
-    { label: "Diterima", value: stats.diterima, bg: "bg-emerald-500/20 border-emerald-400/30" },
-    { label: "Ditolak", value: stats.ditolak, bg: "bg-rose-500/20 border-rose-400/30" },
-  ] : [];
+  const thS: React.CSSProperties = { padding: "0.875rem 1rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {toast && <div className="fixed top-6 right-6 z-[9999] px-5 py-3 rounded-xl text-white text-sm font-semibold shadow-xl animate-fade-in" style={{ background: toast.type === "success" ? "#059669" : "#e11d48" }}>{toast.msg}</div>}
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 9999, padding: "0.875rem 1.25rem", borderRadius: "0.75rem", background: toast.type === "success" ? "#059669" : "#e11d48", color: "#fff", fontWeight: 600, fontSize: "0.8125rem", boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
+          {toast.msg}
+        </div>
+      )}
 
-      {/* Hero + KPI */}
-      <div className="bg-gradient-to-br from-sky-500 via-sky-600 to-sky-800 rounded-2xl overflow-hidden relative shadow-lg">
-        <div className="absolute -right-5 -top-5 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute right-24 -bottom-10 w-36 h-36 bg-white/5 rounded-full blur-xl pointer-events-none" />
-        <div className="p-7 relative z-10">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 shadow-sm shrink-0"><span className="text-white"><PpdbIcon /></span></div>
-              <div><h2 className="font-heading font-bold text-2xl text-white m-0 tracking-tight">Penerimaan Siswa Baru (PPDB)</h2><p className="text-sm text-white/75 mt-1">Kelola pendaftaran, penerimaan, dan konversi ke siswa.</p></div>
+      {/* Hero Header */}
+      <div style={{ background: "linear-gradient(135deg,#0ea5e9 0%,#0284c7 50%,#0369a1 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }} />
+        <div style={{ position: "absolute", right: 80, bottom: -40, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }} />
+        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
+                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+              </div>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Penerimaan Siswa Baru (PPDB)</h2>
+                <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", margin: "0.125rem 0 0" }}>Kelola pendaftaran, penerimaan, dan konversi ke siswa.</p>
+              </div>
             </div>
-            <Button variant="ghost" size="sm" icon={<ExportIcon />} onClick={() => window.location.href = "/api/ppdb/export"} className="!text-white !bg-white/15 border border-white/25 hover:!bg-white/30">Export</Button>
           </div>
-          {kpiItems.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {kpiItems.map((k, i) => (
-                <div key={i} className={`${k.bg} backdrop-blur-xl border rounded-xl p-4`}>
-                  <p className="text-[10px] font-semibold text-white/70 uppercase tracking-wider">{k.label}</p>
-                  <p className="font-heading text-2xl font-extrabold text-white m-0">{k.value}</p>
-                </div>
-              ))}
+
+          {/* KPI Stats */}
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3" style={{ marginTop: "1.5rem" }}>
+              <div style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.2)", padding: "1rem", borderRadius: "0.75rem" }}>
+                <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 800, color: "#fff", margin: 0 }}>{stats.total}</p>
+              </div>
+              <div style={{ background: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.3)", padding: "1rem", borderRadius: "0.75rem" }}>
+                <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "#fef3c7", textTransform: "uppercase", letterSpacing: "0.05em" }}>Menunggu</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 800, color: "#fff", margin: 0 }}>{stats.pending}</p>
+              </div>
+              <div style={{ background: "rgba(16,185,129,0.2)", border: "1px solid rgba(16,185,129,0.3)", padding: "1rem", borderRadius: "0.75rem" }}>
+                <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "#a7f3d0", textTransform: "uppercase", letterSpacing: "0.05em" }}>Diterima</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 800, color: "#fff", margin: 0 }}>{stats.diterima}</p>
+              </div>
+              <div style={{ background: "rgba(225,29,72,0.2)", border: "1px solid rgba(225,29,72,0.3)", padding: "1rem", borderRadius: "0.75rem" }}>
+                <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "#fecdd3", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ditolak</p>
+                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 800, color: "#fff", margin: 0 }}>{stats.ditolak}</p>
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Filter */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", padding: "1.25rem 1.5rem" }}>
         <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-[2] min-w-[200px]">
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Cari Nama</label>
-            <input type="text" value={search} onChange={handleSearch} placeholder="Ketik nama..." className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all" />
+          <div style={{ flex: 2, minWidth: 200 }}>
+            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Cari Nama</label>
+            <input type="text" value={search} onChange={handleSearch} placeholder="Ketik nama..." style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
           </div>
-          <div className="min-w-[140px]">
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-400 transition-all bg-white">
+          <div style={{ minWidth: 140 }}>
+            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Status</label>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
               <option value="">Semua</option>
               <option value="menunggu">Menunggu</option>
+              <option value="pending">Pending</option>
               <option value="diterima">Diterima</option>
               <option value="ditolak">Ditolak</option>
               <option value="converted">Converted</option>
@@ -115,58 +197,88 @@ export default function PpdbPage() {
         </div>
       </div>
 
-      {/* Tabel */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-sky-500 to-sky-700" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Pendaftar</h4></div>
-          <Badge variant="info">{filtered.length} data</Badge>
+      {/* Tabel Pendaftar */}
+      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#0ea5e9,#0284c7)", borderRadius: "50%" }} />
+            <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Pendaftar</h4>
+          </div>
+          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#0284c7", background: "#e0f2fe", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{filtered.length} Data</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
-                {["No", "No. Reg", "Nama Calon Siswa", "L/P", "Pembayaran", "Status", "Aksi"].map((h, i) => (
-                  <th key={h} className={`px-4 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 0 || i >= 3 ? "text-center" : "text-left"}`}>{h}</th>
-                ))}
+              <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+                <th style={{ ...thS, textAlign: "center", width: 50 }}>No</th>
+                <th style={thS}>No. Reg</th>
+                <th style={thS}>Nama Calon Siswa</th>
+                <th style={{ ...thS, textAlign: "center" }}>L/P</th>
+                <th style={{ ...thS, textAlign: "center" }}>Pembayaran</th>
+                <th style={{ ...thS, textAlign: "center" }}>Status</th>
+                <th style={{ ...thS, textAlign: "center" }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="p-12 text-center"><svg className="animate-spin w-6 h-6 mx-auto mb-2 text-sky-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg><p className="text-sm text-slate-400">Memuat...</p></td></tr>
+                <tr><td colSpan={7} style={{ padding: "3rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8" }}>Memuat data pendaftar...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="p-16 text-center"><p className="font-heading font-bold text-slate-700">Belum Ada Pendaftar</p></td></tr>
+                <tr><td colSpan={7} style={{ padding: "3rem 2rem", textAlign: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#e0f2fe,#bae6fd)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                      <svg style={{ width: 28, height: 28, color: "#0284c7" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Pendaftar</p>
+                  </div>
+                </td></tr>
               ) : filtered.map((reg: any, i: number) => {
+                const genderBadge = reg.gender === "L"
+                  ? <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: 999, color: "#6366f1", background: "#eef2ff" }}>Putra</span>
+                  : <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: 999, color: "#ec4899", background: "#fdf2f8" }}>Putri</span>;
+
+                let statusBadge;
                 const s = reg.status;
-                const sm = statusMap[s] || { variant: "neutral" as const, label: s };
+                if (s === "menunggu" || s === "pending") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", borderRadius: 999 }}>⏳ Menunggu</span>;
+                else if (s === "diterima") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}>✓ Diterima</span>;
+                else if (s === "ditolak") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#be123c", background: "#ffe4e6", borderRadius: 999 }}>✗ Ditolak</span>;
+                else if (s === "converted") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", borderRadius: 999 }}>⇌ Siswa</span>;
+                else statusBadge = <span style={{ padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", borderRadius: 999 }}>{s}</span>;
+
                 return (
-                  <tr key={reg.id} className={`hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0 ${s === "ditolak" ? "opacity-50" : ""}`}>
-                    <td className="px-4 py-4 text-center text-sm text-slate-400 font-semibold">{i + 1}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-sky-600">{reg.formNo || `#${reg.id}`}</td>
-                    <td className="px-4 py-4">
-                      <p className="font-semibold text-sm text-slate-800 m-0">{reg.name || "-"}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{reg.fatherName || reg.motherName || "-"}</p>
+                  <tr key={reg.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: s === "ditolak" ? 0.5 : 1 }}>
+                    <td style={{ padding: "1rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ padding: "1rem", fontSize: "0.8125rem", fontWeight: 600, color: "#0ea5e9" }}>{reg.formNo || `#${reg.id}`}</td>
+                    <td style={{ padding: "1rem" }}>
+                      <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{reg.name || "-"}</p>
+                      <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>{reg.fatherName || reg.motherName || "-"}</p>
                     </td>
-                    <td className="px-4 py-4 text-center"><Badge variant={reg.gender === "L" ? "info" : "danger"}>{reg.gender === "L" ? "Putra" : "Putri"}</Badge></td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex gap-1 justify-center flex-wrap">
+                    <td style={{ padding: "1rem", textAlign: "center" }}>{genderBadge}</td>
+                    <td style={{ padding: "1rem", textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center", flexWrap: "wrap" }}>
                         {(reg.payments && reg.payments.length > 0) ? reg.payments.map((p: any) => (
-                          <button key={p.id} onClick={() => handleTogglePayment(p.id, p.paymentType)} title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString("id-ID")}`}
-                            className={`px-2 py-0.5 text-[10px] font-bold rounded-full border-none cursor-pointer transition-colors ${p.isPaid ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200"}`}>
+                          <button key={p.id} onClick={() => handleTogglePayment(p.id, p.paymentType)}
+                            title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString('id-ID')} — klik untuk toggle`}
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: 999, border: "none", cursor: "pointer",
+                              background: p.isPaid ? "#d1fae5" : "#fef3c7", color: p.isPaid ? "#047857" : "#92400e" }}>
                             {p.isPaid ? "✓" : "○"} {p.paymentType}
                           </button>
-                        )) : <span className="text-xs text-slate-300">—</span>}
+                        )) : <span style={{ fontSize: "0.625rem", color: "#cbd5e1" }}>—</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-center"><Badge variant={sm.variant} dot>{sm.label}</Badge></td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex justify-center gap-1.5 flex-wrap">
-                        {(s === "menunggu" || s === "pending") && <>
-                          <Button variant="outline" size="sm" onClick={() => handleApprove(reg)} className="!text-emerald-600 !border-emerald-200 hover:!bg-emerald-50">Terima</Button>
-                          <Button variant="danger" size="sm" onClick={() => handleReject(reg)}>Tolak</Button>
-                        </>}
-                        {s === "diterima" && <Button variant="primary" size="sm" onClick={() => openConvert(reg)}>Konversi</Button>}
-                        {s === "converted" && <span className="text-xs text-indigo-400 font-semibold">Sudah Siswa</span>}
-                        {s === "ditolak" && <span className="text-xs text-slate-300">—</span>}
+                    <td style={{ padding: "1rem", textAlign: "center" }}>{statusBadge}</td>
+                    <td style={{ padding: "1rem", textAlign: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", flexWrap: "wrap" }}>
+                        {(s === "menunggu" || s === "pending") && (
+                          <>
+                            <button onClick={() => handleApprove(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", cursor: "pointer" }}>Terima</button>
+                            <button onClick={() => handleReject(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Tolak</button>
+                          </>
+                        )}
+                        {s === "diterima" && (
+                          <button onClick={() => openConvert(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Konversi ke Siswa</button>
+                        )}
+                        {s === "converted" && <span style={{ color: "#a5b4fc", fontSize: "0.6875rem", fontWeight: 600 }}>Sudah Siswa</span>}
+                        {s === "ditolak" && <span style={{ color: "#cbd5e1", fontSize: "0.6875rem" }}>—</span>}
                       </div>
                     </td>
                   </tr>
@@ -177,26 +289,44 @@ export default function PpdbPage() {
         </div>
       </div>
 
-      {/* Modal Konversi */}
-      <Modal open={showConvert && !!convertReg} onClose={() => setShowConvert(false)} title="Konversi ke Siswa" subtitle={convertReg ? `${convertReg.name} akan dijadikan siswa aktif.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setShowConvert(false)}>Batal</Button><Button variant="primary" onClick={handleConvert} loading={convertLoading}>Konversi Sekarang</Button></>}>
-        <div className="space-y-4">
-          <div className="p-4 bg-sky-50 rounded-xl border border-sky-200">
-            <p className="text-xs text-sky-700">📋 Data NISN, NIK, nama ortu, dan alamat akan otomatis disalin dari formulir PPDB.</p>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kelas Tujuan</label>
-            <select value={convertClassroom} onChange={e => setConvertClassroom(e.target.value)} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white">
-              <option value="">— Belum Ditentukan —</option>
-              {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nominal Infaq/SPP Bulanan (Rp)</label>
-            <input type="number" value={convertInfaq} onChange={e => setConvertInfaq(e.target.value)} placeholder="0" className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" />
+      {/* Modal Konversi ke Siswa */}
+      {showConvert && convertReg && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowConvert(false)} />
+          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 440, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Konversi ke Siswa</h3>
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>
+              <strong>{convertReg.name}</strong> akan dijadikan siswa aktif.
+            </p>
+
+            <div style={{ marginTop: "1.25rem", padding: "1rem", background: "#f0f9ff", borderRadius: "0.75rem", border: "1px solid #bae6fd" }}>
+              <p style={{ fontSize: "0.75rem", color: "#0284c7", margin: 0 }}>
+                📋 Data NISN, NIK, nama ortu, dan alamat akan otomatis disalin dari formulir PPDB.
+              </p>
+            </div>
+
+            <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Kelas Tujuan</label>
+              <select value={convertClassroom} onChange={e => setConvertClassroom(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="">— Belum Ditentukan —</option>
+                {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ marginTop: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal Infaq/SPP Bulanan (Rp)</label>
+              <input type="number" value={convertInfaq} onChange={e => setConvertInfaq(e.target.value)} placeholder="0" style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
+            </div>
+
+            <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button onClick={() => setShowConvert(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
+              <button onClick={handleConvert} disabled={convertLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: convertLoading ? "#94a3b8" : "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.625rem", cursor: convertLoading ? "not-allowed" : "pointer" }}>
+                {convertLoading ? "Memproses..." : "Konversi Sekarang"}
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }

@@ -1,24 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
-import PageHeader from "@/components/ui/PageHeader";
-import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
-import Modal from "@/components/ui/Modal";
-
-const TeachersIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
-const DownloadIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
-const UploadIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
-const ExportIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
-const PlusIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>;
 
 export default function TeachersPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", nip: "", position: "", status: "aktif" });
+  const [statusFilter, setStatusFilter] = useState("");
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -33,201 +21,234 @@ export default function TeachersPage() {
     }
   };
 
-  useEffect(() => { loadTeachers(); }, []);
+  useEffect(() => {
+    loadTeachers();
+  }, []);
 
   const filteredData = data.filter((t) => {
-    const q = search.toLowerCase();
-    return (t.name || "").toLowerCase().includes(q) || (t.nip || "").toLowerCase().includes(q);
+    const matchSearch =
+      (t.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.nip || "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.position || "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter ? t.status === statusFilter : true;
+    return matchSearch && matchStatus;
   });
 
-  function openAdd() {
-    setEditTarget(null);
-    setForm({ name: "", nip: "", position: "Guru Kelas", status: "aktif" });
-    setModalOpen(true);
-  }
-  function openEdit(t: any) {
-    setEditTarget(t);
-    setForm({ name: t.name || "", nip: t.nip || "", position: t.position || "", status: t.status || "aktif" });
-    setModalOpen(true);
-  }
-  async function handleSave() {
-    if (!form.name.trim()) return Swal.fire("Error", "Nama wajib diisi", "error");
-    try {
-      if (editTarget) {
-        const res = await fetch(`/api/staff/${editTarget.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, type: "guru" }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          Swal.fire({ icon: "success", title: "Berhasil", text: "Data guru diperbarui", toast: true, position: "top-end", timer: 2000, showConfirmButton: false });
-          setModalOpen(false);
-          loadTeachers();
-        } else Swal.fire("Gagal", json.message, "error");
-      } else {
-        const res = await fetch("/api/staff", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, type: "guru" }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          Swal.fire({ icon: "success", title: "Berhasil", text: "Data guru ditambahkan", toast: true, position: "top-end", timer: 2000, showConfirmButton: false });
-          setModalOpen(false);
-          loadTeachers();
-        } else Swal.fire("Gagal", json.message, "error");
+  const handleAdd = () => {
+    Swal.fire({
+      title: "Tambah Guru",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Nama</label>
+          <input id="swal-tch-name" class="swal2-input" style="margin:0;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">NIP/NUPTK</label>
+          <input id="swal-tch-nip" class="swal2-input" style="margin:0;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Posisi/Jabatan</label>
+          <input id="swal-tch-pos" class="swal2-input" placeholder="Guru Kelas" style="margin:0;">
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal",
+      preConfirm: () => {
+        return {
+          name: (document.getElementById("swal-tch-name") as HTMLInputElement).value,
+          nip: (document.getElementById("swal-tch-nip") as HTMLInputElement).value,
+          position: (document.getElementById("swal-tch-pos") as HTMLInputElement).value,
+          type: "guru",
+          status: "aktif",
+        };
+      },
+    }).then((r) => {
+      if (r.isConfirmed) {
+        Swal.fire("Berhasil", "Data guru ditambahkan. (Visual Only)", "success");
       }
-    } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
-  }
+    });
+  };
 
-  function handleDelete(t: any) {
+  const handleEdit = (t: any) => {
+    Swal.fire({
+      title: "Edit Data Guru",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Nama</label>
+          <input id="swal-tch-name" class="swal2-input" value="${t.name || ""}" style="margin:0;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">NIP/NUPTK</label>
+          <input id="swal-tch-nip" class="swal2-input" value="${t.nip || ""}" style="margin:0;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Posisi/Jabatan</label>
+          <input id="swal-tch-pos" class="swal2-input" value="${t.position || ""}" style="margin:0;">
+          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Status</label>
+          <select id="swal-tch-stat" class="swal2-select" style="margin:0;">
+            <option value="aktif" ${t.status === "aktif" ? "selected" : ""}>Aktif</option>
+            <option value="nonaktif" ${t.status === "nonaktif" ? "selected" : ""}>Non-Aktif</option>
+          </select>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal",
+      preConfirm: () => {
+        return {
+          name: (document.getElementById("swal-tch-name") as HTMLInputElement).value,
+          nip: (document.getElementById("swal-tch-nip") as HTMLInputElement).value,
+          position: (document.getElementById("swal-tch-pos") as HTMLInputElement).value,
+          status: (document.getElementById("swal-tch-stat") as HTMLSelectElement).value,
+        };
+      },
+    }).then((r) => {
+      if (r.isConfirmed) {
+        Swal.fire("Berhasil", "Data guru diperbarui. (Visual Only)", "success");
+      }
+    });
+  };
+
+  const handleDelete = (t: any) => {
     Swal.fire({
       title: "Hapus Data Guru?",
-      text: `Data "${t.name}" akan dihapus.`,
+      html: `<p style="font-size:0.875rem;color:#475569;">Data <strong>"${t.name}"</strong> akan dihapus.</p>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
       confirmButtonText: "Ya, Hapus",
       cancelButtonText: "Batal",
-    }).then(async (r) => {
+    }).then((r) => {
       if (r.isConfirmed) {
-        try {
-          const res = await fetch(`/api/staff/${t.id}`, { method: "DELETE" });
-          const json = await res.json();
-          if (json.success) {
-            Swal.fire({ icon: "success", title: "Terhapus", text: "Data guru berhasil dihapus", toast: true, position: "top-end", timer: 2000, showConfirmButton: false });
-            loadTeachers();
-          } else Swal.fire("Gagal", json.message, "error");
-        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+        Swal.fire("Berhasil", "Data guru dihapus. (Visual Only)", "success");
       }
     });
-  }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <PageHeader
-        title="Data Guru & Tenaga Pendidik"
-        subtitle="Kelola direktori tenaga pengajar secara terpusat."
-        icon={<TeachersIcon />}
-        gradient="from-indigo-600 via-violet-600 to-purple-600"
-        actions={
-          <>
-            <input type="text" placeholder="Cari nama/NIP..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-xl text-sm outline-none placeholder-white/60 focus:bg-white/30 transition-colors w-44" />
-            <Button variant="ghost" size="sm" icon={<DownloadIcon />} onClick={() => window.location.href = "/api/teachers/template"} className="!text-white !bg-white/10 border border-white/20 hover:!bg-white/25">Template</Button>
-            <label className="cursor-pointer">
-              <Button variant="ghost" size="sm" icon={<UploadIcon />} className="!text-white !bg-white/10 border border-white/20 hover:!bg-white/25 pointer-events-none">Import</Button>
-              <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
-                const file = e.target.files?.[0]; if (!file) return;
-                const fd = new FormData(); fd.append("file", file);
-                try { const res = await fetch("/api/teachers/import", { method: "POST", body: fd }); const json = await res.json(); Swal.fire(json.success ? "Berhasil" : "Gagal", json.message, json.success ? "success" : "error"); if (json.success) loadTeachers(); } catch { Swal.fire("Error", "Gagal import", "error"); }
-                e.target.value = "";
-              }} />
-            </label>
-            <Button variant="ghost" size="sm" icon={<ExportIcon />} onClick={() => window.location.href = "/api/teachers/export"} className="!text-white !bg-white/15 border border-white/25 hover:!bg-white/30">Export</Button>
-            <Button variant="ghost" size="sm" icon={<PlusIcon />} onClick={openAdd} className="!text-white !bg-white/20 border border-white/30 hover:!bg-white/35 !font-bold">Tambah</Button>
-          </>
-        }
-      />
-
-      {/* Tabel */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600" />
-          <h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Guru</h4>
-          <Badge variant="info" className="ml-2">{filteredData.length} guru</Badge>
+      {/* Hero Header */}
+      <div style={{ background: "linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a78bfa 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }}></div>
+        <div style={{ position: "absolute", right: 80, bottom: -40, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }}></div>
+        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
+                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              </div>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Data Guru & Tenaga Pendidik</h2>
+                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola direktori tenaga pengajar secara terpusat.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 items-center flex-wrap">
+              <button onClick={() => window.location.href = "/api/teachers/template"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
+                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Template
+              </button>
+              <label style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
+                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Import
+                <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const fd = new FormData();
+                  fd.append("file", file);
+                  try {
+                    const res = await fetch("/api/teachers/import", { method: "POST", body: fd });
+                    const json = await res.json();
+                    Swal.fire(json.success ? "Berhasil" : "Gagal", json.message, json.success ? "success" : "error");
+                    if (json.success) loadTeachers();
+                  } catch { Swal.fire("Error", "Gagal import", "error"); }
+                  e.target.value = "";
+                }} />
+              </label>
+              <button onClick={() => window.location.href = "/api/teachers/export"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
+                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Export
+              </button>
+              <button onClick={handleAdd} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
+                <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Tambah Data Guru
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+      </div>
+
+      {/* Filter & Tabel */}
+      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", borderRadius: "50%" }}></div>
+            <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Guru</h4>
+          </div>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama, nip, posisi..." style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem", border: "1px solid #e2e8f0", borderRadius: "0.625rem", width: 220, outline: "none" }} className="focus:border-indigo-500" />
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: "0.5rem 2rem 0.5rem 1rem", fontSize: "0.8125rem", border: "1px solid #e2e8f0", borderRadius: "0.625rem", outline: "none", background: "#f8fafc", cursor: "pointer" }}>
+              <option value="">Semua Status</option>
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Non-Aktif</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
-                {["No", "Guru", "NIP/NUPTK", "Jabatan", "Status", "Aksi"].map((h, i) => (
-                  <th key={h} className={`px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 0 || i >= 4 ? "text-center" : "text-left"}`}>{h}</th>
-                ))}
+              <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)" }}>
+                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>No</th>
+                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Profil Guru</th>
+                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Tugas Pokok & Fungsi</th>
+                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Status</th>
+                <th style={{ padding: "0.875rem 1.5rem", textAlign: "right", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="p-12 text-center">
-                  <svg className="animate-spin w-6 h-6 mx-auto mb-2 text-indigo-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  <p className="text-sm text-slate-400">Memuat data...</p>
+                <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#eef2ff,#c7d2fe)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                      <svg style={{ width: 28, height: 28, color: "#4f46e5" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Memuat data...</p>
+                  </div>
                 </td></tr>
               ) : filteredData.length === 0 ? (
-                <tr><td colSpan={6} className="p-16 text-center">
-                  <p className="font-heading font-bold text-slate-700">Belum Ada Data Guru</p>
-                  <p className="text-sm text-slate-400 mt-1">Klik "Tambah" untuk menambahkan data guru.</p>
+                <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#eef2ff,#c7d2fe)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                      <svg style={{ width: 28, height: 28, color: "#4f46e5" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    </div>
+                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Guru</p>
+                  </div>
                 </td></tr>
               ) : (
-                filteredData.map((t, i) => (
-                  <tr key={t.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
-                    <td className="px-5 py-4 text-center text-sm text-slate-400 font-semibold">{i + 1}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-full flex items-center justify-center font-bold text-sm text-indigo-600 shrink-0">
-                          {(t.name || "?").charAt(0).toUpperCase()}
+                filteredData.map((t, i) => {
+                  const initial = (t.name || "?").charAt(0).toUpperCase();
+                  const statusBadge = t.status === "aktif"
+                    ? <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669" }}></div>Aktif</span>
+                    : <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", borderRadius: 999 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }}></div>Non-Aktif</span>;
+
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                      <td style={{ padding: "1rem 1.5rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                          <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#eef2ff,#c7d2fe)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#4f46e5" }}>{initial}</div>
+                          <div>
+                            <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{t.name}</p>
+                            <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>NIP/NUPTK: {t.nip || "-"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-sm text-slate-800">{t.name || "-"}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{t.gender === "L" ? "♂" : "♀"} · {t.phone || "-"}</p>
+                      </td>
+                      <td style={{ padding: "1rem 1.5rem" }}>
+                        <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{t.position || "-"}</span>
+                      </td>
+                      <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>{statusBadge}</td>
+                      <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.375rem" }}>
+                          <button onClick={() => handleEdit(t)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "0.375rem", cursor: "pointer" }} title="Edit" className="hover:bg-slate-100"><svg style={{ width: "0.875rem", height: "0.875rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                          <button onClick={() => handleDelete(t)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "0.375rem", cursor: "pointer" }} title="Hapus" className="hover:bg-red-50 hover:text-red-500"><svg style={{ width: "0.875rem", height: "0.875rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-600 font-mono">{t.nip || "-"}</td>
-                    <td className="px-5 py-4"><Badge variant="neutral">{t.position || "Guru"}</Badge></td>
-                    <td className="px-5 py-4 text-center">
-                      <Badge variant={t.status === "aktif" ? "success" : "danger"} dot>{t.status || "aktif"}</Badge>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex justify-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(t)}>Edit</Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDelete(t)}>Hapus</Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Modal Tambah/Edit — pengganti SweetAlert form */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editTarget ? "Edit Data Guru" : "Tambah Guru Baru"} subtitle="Isi data guru dengan lengkap."
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Batal</Button>
-            <Button variant="primary" onClick={handleSave}>{editTarget ? "Simpan Perubahan" : "Tambahkan"}</Button>
-          </>
-        }>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
-            <input value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="Masukkan nama lengkap"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIP / NUPTK</label>
-            <input value={form.nip} onChange={(e) => setForm({...form, nip: e.target.value})} placeholder="Masukkan NIP atau NUPTK"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Posisi / Jabatan</label>
-            <input value={form.position} onChange={(e) => setForm({...form, position: e.target.value})} placeholder="Guru Kelas, Wali Kelas, dsb"
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all" />
-          </div>
-          {editTarget && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Status</label>
-              <select value={form.status} onChange={(e) => setForm({...form, status: e.target.value})}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all bg-white">
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Non-Aktif</option>
-              </select>
-            </div>
-          )}
-        </div>
-      </Modal>
     </div>
   );
 }
