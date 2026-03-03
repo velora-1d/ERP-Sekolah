@@ -1,117 +1,52 @@
 "use client";
 import { useState, useEffect } from "react";
+import PageHeader from "@/components/ui/PageHeader";
+import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
+
+const ClassIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>;
+const PlusIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>;
 
 export default function ClassroomsPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/classrooms`);
-      const json = await res.json();
-      if (json.success) setData(json.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  function formatRp(n: number) {
-    return Number(n).toLocaleString('id-ID');
-  }
+  async function loadData() { setLoading(true); try { const res = await fetch(`/api/classrooms`); const json = await res.json(); if (json.success) setData(json.data); } catch (e) { console.error(e); } finally { setLoading(false); } }
+  useEffect(() => { loadData(); }, []);
+  function formatRp(n: number) { return Number(n).toLocaleString("id-ID"); }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Hero Header */}
-      <div style={{ background: "linear-gradient(135deg,#d97706 0%,#f59e0b 50%,#fbbf24 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
-        <div style={{ position: "absolute", right: -20, top: -20, width: 200, height: 200, background: "rgba(255,255,255,0.08)", borderRadius: "50%" }}></div>
-        <div style={{ position: "absolute", right: 80, bottom: -40, width: 150, height: 150, background: "rgba(255,255,255,0.05)", borderRadius: "50%" }}></div>
-        <div style={{ padding: "2rem", position: "relative", zIndex: 10 }}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div style={{ width: 44, height: 44, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", borderRadius: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.3)" }}>
-                <svg style={{ width: 22, height: 22, color: "#fff" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-              </div>
-              <div>
-                <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Ruang Kelas</h2>
-                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola rombongan belajar tingkat 1 sampai 6.</p>
-              </div>
-            </div>
-            <button style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }}>
-              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Kelas
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader title="Ruang Kelas" subtitle="Kelola rombongan belajar tingkat 1 sampai 6." icon={<ClassIcon />} gradient="from-amber-600 via-amber-500 to-amber-400" actions={<Button variant="ghost" icon={<PlusIcon />}>Tambah Kelas</Button>} />
 
-      {/* Tabel Kelas */}
-      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#d97706,#f59e0b)", borderRadius: "50%" }}></div>
-          <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Kelas</h4>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)" }}>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0", width: 50 }}>No</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Tingkat</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Nama Kelas</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Wali Kelas</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Jumlah Siswa</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "right", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Tarif Infaq</th>
-                <th style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" }}>Aksi</th>
-              </tr>
-            </thead>
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gradient-to-br from-amber-600 to-amber-400" /><h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Kelas</h4><Badge variant="warning">{data.length} kelas</Badge></div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead><tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+              {["No", "Tingkat", "Nama Kelas", "Wali Kelas", "Jumlah Siswa", "Tarif Infaq", "Aksi"].map((h, i) => (
+                <th key={h} className={`px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 ${i === 0 || i === 4 ? "text-center" : i === 5 ? "text-right" : i === 6 ? "text-center" : "text-left"} ${i === 0 ? "w-12" : ""}`}>{h}</th>
+              ))}
+            </tr></thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ padding: "3rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontStyle: "italic" }}>Memuat data kelas...</td></tr>
-              ) : data.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: "4rem 2rem", textAlign: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#fef3c7,#fde68a)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
-                      <svg style={{ width: 28, height: 28, color: "#d97706" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+              {loading ? <tr><td colSpan={7} className="p-12 text-center text-sm text-slate-400">Memuat...</td></tr>
+              : data.length === 0 ? <tr><td colSpan={7} className="p-12 text-center"><p className="font-heading font-bold text-slate-700">Belum Ada Data Kelas</p><p className="text-sm text-slate-400 mt-1">Klik "Tambah Kelas" untuk menambahkan rombel baru.</p></td></tr>
+              : data.map((c: any, i) => (
+                <tr key={c.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                  <td className="px-4 py-3.5 text-center text-sm text-slate-400 font-semibold">{i + 1}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center font-extrabold text-lg text-amber-700 shrink-0">{c.level || "-"}</div>
+                      <span className="font-semibold text-sm text-slate-800">Tingkat {c.level || "-"}</span>
                     </div>
-                    <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Kelas</p>
-                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Klik &quot;Tambah Kelas&quot; untuk menambahkan rombel baru.</p>
-                  </div>
-                </td></tr>
-              ) : (
-                data.map((c: any, i) => (
-                  <tr key={c.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
-                    <td style={{ padding: "1rem 1.5rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#fef3c7,#fde68a)", borderRadius: "0.625rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "1.125rem", color: "#b45309" }}>{c.level || "-"}</div>
-                        <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b" }}>Tingkat {c.level || "-"}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem" }}>
-                      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{c.name || "-"}</span>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: c.wali_kelas ? "#1e293b" : "#94a3b8", fontWeight: c.wali_kelas ? 600 : 400 }}>
-                      {c.wali_kelas || "Belum ada"}
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#1e293b" }}>
-                      {c.student_count || 0} <span style={{ fontSize: "0.6875rem", color: "#94a3b8", fontWeight: 400 }}>siswa</span>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
-                      <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "#059669" }}>Rp {formatRp(c.infaq_nominal || 0)}</span>
-                    </td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                        <button style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+                  </td>
+                  <td className="px-4 py-3.5"><Badge variant="info">{c.name || "-"}</Badge></td>
+                  <td className="px-4 py-3.5 text-sm text-slate-700 font-medium">{c.wali_kelas || <span className="text-slate-400">Belum ada</span>}</td>
+                  <td className="px-4 py-3.5 text-center"><span className="font-bold text-sm text-slate-800">{c.student_count || 0}</span> <span className="text-xs text-slate-400">siswa</span></td>
+                  <td className="px-4 py-3.5 text-right font-bold text-sm text-emerald-600">Rp {formatRp(c.infaq_nominal || 0)}</td>
+                  <td className="px-4 py-3.5 text-center"><Button variant="outline" size="sm">Edit</Button></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
