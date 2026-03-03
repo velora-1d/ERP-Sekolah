@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import PageHeader from "@/components/ui/PageHeader";
+
+const ReportIcon = () => <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>;
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("infaq");
@@ -272,26 +275,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-600 rounded-2xl overflow-hidden relative">
-        <div className="absolute -right-5 -top-5 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
-        <div className="absolute right-20 -bottom-10 w-36 h-36 bg-white/5 rounded-full blur-xl"></div>
-        
-        <div className="p-8 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30 shadow-lg">
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-            </div>
-            <div>
-              <h2 className="font-heading font-bold text-2xl text-white m-0">Laporan Lengkap</h2>
-              <p className="text-sm text-white/80 mt-1">Pusat pelaporan keuangan dan operasional madrasah.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader title="Laporan Lengkap" subtitle="Pusat pelaporan keuangan dan operasional madrasah." icon={<ReportIcon />} gradient="from-sky-500 via-blue-500 to-indigo-600" />
 
       {/* Tab Navigation */}
       <div className="flex gap-2 flex-wrap">
