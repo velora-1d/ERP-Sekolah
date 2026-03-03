@@ -57,6 +57,7 @@ model Classroom {
   name           String
   academicYearId Int?      @map("academic_year_id")
   waliKelasId    Int?      @map("wali_kelas_id")
+  infaqNominal   Float     @default(0) @map("infaq_nominal")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
@@ -296,19 +297,22 @@ model InfaqBill {
 }
 
 model InfaqPayment {
-  id          Int       @id @default(autoincrement())
-  billId      Int?      @map("bill_id")
-  amountPaid  Float     @default(0) @map("amount_paid")
-  paymentDate String    @default("") @map("payment_date")
-  receiverId  Int?      @map("receiver_id")
-  notes       String    @default("")
-  unitId      String    @default("") @map("unit_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+  id             Int       @id @default(autoincrement())
+  billId         Int?      @map("bill_id")
+  cashAccountId  Int?      @map("cash_account_id")
+  paymentMethod  String    @default("tunai") @map("payment_method")
+  amountPaid     Float     @default(0) @map("amount_paid")
+  paymentDate    String    @default("") @map("payment_date")
+  receiverId     Int?      @map("receiver_id")
+  notes          String    @default("")
+  unitId         String    @default("") @map("unit_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
 
-  bill     InfaqBill? @relation(fields: [billId], references: [id], onDelete: SetNull)
-  receiver User?      @relation("PaymentReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
+  bill        InfaqBill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
+  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id], onDelete: SetNull)
+  receiver    User?        @relation("PaymentReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
 
   @@map("infaq_payments")
 }
@@ -377,7 +381,8 @@ model CashAccount {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  transactions GeneralTransaction[]
+  transactions   GeneralTransaction[]
+  infaqPayments  InfaqPayment[]
 
   @@map("cash_accounts")
 }

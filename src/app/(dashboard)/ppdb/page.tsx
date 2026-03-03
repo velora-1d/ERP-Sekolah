@@ -12,7 +12,14 @@ export default function PpdbPage() {
 
   // Settings biaya PPDB
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [ppdbSettings, setPpdbSettings] = useState({ formulir: 0, buku: 0, seragam: 0 });
+  const [ppdbSettings, setPpdbSettings] = useState({ daftar: 0, buku: 0, seragam: 0 });
+  const [paymentStats, setPaymentStats] = useState<any>(null);
+  const [cashAccounts, setCashAccounts] = useState<any[]>([]);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payTarget, setPayTarget] = useState<any>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payCashId, setPayCashId] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
 
   const loadSettings = async () => {
     try {
@@ -20,7 +27,7 @@ export default function PpdbPage() {
       const json = await res.json();
       if (json.success) {
         setPpdbSettings({
-          formulir: json.data?.formulir || 0,
+          daftar: json.data?.daftar || 0,
           buku: json.data?.buku || 0,
           seragam: json.data?.seragam || 0,
         });
@@ -75,7 +82,23 @@ export default function PpdbPage() {
     } catch (e) { console.error(e); }
   }
 
-  useEffect(() => { loadData(); loadClassrooms(); }, []);
+  async function loadCashAccounts() {
+    try {
+      const res = await fetch("/api/cash-accounts");
+      const json = await res.json();
+      if (json.success) setCashAccounts(json.data || []);
+    } catch (e) { console.error(e); }
+  }
+
+  async function loadPaymentStats() {
+    try {
+      const res = await fetch("/api/ppdb/stats");
+      const json = await res.json();
+      if (json.success) setPaymentStats(json.data);
+    } catch (e) { console.error(e); }
+  }
+
+  useEffect(() => { loadData(); loadClassrooms(); loadCashAccounts(); loadPaymentStats(); }, []);
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
@@ -140,18 +163,53 @@ export default function PpdbPage() {
     finally { setConvertLoading(false); }
   }
 
-  // === Toggle Payment ===
-  async function handleTogglePayment(paymentId: number, paymentType: string) {
+  // === Toggle Payment (dengan modal) ===
+  function openPayModal(payment: any) {
+    if (payment.isPaid) {
+      // Revert langsung dengan konfirmasi
+      if (!confirm(`Batalkan pembayaran ${payment.paymentType}?`)) return;
+      doTogglePayment(payment.id, 0, 0);
+      return;
+    }
+    setPayTarget(payment);
+    setPayAmount(String(payment.nominal || 0));
+    setPayCashId("");
+    setShowPayModal(true);
+  }
+
+  async function doTogglePayment(paymentId: number, amount: number, cashAccountId: number) {
     try {
       const res = await fetch(`/api/quick-payment/${paymentId}/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ amount, cashAccountId: cashAccountId || undefined }),
       });
       const json = await res.json();
       if (json.success) { showToast(json.message); loadData(); }
       else showToast(json.message, "error");
-    } catch { showToast(`Gagal toggle ${paymentType}`, "error"); }
+    } catch { showToast("Gagal proses pembayaran", "error"); }
+  }
+
+  async function handlePayConfirm() {
+    if (!payTarget) return;
+    const amt = Number(payAmount) || 0;
+    if (amt <= 0) { showToast("Nominal harus lebih dari 0", "error"); return; }
+    setPayLoading(true);
+    await doTogglePayment(payTarget.id, amt, Number(payCashId) || 0);
+    setShowPayModal(false);
+    setPayTarget(null);
+    setPayLoading(false);
+  }
+
+  // === Reset / Batalkan ===
+  async function handleReset(reg: any) {
+    if (!confirm(`Batalkan status "${reg.status}" untuk ${reg.name}? Status akan kembali ke Menunggu.`)) return;
+    try {
+      const res = await fetch(`/api/ppdb/${reg.id}/reset`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) { showToast(json.message); loadData(); }
+      else showToast(json.message, "error");
+    } catch { showToast("Gagal reset status", "error"); }
   }
 
   const filtered = statusFilter ? data.filter(d => d.status === statusFilter) : data;
@@ -238,8 +296,8 @@ export default function PpdbPage() {
                   <svg style={{ width: 18, height: 18, color: "#0284c7" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", margin: 0 }}>Biaya Formulir</p>
-                  <input type="number" value={ppdbSettings.formulir} onChange={(e) => setPpdbSettings({...ppdbSettings, formulir: Number(e.target.value)})} style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", fontWeight: 600, color: "#1e293b", marginTop: "0.25rem" }} min="0" />
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", margin: 0 }}>Biaya Daftar</p>
+                  <input type="number" value={ppdbSettings.daftar} onChange={(e) => setPpdbSettings({...ppdbSettings, daftar: Number(e.target.value)})} style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", fontWeight: 600, color: "#1e293b", marginTop: "0.25rem" }} min="0" />
                 </div>
               </div>
               <div style={{ background: "#f8fafc", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -270,6 +328,38 @@ export default function PpdbPage() {
           </div>
         )}
       </div>
+
+      {/* Rekap Penerimaan Kas PPDB */}
+      {paymentStats && (
+        <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", padding: "1.25rem 1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+            <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#059669,#047857)", borderRadius: "50%" }} />
+            <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Rekap Penerimaan Kas PPDB</h4>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div style={{ background: "#e0f2fe", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
+              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "#0284c7", textTransform: "uppercase", margin: 0 }}>Daftar</p>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 800, color: "#0c4a6e", margin: "0.25rem 0 0" }}>Rp {Number(paymentStats.daftar?.total || 0).toLocaleString("id-ID")}</p>
+              <p style={{ fontSize: "0.625rem", color: "#64748b", margin: "0.125rem 0 0" }}>{paymentStats.daftar?.count || 0} lunas</p>
+            </div>
+            <div style={{ background: "#fef3c7", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
+              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "#d97706", textTransform: "uppercase", margin: 0 }}>Buku</p>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 800, color: "#78350f", margin: "0.25rem 0 0" }}>Rp {Number(paymentStats.buku?.total || 0).toLocaleString("id-ID")}</p>
+              <p style={{ fontSize: "0.625rem", color: "#64748b", margin: "0.125rem 0 0" }}>{paymentStats.buku?.count || 0} lunas</p>
+            </div>
+            <div style={{ background: "#ffe4e6", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
+              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "#e11d48", textTransform: "uppercase", margin: 0 }}>Seragam</p>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 800, color: "#881337", margin: "0.25rem 0 0" }}>Rp {Number(paymentStats.seragam?.total || 0).toLocaleString("id-ID")}</p>
+              <p style={{ fontSize: "0.625rem", color: "#64748b", margin: "0.125rem 0 0" }}>{paymentStats.seragam?.count || 0} lunas</p>
+            </div>
+            <div style={{ background: "#d1fae5", borderRadius: "0.75rem", padding: "1rem", textAlign: "center", border: "1.5px solid #a7f3d0" }}>
+              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "#047857", textTransform: "uppercase", margin: 0 }}>Total</p>
+              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 800, color: "#064e3b", margin: "0.25rem 0 0" }}>Rp {Number(paymentStats.grandTotal || 0).toLocaleString("id-ID")}</p>
+              <p style={{ fontSize: "0.625rem", color: "#64748b", margin: "0.125rem 0 0" }}>Masuk Kas</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter */}
       <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", padding: "1.25rem 1.5rem" }}>
@@ -351,8 +441,8 @@ export default function PpdbPage() {
                     <td style={{ padding: "1rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center", flexWrap: "wrap" }}>
                         {(reg.payments && reg.payments.length > 0) ? reg.payments.map((p: any) => (
-                          <button key={p.id} onClick={() => handleTogglePayment(p.id, p.paymentType)}
-                            title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString('id-ID')} — klik untuk toggle`}
+                          <button key={p.id} onClick={() => openPayModal(p)}
+                            title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString('id-ID')} — klik untuk ${p.isPaid ? 'revert' : 'bayar'}`}
                             style={{ padding: "0.2rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: 999, border: "none", cursor: "pointer",
                               background: p.isPaid ? "#d1fae5" : "#fef3c7", color: p.isPaid ? "#047857" : "#92400e" }}>
                             {p.isPaid ? "✓" : "○"} {p.paymentType}
@@ -370,10 +460,15 @@ export default function PpdbPage() {
                           </>
                         )}
                         {s === "diterima" && (
-                          <button onClick={() => openConvert(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Konversi ke Siswa</button>
+                          <>
+                            <button onClick={() => openConvert(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Konversi ke Siswa</button>
+                            <button onClick={() => handleReset(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.5rem", cursor: "pointer" }}>Batalkan</button>
+                          </>
                         )}
                         {s === "converted" && <span style={{ color: "#a5b4fc", fontSize: "0.6875rem", fontWeight: 600 }}>Sudah Siswa</span>}
-                        {s === "ditolak" && <span style={{ color: "#cbd5e1", fontSize: "0.6875rem" }}>—</span>}
+                        {s === "ditolak" && (
+                          <button onClick={() => handleReset(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.5rem", cursor: "pointer" }}>Batalkan</button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -417,6 +512,39 @@ export default function PpdbPage() {
               <button onClick={() => setShowConvert(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
               <button onClick={handleConvert} disabled={convertLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: convertLoading ? "#94a3b8" : "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.625rem", cursor: convertLoading ? "not-allowed" : "pointer" }}>
                 {convertLoading ? "Memproses..." : "Konversi Sekarang"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Bayar */}
+      {showPayModal && payTarget && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayModal(false)} />
+          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 400, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Konfirmasi Pembayaran</h3>
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>
+              Bayar <strong>{payTarget.paymentType}</strong> untuk PPDB #{payTarget.payableId}
+            </p>
+
+            <div style={{ marginTop: "1.25rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal (Rp)</label>
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", fontWeight: 600, outline: "none" }} min="0" />
+            </div>
+
+            <div style={{ marginTop: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Akun Kas</label>
+              <select value={payCashId} onChange={e => setPayCashId(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="">— Tanpa Akun Kas —</option>
+                {cashAccounts.map((ca: any) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
+              </select>
+            </div>
+
+            <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button onClick={() => setShowPayModal(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
+              <button onClick={handlePayConfirm} disabled={payLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: payLoading ? "#94a3b8" : "linear-gradient(135deg,#059669,#047857)", border: "none", borderRadius: "0.625rem", cursor: payLoading ? "not-allowed" : "pointer" }}>
+                {payLoading ? "Memproses..." : "Bayar Sekarang"}
               </button>
             </div>
           </div>

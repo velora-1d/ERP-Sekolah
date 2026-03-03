@@ -42,7 +42,14 @@ export async function POST(request: Request) {
 
     const students = await prisma.student.findMany({
       where: studentWhere,
-      select: { id: true, name: true, infaqNominal: true, classroomId: true },
+      select: {
+        id: true,
+        name: true,
+        infaqNominal: true,
+        infaqStatus: true,
+        classroomId: true,
+        classroom: { select: { infaqNominal: true } },
+      },
     });
 
     if (students.length === 0) {
@@ -83,12 +90,28 @@ export async function POST(request: Request) {
         const key = `${student.id}-${String(month)}`;
         if (existingSet.has(key)) continue;
 
+        // Logika sesuai Laravel: handle infaqStatus
+        let nominal = 0;
+        let billStatus = "belum_lunas";
+
+        if (student.infaqStatus === "gratis") {
+          nominal = 0;
+          billStatus = "lunas";
+        } else if (student.infaqStatus === "subsidi") {
+          nominal = student.infaqNominal || 0;
+          if (nominal <= 0) billStatus = "lunas";
+        } else {
+          // reguler — nominal dari kelas
+          nominal = student.classroom?.infaqNominal || 0;
+          if (nominal <= 0) billStatus = "lunas";
+        }
+
         billsToCreate.push({
           studentId: student.id,
           month: String(month),
           year: String(year),
-          nominal: student.infaqNominal || 0,
-          status: "belum_lunas",
+          nominal,
+          status: billStatus,
           unitId: user.unitId || "",
           academicYearId: academicYearId ? Number(academicYearId) : null,
         });

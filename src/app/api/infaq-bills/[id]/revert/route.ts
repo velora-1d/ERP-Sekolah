@@ -5,15 +5,16 @@ import { requireAuth, AuthError } from "@/lib/rbac";
 /**
  * POST /api/infaq-bills/[id]/revert
  * 
- * Revert tagihan dari 'lunas' kembali ke 'belum_lunas'.
- * Logic: koreksi salah input — hapus semua payment + reset status.
+ * Revert tagihan dari 'lunas' kembali ke 'belum_lunas' — sesuai Laravel:
+ * - Hanya bisa revert tagihan berstatus LUNAS
+ * - Ubah status saja, JANGAN hapus payment records
  */
 export async function POST(
   request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth();
+    await requireAuth();
     const params = await props.params;
     const billId = Number(params.id);
 
@@ -27,37 +28,28 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const bill = await tx.infaqBill.findUnique({
         where: { id: billId },
-        include: { payments: { where: { deletedAt: null } } },
       });
 
       if (!bill) throw new Error("Tagihan tidak ditemukan");
       if (bill.deletedAt) throw new Error("Tagihan sudah dihapus");
-      if (bill.status === "void") throw new Error("Tagihan yang di-void tidak bisa di-revert");
-      if (bill.status === "belum_lunas" && bill.payments.length === 0) {
-        throw new Error("Tagihan belum pernah dibayar, tidak ada yang di-revert");
+
+      // Sesuai Laravel: hanya tagihan berstatus LUNAS yang bisa di-revert
+      if (bill.status !== "lunas") {
+        throw new Error("Hanya tagihan berstatus LUNAS yang bisa di-revert.");
       }
 
-      // Soft-delete semua payment
-      if (bill.payments.length > 0) {
-        await tx.infaqPayment.updateMany({
-          where: { billId: bill.id, deletedAt: null },
-          data: { deletedAt: new Date() },
-        });
-      }
-
-      // Reset status ke belum_lunas
+      // Ubah status ke belum_lunas — JANGAN hapus payment records (sesuai Laravel)
       await tx.infaqBill.update({
         where: { id: bill.id },
         data: { status: "belum_lunas" },
       });
 
-      const totalReverted = bill.payments.reduce((sum, p) => sum + p.amountPaid, 0);
-      return { revertedPayments: bill.payments.length, totalReverted };
+      return {};
     });
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil revert ${result.revertedPayments} pembayaran (Rp ${result.totalReverted.toLocaleString("id-ID")}). Status kembali ke belum_lunas.`,
+      message: "Status tagihan berhasil dikembalikan ke Belum Lunas.",
     });
   } catch (error) {
     if (error instanceof AuthError) {

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
 export default function TeachersPage() {
@@ -8,6 +9,7 @@ export default function TeachersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const router = useRouter();
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -38,48 +40,7 @@ export default function TeachersPage() {
 
 
   const handleEdit = (t: any) => {
-    Swal.fire({
-      title: "Edit Data Guru",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Nama</label>
-          <input id="swal-tch-name" class="swal2-input" value="${t.name || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">NIP/NUPTK</label>
-          <input id="swal-tch-nip" class="swal2-input" value="${t.nip || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Posisi/Jabatan</label>
-          <input id="swal-tch-pos" class="swal2-input" value="${t.position || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Status</label>
-          <select id="swal-tch-stat" class="swal2-select" style="margin:0;">
-            <option value="aktif" ${t.status === "aktif" ? "selected" : ""}>Aktif</option>
-            <option value="nonaktif" ${t.status === "nonaktif" ? "selected" : ""}>Non-Aktif</option>
-          </select>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan",
-      cancelButtonText: "Batal",
-      preConfirm: () => {
-        return {
-          name: (document.getElementById("swal-tch-name") as HTMLInputElement).value,
-          nip: (document.getElementById("swal-tch-nip") as HTMLInputElement).value,
-          position: (document.getElementById("swal-tch-pos") as HTMLInputElement).value,
-          status: (document.getElementById("swal-tch-stat") as HTMLSelectElement).value,
-        };
-      },
-    }).then(async (r) => {
-      if (r.isConfirmed && r.value) {
-        try {
-          const res = await fetch(`/api/teachers/${t.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...r.value, type: "guru" }),
-          });
-          const json = await res.json();
-          if (json.success) { Swal.fire("Berhasil", json.message, "success"); loadTeachers(); }
-          else Swal.fire("Gagal", json.message, "error");
-        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
-      }
-    });
+    router.push(`/teachers/${t.id}/edit`);
   };
 
   const handleDelete = (t: any) => {

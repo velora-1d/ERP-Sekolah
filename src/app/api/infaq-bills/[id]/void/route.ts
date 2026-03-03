@@ -5,15 +5,17 @@ import { requireAuth, AuthError } from "@/lib/rbac";
 /**
  * POST /api/infaq-bills/[id]/void
  * 
- * Void tagihan infaq — membatalkan tagihan.
- * Logic: ubah status → 'void' + soft-delete semua payment terkait.
+ * Void tagihan infaq — sesuai Laravel:
+ * - TOLAK jika tagihan sudah lunas
+ * - TOLAK jika sudah ada pembayaran (hapus pembayaran dulu)
+ * - Hanya ubah status → 'void'
  */
 export async function POST(
   request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth();
+    await requireAuth();
     const params = await props.params;
     const billId = Number(params.id);
 
@@ -32,14 +34,16 @@ export async function POST(
 
       if (!bill) throw new Error("Tagihan tidak ditemukan");
       if (bill.deletedAt) throw new Error("Tagihan sudah dihapus");
-      if (bill.status === "void") throw new Error("Tagihan sudah di-void sebelumnya");
+      if (bill.status === "void") throw new Error("Tagihan sudah berstatus void");
 
-      // Soft-delete semua payment terkait
+      // Sesuai Laravel: tolak void jika tagihan sudah lunas
+      if (bill.status === "lunas") {
+        throw new Error("Tagihan yang sudah LUNAS tidak dapat dibatalkan (void).");
+      }
+
+      // Sesuai Laravel: tolak void jika sudah ada riwayat pembayaran
       if (bill.payments.length > 0) {
-        await tx.infaqPayment.updateMany({
-          where: { billId: bill.id, deletedAt: null },
-          data: { deletedAt: new Date() },
-        });
+        throw new Error("Tagihan ini memiliki riwayat pembayaran. Hapus pembayaran terlebih dahulu sebelum me-void tagihan.");
       }
 
       // Update status bill ke void
@@ -48,12 +52,12 @@ export async function POST(
         data: { status: "void" },
       });
 
-      return { voidedPayments: bill.payments.length };
+      return {};
     });
 
     return NextResponse.json({
       success: true,
-      message: `Tagihan berhasil di-void. ${result.voidedPayments} pembayaran terkait juga dibatalkan.`,
+      message: "Tagihan berhasil dibatalkan (void).",
     });
   } catch (error) {
     if (error instanceof AuthError) {

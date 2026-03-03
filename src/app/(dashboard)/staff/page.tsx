@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
 export default function StaffPage() {
@@ -8,6 +9,7 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const router = useRouter();
 
   const loadStaff = async () => {
     setLoading(true);
@@ -38,48 +40,7 @@ export default function StaffPage() {
 
 
   const handleEdit = (s: any) => {
-    Swal.fire({
-      title: "Edit Data Staf",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Nama *</label>
-          <input id="swal-es-name" class="swal2-input" value="${s.name || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">NIK/ID</label>
-          <input id="swal-es-nip" class="swal2-input" value="${s.nip || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Jabatan</label>
-          <input id="swal-es-pos" class="swal2-input" value="${s.position || ""}" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Status</label>
-          <select id="swal-es-status" class="swal2-select" style="margin:0;">
-            <option value="aktif" ${s.status === "aktif" ? "selected" : ""}>Aktif</option>
-            <option value="nonaktif" ${s.status !== "aktif" ? "selected" : ""}>Non-Aktif</option>
-          </select>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan",
-      cancelButtonText: "Batal",
-      preConfirm: () => {
-        return {
-          name: (document.getElementById("swal-es-name") as HTMLInputElement).value,
-          nip: (document.getElementById("swal-es-nip") as HTMLInputElement).value,
-          position: (document.getElementById("swal-es-pos") as HTMLInputElement).value,
-          status: (document.getElementById("swal-es-status") as HTMLSelectElement).value,
-        };
-      },
-    }).then(async (r) => {
-      if (r.isConfirmed && r.value) {
-        try {
-          const res = await fetch(`/api/staff/${s.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...r.value, type: "staf" }),
-          });
-          const json = await res.json();
-          if (json.success) { Swal.fire("Berhasil", json.message, "success"); loadStaff(); }
-          else Swal.fire("Gagal", json.message, "error");
-        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
-      }
-    });
+    router.push(`/staff/${s.id}/edit`);
   };
 
   const handleDelete = (s: any) => {

@@ -5,20 +5,23 @@ import { requireAuth, AuthError } from "@/lib/rbac";
 /**
  * POST /api/infaq-payments
  * 
- * Bayar tagihan infaq/SPP.
- * Input: { billId, amountPaid, paymentDate, notes }
- * Logic: 
- *   1. Validasi bill exists + bukan void
- *   2. Buat InfaqPayment
- *   3. Hitung total paid → update status bill (lunas/sebagian)
- *   4. Semua dalam $transaction
+ * Bayar tagihan infaq/SPP — sesuai flow Laravel.
+ * Input: { billId, amountPaid, paymentDate, notes, paymentMethod, cashAccountId }
+ * 
+ * Logic (dalam $transaction):
+ *   1. Validasi bill exists + bukan void/lunas
+ *   2. Validasi jumlah bayar tidak melebihi sisa tagihan
+ *   3. Buat InfaqPayment
+ *   4. Jika paymentMethod === 'tabungan' → buat StudentSaving (type out)
+ *   5. Hitung total paid → update status bill (lunas/sebagian)
+ *   6. Buat GeneralTransaction (jurnal) + update saldo CashAccount
  */
 export async function POST(request: Request) {
   try {
     const user = await requireAuth();
 
     const body = await request.json();
-    const { billId, amountPaid, paymentDate, notes } = body;
+    const { billId, amountPaid, paymentDate, notes, paymentMethod, cashAccountId } = body;
 
     // Validasi input
     if (!billId) {
@@ -34,11 +37,31 @@ export async function POST(request: Request) {
       );
     }
 
+    const method = paymentMethod || "tunai";
+    const validMethods = ["tunai", "transfer", "tabungan"];
+    if (!validMethods.includes(method)) {
+      return NextResponse.json(
+        { success: false, message: "Metode pembayaran tidak valid. Gunakan: tunai, transfer, atau tabungan" },
+        { status: 400 }
+      );
+    }
+
+    // Akun kas wajib untuk tunai/transfer
+    if (method !== "tabungan" && !cashAccountId) {
+      return NextResponse.json(
+        { success: false, message: "Akun kas wajib dipilih untuk pembayaran tunai/transfer" },
+        { status: 400 }
+      );
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       // 1. Ambil bill + pembayaran sebelumnya
       const bill = await tx.infaqBill.findUnique({
         where: { id: Number(billId) },
-        include: { payments: { where: { deletedAt: null } } },
+        include: {
+          payments: { where: { deletedAt: null } },
+          student: { select: { id: true, name: true } },
+        },
       });
 
       if (!bill) throw new Error("Tagihan tidak ditemukan");
@@ -46,37 +69,114 @@ export async function POST(request: Request) {
       if (bill.status === "void") throw new Error("Tagihan sudah di-void, tidak bisa dibayar");
       if (bill.status === "lunas") throw new Error("Tagihan sudah lunas");
 
-      // 2. Hitung total paid sebelumnya
+      // 2. Hitung sisa tagihan — validasi tidak melebihi (sesuai Laravel)
       const totalPaidBefore = bill.payments.reduce(
         (sum, p) => sum + p.amountPaid, 0
       );
-      const newTotalPaid = totalPaidBefore + Number(amountPaid);
+      const remaining = bill.nominal - totalPaidBefore;
+      const amount = Number(amountPaid);
 
-      // 3. Buat payment record
-      const payment = await tx.infaqPayment.create({
-        data: {
-          billId: bill.id,
-          amountPaid: Number(amountPaid),
-          paymentDate: paymentDate || new Date().toISOString().split("T")[0],
-          receiverId: user.userId,
-          notes: notes || "",
-          unitId: user.unitId || "",
-        },
-      });
+      if (amount > remaining) {
+        throw new Error(
+          `Jumlah pembayaran (Rp ${amount.toLocaleString("id-ID")}) melebihi sisa tagihan (Rp ${remaining.toLocaleString("id-ID")})`
+        );
+      }
 
-      // 4. Update status bill
+      // 3. Jika via tabungan — validasi saldo tabungan siswa
+      if (method === "tabungan" && bill.studentId) {
+        const savingsAgg = await tx.studentSaving.aggregate({
+          where: { studentId: bill.studentId, status: "active", deletedAt: null },
+          _sum: { amount: true },
+        });
+        // Hitung saldo: sum of (in amounts) - sum of (out amounts)
+        const savingsIn = await tx.studentSaving.aggregate({
+          where: { studentId: bill.studentId, type: "in", status: "active", deletedAt: null },
+          _sum: { amount: true },
+        });
+        const savingsOut = await tx.studentSaving.aggregate({
+          where: { studentId: bill.studentId, type: "out", status: "active", deletedAt: null },
+          _sum: { amount: true },
+        });
+        const balance = (savingsIn._sum.amount || 0) - (savingsOut._sum.amount || 0);
+
+        if (amount > balance) {
+          throw new Error(
+            `Saldo tabungan tidak mencukupi! Saldo: Rp ${balance.toLocaleString("id-ID")}`
+          );
+        }
+
+        // Buat mutasi debit tabungan siswa
+        await tx.studentSaving.create({
+          data: {
+            studentId: bill.studentId,
+            type: "out",
+            amount: amount,
+            date: paymentDate || new Date().toISOString().split("T")[0],
+            description: `Potong Tabungan untuk bayar Infaq bulan ${bill.month}`,
+            status: "active",
+            unitId: user.unitId || "",
+          },
+        });
+      }
+
+      // 4. Buat payment record
+      const paymentData: any = {
+        bill: { connect: { id: bill.id } },
+        paymentMethod: method,
+        amountPaid: amount,
+        paymentDate: paymentDate || new Date().toISOString().split("T")[0],
+        notes: notes || "",
+        unitId: user.unitId || "",
+      };
+      if (user.userId) paymentData.receiver = { connect: { id: user.userId } };
+      if (cashAccountId) paymentData.cashAccount = { connect: { id: Number(cashAccountId) } };
+
+      const payment = await tx.infaqPayment.create({ data: paymentData });
+
+      // 5. Update status bill
+      const newTotalPaid = totalPaidBefore + amount;
       const newStatus = newTotalPaid >= bill.nominal ? "lunas" : "sebagian";
       await tx.infaqBill.update({
         where: { id: bill.id },
         data: { status: newStatus },
       });
 
-      return { payment, newStatus, newTotalPaid, nominal: bill.nominal };
+      // 6. Buat jurnal (GeneralTransaction) + update saldo CashAccount
+      if (cashAccountId) {
+        const studentName = bill.student?.name || "Siswa";
+        const monthNames: Record<string, string> = {
+          "1": "Jan", "2": "Feb", "3": "Mar", "4": "Apr", "5": "Mei", "6": "Jun",
+          "7": "Jul", "8": "Agu", "9": "Sep", "10": "Okt", "11": "Nov", "12": "Des",
+        };
+        const bulan = monthNames[bill.month] || bill.month;
+
+        await tx.generalTransaction.create({
+          data: {
+            date: paymentDate || new Date().toISOString().split("T")[0],
+            description: `Pembayaran Infaq/SPP ${studentName} bulan ${bulan} (${method})`,
+            amount: amount,
+            type: "in",
+            referenceType: "infaq_payment",
+            referenceId: String(payment.id),
+            cashAccountId: Number(cashAccountId),
+            unitId: user.unitId || "",
+          },
+        });
+
+        await tx.cashAccount.update({
+          where: { id: Number(cashAccountId) },
+          data: { balance: { increment: amount } },
+        });
+      }
+
+      return { payment, newStatus, newTotalPaid, nominal: bill.nominal, method };
     });
+
+    const methodLabel = result.method === "tabungan" ? "Potong Tabungan" : result.method === "transfer" ? "Transfer" : "Tunai";
 
     return NextResponse.json({
       success: true,
-      message: `Pembayaran Rp ${Number(amountPaid).toLocaleString("id-ID")} berhasil. Status: ${result.newStatus}`,
+      message: `Pembayaran Rp ${Number(amountPaid).toLocaleString("id-ID")} via ${methodLabel} berhasil. Status: ${result.newStatus}`,
       data: {
         paymentId: result.payment.id,
         status: result.newStatus,

@@ -27,6 +27,9 @@ export default function InfaqBillsPage() {
   const [payDate, setPayDate] = useState(new Date().toISOString().split("T")[0]);
   const [payNotes, setPayNotes] = useState("");
   const [payLoading, setPayLoading] = useState(false);
+  const [payMethod, setPayMethod] = useState("tunai");
+  const [payCashId, setPayCashId] = useState("");
+  const [cashAccounts, setCashAccounts] = useState<any[]>([]);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -47,7 +50,10 @@ export default function InfaqBillsPage() {
     finally { setLoading(false); }
   }, [search, month, status]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
+  }, []);
 
   // === Generate Tagihan ===
   async function handleGenerate() {
@@ -75,6 +81,7 @@ export default function InfaqBillsPage() {
   // === Bayar Tagihan ===
   async function handlePayment() {
     if (!selectedBill || !payAmount) return;
+    if (payMethod !== "tabungan" && !payCashId) { showToast("Pilih akun kas terlebih dahulu", "error"); return; }
     setPayLoading(true);
     try {
       const res = await fetch("/api/infaq-payments", {
@@ -85,6 +92,8 @@ export default function InfaqBillsPage() {
           amountPaid: Number(payAmount),
           paymentDate: payDate,
           notes: payNotes,
+          paymentMethod: payMethod,
+          cashAccountId: payCashId ? Number(payCashId) : null,
         }),
       });
       const json = await res.json();
@@ -94,6 +103,8 @@ export default function InfaqBillsPage() {
         setSelectedBill(null);
         setPayAmount("");
         setPayNotes("");
+        setPayMethod("tunai");
+        setPayCashId("");
         loadData();
       } else {
         showToast(json.message, "error");
@@ -346,6 +357,25 @@ export default function InfaqBillsPage() {
             </div>
 
             <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Metode Pembayaran</label>
+              <select value={payMethod} onChange={e => setPayMethod(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="tunai">Tunai</option>
+                <option value="transfer">Transfer</option>
+                <option value="tabungan">Potong Tabungan</option>
+              </select>
+            </div>
+
+            {payMethod !== "tabungan" && (
+              <div style={{ marginTop: "0.75rem" }}>
+                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Akun Kas</label>
+                <select value={payCashId} onChange={e => setPayCashId(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                  <option value="">— Pilih Akun Kas —</option>
+                  {cashAccounts.map((ca: any) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={{ marginTop: "0.75rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Jumlah Bayar</label>
               <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
             </div>

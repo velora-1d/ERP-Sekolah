@@ -8,7 +8,7 @@ import { requireAuth, AuthError } from "@/lib/rbac";
  * Menggunakan model SchoolSetting (key-value store)
  */
 
-const KEYS = ["ppdb_fee_formulir", "ppdb_fee_buku", "ppdb_fee_seragam"];
+const KEYS = ["ppdb_fee_daftar", "ppdb_fee_buku", "ppdb_fee_seragam"];
 
 export async function GET() {
   try {
@@ -23,7 +23,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        formulir: map["ppdb_fee_formulir"] || 0,
+        daftar: map["ppdb_fee_daftar"] || 0,
         buku: map["ppdb_fee_buku"] || 0,
         seragam: map["ppdb_fee_seragam"] || 0,
       },
@@ -40,10 +40,10 @@ export async function PUT(request: Request) {
   try {
     const user = await requireAuth();
     const body = await request.json();
-    const { formulir, buku, seragam } = body;
+    const { daftar, buku, seragam } = body;
 
     const updates = [
-      { key: "ppdb_fee_formulir", value: String(formulir || 0) },
+      { key: "ppdb_fee_daftar", value: String(daftar || 0) },
       { key: "ppdb_fee_buku", value: String(buku || 0) },
       { key: "ppdb_fee_seragam", value: String(seragam || 0) },
     ];

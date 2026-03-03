@@ -26,17 +26,25 @@ export async function POST(
       if (reg.status === "diterima") throw new Error("Pendaftar sudah diterima sebelumnya");
       if (reg.status === "ditolak") throw new Error("Pendaftar sudah ditolak. Reset dulu sebelum menerima.");
 
+      // Tarik nominal dari SchoolSetting
+      const feeKeys = ["ppdb_fee_daftar", "ppdb_fee_buku", "ppdb_fee_seragam"];
+      const settings = await tx.schoolSetting.findMany({
+        where: { key: { in: feeKeys } },
+      });
+      const feeMap: Record<string, number> = {};
+      settings.forEach((s: any) => { feeMap[s.key] = Number(s.value) || 0; });
+
       // Update status
       await tx.ppdbRegistration.update({
         where: { id: regId },
         data: { status: "diterima" },
       });
 
-      // Buat payment items (formulir, buku, seragam)
+      // Buat payment items (daftar, buku, seragam) dengan nominal dari settings
       const paymentTypes = [
-        { type: "formulir", nominal: 0 },
-        { type: "buku", nominal: 0 },
-        { type: "seragam", nominal: 0 },
+        { type: "daftar", nominal: feeMap["ppdb_fee_daftar"] || 0 },
+        { type: "buku", nominal: feeMap["ppdb_fee_buku"] || 0 },
+        { type: "seragam", nominal: feeMap["ppdb_fee_seragam"] || 0 },
       ];
 
       await tx.registrationPayment.createMany({

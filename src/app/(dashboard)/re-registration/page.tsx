@@ -14,6 +14,12 @@ export default function ReRegistrationPage() {
     books_fee: 0,
     uniform_fee: 0
   });
+  const [cashAccounts, setCashAccounts] = useState<any[]>([]);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payTarget, setPayTarget] = useState<{ regId: string; field: string; amount: number } | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payCashId, setPayCashId] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -59,10 +65,19 @@ export default function ReRegistrationPage() {
     }
   };
 
+  async function loadCashAccounts() {
+    try {
+      const res = await fetch("/api/cash-accounts");
+      const json = await res.json();
+      if (json.success) setCashAccounts(json.data || []);
+    } catch (e) { console.error(e); }
+  }
+
   useEffect(() => {
     loadSettings();
     loadData();
     loadPaymentStats();
+    loadCashAccounts();
   }, []);
 
   const saveSettings = async () => {
@@ -150,12 +165,54 @@ export default function ReRegistrationPage() {
     });
   };
 
-  const togglePayment = async (regId: string, field: string, amount: number) => {
+  // Field yang melibatkan uang (butuh modal konfirmasi)
+  const monetaryFields = ['is_fee_paid', 'is_books_paid', 'is_uniform_paid'];
+
+  const openPayModal = (regId: string, field: string, amount: number) => {
+    // Cek apakah field ini sekarang true (mau revert)
+    const item = data.find(d => d.id.toString() === regId);
+    if (item?.payment?.[field]) {
+      // Sudah bayar → revert langsung
+      Swal.fire({
+        title: "Batalkan Pembayaran?",
+        text: "Jurnal terkait akan di-void dan saldo kas dikembalikan.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, Revert",
+        cancelButtonText: "Batal"
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await togglePayment(regId, field, amount, undefined);
+        }
+      });
+      return;
+    }
+    setPayTarget({ regId, field, amount });
+    setPayAmount(String(amount || 0));
+    setPayCashId("");
+    setShowPayModal(true);
+  };
+
+  const handlePayConfirm = async () => {
+    if (!payTarget) return;
+    const amt = Number(payAmount) || 0;
+    if (amt <= 0) {
+      Swal.fire("Error", "Nominal harus lebih dari 0", "error");
+      return;
+    }
+    setPayLoading(true);
+    await togglePayment(payTarget.regId, payTarget.field, amt, payCashId ? Number(payCashId) : undefined);
+    setShowPayModal(false);
+    setPayTarget(null);
+    setPayLoading(false);
+  };
+
+  const togglePayment = async (regId: string, field: string, amount: number, cashAccountId?: number) => {
     try {
       const res = await fetch("/api/reregistration/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regId, field, amount })
+        body: JSON.stringify({ regId, field, amount, cashAccountId })
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -394,7 +451,7 @@ export default function ReRegistrationPage() {
                         <div className="flex flex-col gap-1.5">
                           {/* Payment Badges */}
                           <button 
-                            onClick={() => togglePayment(item.id.toString(), 'is_fee_paid', settings.re_registration_fee)}
+                            onClick={() => openPayModal(item.id.toString(), 'is_fee_paid', settings.re_registration_fee)}
                             className={`w-full text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_fee_paid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                           >
                             <span>Daftar {settings.re_registration_fee > 0 && <span className="opacity-60">({settings.re_registration_fee/1000}k)</span>}</span>
@@ -403,14 +460,14 @@ export default function ReRegistrationPage() {
                           
                           <div className="flex gap-1.5">
                             <button 
-                              onClick={() => togglePayment(item.id.toString(), 'is_books_paid', settings.books_fee)}
+                              onClick={() => openPayModal(item.id.toString(), 'is_books_paid', settings.books_fee)}
                               className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_books_paid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                             >
                               <span>Buku {settings.books_fee > 0 && <span className="opacity-60">({settings.books_fee/1000}k)</span>}</span>
                               <span className="font-black">{p.is_books_paid ? '✓' : '−'}</span>
                             </button>
                             <button 
-                              onClick={() => togglePayment(item.id.toString(), 'is_books_received', 0)}
+                              onClick={() => togglePayment(item.id.toString(), 'is_books_received', 0, undefined)}
                               className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_books_received ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                             >
                               <span>Ambil</span>
@@ -420,14 +477,14 @@ export default function ReRegistrationPage() {
 
                           <div className="flex gap-1.5">
                             <button 
-                              onClick={() => togglePayment(item.id.toString(), 'is_uniform_paid', settings.uniform_fee)}
+                              onClick={() => openPayModal(item.id.toString(), 'is_uniform_paid', settings.uniform_fee)}
                               className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_uniform_paid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                             >
                               <span>Baju {settings.uniform_fee > 0 && <span className="opacity-60">({settings.uniform_fee/1000}k)</span>}</span>
                               <span className="font-black">{p.is_uniform_paid ? '✓' : '−'}</span>
                             </button>
                             <button 
-                              onClick={() => togglePayment(item.id.toString(), 'is_uniform_received', 0)}
+                              onClick={() => togglePayment(item.id.toString(), 'is_uniform_received', 0, undefined)}
                               className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_uniform_received ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                             >
                               <span>Ambil</span>
@@ -459,6 +516,38 @@ export default function ReRegistrationPage() {
           </table>
         </div>
       </div>
+      {/* Modal Konfirmasi Bayar */}
+      {showPayModal && payTarget && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayModal(false)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl">
+            <h3 className="font-heading font-bold text-lg text-slate-800 m-0">Konfirmasi Pembayaran Daftar Ulang</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Bayar <strong>{payTarget.field.replace('is_', '').replace('_paid', '')}</strong>
+            </p>
+
+            <div className="mt-5">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nominal (Rp)</label>
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-violet-400 transition-colors" min="0" />
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Akun Kas</label>
+              <select value={payCashId} onChange={e => setPayCashId(e.target.value)} className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm outline-none focus:border-violet-400 transition-colors">
+                <option value="">— Tanpa Akun Kas —</option>
+                {cashAccounts.map((ca: any) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
+              </select>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShowPayModal(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-500 bg-slate-100 border-none rounded-xl cursor-pointer hover:bg-slate-200 transition-colors">Batal</button>
+              <button onClick={handlePayConfirm} disabled={payLoading} className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl border-none cursor-pointer transition-all ${payLoading ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:shadow-lg hover:-translate-y-0.5'}`}>
+                {payLoading ? "Memproses..." : "Bayar Sekarang"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
