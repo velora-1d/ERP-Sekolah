@@ -53,7 +53,7 @@ export default function PayrollPage() {
       if (r.isConfirmed) {
         Swal.fire({title: "Memproses...", allowOutsideClick: false, didOpen: () => Swal.showLoading()});
         try {
-          const res = await fetch("/api/payroll/generate", {
+          const res = await fetch("/api/payroll", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ month: genMonth, year: genYear })
