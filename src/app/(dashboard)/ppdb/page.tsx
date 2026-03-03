@@ -9,6 +9,37 @@ export default function PpdbPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
+  // Settings biaya PPDB
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [ppdbSettings, setPpdbSettings] = useState({ formulir: 0, buku: 0, seragam: 0 });
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/ppdb/settings");
+      const json = await res.json();
+      if (json.success) {
+        setPpdbSettings({
+          formulir: json.data?.formulir || 0,
+          buku: json.data?.buku || 0,
+          seragam: json.data?.seragam || 0,
+        });
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const saveSettings = async () => {
+    try {
+      const res = await fetch("/api/ppdb/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ppdbSettings),
+      });
+      const json = await res.json();
+      if (json.success) showToast("Biaya PPDB berhasil disimpan.");
+      else showToast(json.message || "Gagal menyimpan", "error");
+    } catch (e) { showToast("Gagal menghubungi server", "error"); }
+  };
+
   // Modal konversi
   const [showConvert, setShowConvert] = useState(false);
   const [convertReg, setConvertReg] = useState<any>(null);
@@ -174,6 +205,66 @@ export default function PpdbPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Settings Panel Biaya PPDB */}
+      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <button
+          onClick={() => { setSettingsOpen(!settingsOpen); if (!settingsOpen) loadSettings(); }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 1.5rem", background: "transparent", border: "none", cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ width: 36, height: 36, background: "#e0f2fe", borderRadius: "0.625rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg style={{ width: 18, height: 18, color: "#0284c7" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "#1e293b", margin: 0 }}>Pengaturan Biaya PPDB</p>
+              <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0.125rem 0 0" }}>Atur biaya formulir pendaftaran, buku, dan seragam</p>
+            </div>
+          </div>
+          <div style={{ width: 32, height: 32, borderRadius: "0.5rem", background: "#f1f5f9", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.3s", transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+            <svg style={{ width: 16, height: 16, color: "#64748b" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          </div>
+        </button>
+        {settingsOpen && (
+          <div style={{ padding: "0 1.5rem 1.5rem", borderTop: "1px solid #f1f5f9" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ marginTop: "1rem" }}>
+              <div style={{ background: "#f8fafc", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 40, height: 40, background: "#e0f2fe", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg style={{ width: 18, height: 18, color: "#0284c7" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", margin: 0 }}>Biaya Formulir</p>
+                  <input type="number" value={ppdbSettings.formulir} onChange={(e) => setPpdbSettings({...ppdbSettings, formulir: Number(e.target.value)})} style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", fontWeight: 600, color: "#1e293b", marginTop: "0.25rem" }} min="0" />
+                </div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 40, height: 40, background: "#fef3c7", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg style={{ width: 18, height: 18, color: "#d97706" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", margin: 0 }}>Biaya Buku / LKS</p>
+                  <input type="number" value={ppdbSettings.buku} onChange={(e) => setPpdbSettings({...ppdbSettings, buku: Number(e.target.value)})} style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", fontWeight: 600, color: "#1e293b", marginTop: "0.25rem" }} min="0" />
+                </div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: "0.75rem", border: "1px solid #e2e8f0", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: 40, height: 40, background: "#ffe4e6", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg style={{ width: 18, height: 18, color: "#e11d48" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", margin: 0 }}>Biaya Seragam</p>
+                  <input type="number" value={ppdbSettings.seragam} onChange={(e) => setPpdbSettings({...ppdbSettings, seragam: Number(e.target.value)})} style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", fontWeight: 600, color: "#1e293b", marginTop: "0.25rem" }} min="0" />
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={saveSettings} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.5rem", background: "linear-gradient(135deg,#0ea5e9,#0284c7)", color: "#fff", border: "none", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer" }} className="shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                Simpan Biaya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter */}
