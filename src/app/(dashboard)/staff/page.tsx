@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Swal from "sweetalert2";
 
 export default function StaffPage() {
@@ -34,37 +35,7 @@ export default function StaffPage() {
     return matchSearch && matchStatus;
   });
 
-  const handleAdd = () => {
-    Swal.fire({
-      title: "Tambah Staf",
-      html: `
-        <div style="text-align:left;display:grid;gap:0.75rem;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Nama</label>
-          <input id="swal-stf-name" class="swal2-input" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">NIK/ID</label>
-          <input id="swal-stf-nip" class="swal2-input" style="margin:0;">
-          <label style="font-size:0.75rem;font-weight:600;color:#475569;">Jabatan</label>
-          <input id="swal-stf-pos" class="swal2-input" placeholder="Admin TU" style="margin:0;">
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Simpan",
-      cancelButtonText: "Batal",
-      preConfirm: () => {
-        return {
-          name: (document.getElementById("swal-stf-name") as HTMLInputElement).value,
-          nip: (document.getElementById("swal-stf-nip") as HTMLInputElement).value,
-          position: (document.getElementById("swal-stf-pos") as HTMLInputElement).value,
-          type: "staf",
-          status: "aktif",
-        };
-      },
-    }).then((r) => {
-      if (r.isConfirmed) {
-        Swal.fire("Berhasil", "Data staf ditambahkan. (Visual Only)", "success");
-      }
-    });
-  };
+
 
   const handleEdit = (s: any) => {
     Swal.fire({
@@ -95,9 +66,18 @@ export default function StaffPage() {
           status: (document.getElementById("swal-es-status") as HTMLSelectElement).value,
         };
       },
-    }).then((r) => {
-      if (r.isConfirmed) {
-        Swal.fire("Berhasil", "Data staf diperbarui. (Visual Only)", "success");
+    }).then(async (r) => {
+      if (r.isConfirmed && r.value) {
+        try {
+          const res = await fetch(`/api/staff/${s.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...r.value, type: "staf" }),
+          });
+          const json = await res.json();
+          if (json.success) { Swal.fire("Berhasil", json.message, "success"); loadStaff(); }
+          else Swal.fire("Gagal", json.message, "error");
+        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
       }
     });
   };
@@ -111,9 +91,14 @@ export default function StaffPage() {
       confirmButtonColor: "#ef4444",
       confirmButtonText: "Ya, Hapus",
       cancelButtonText: "Batal",
-    }).then((r) => {
+    }).then(async (r) => {
       if (r.isConfirmed) {
-        Swal.fire("Berhasil", "Data staf dihapus. (Visual Only)", "success");
+        try {
+          const res = await fetch(`/api/staff/${s.id}`, { method: "DELETE" });
+          const json = await res.json();
+          if (json.success) { Swal.fire("Terhapus", json.message, "success"); loadStaff(); }
+          else Swal.fire("Gagal", json.message, "error");
+        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
       }
     });
   };
@@ -135,9 +120,9 @@ export default function StaffPage() {
                 <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola direktori staf tata usaha dan karyawan secara terpusat.</p>
               </div>
             </div>
-            <button onClick={handleAdd} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
+            <Link href="/staff/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", textDecoration: "none" }} className="hover:bg-white/30 transition-colors">
               <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Tambah Data Staf
-            </button>
+            </Link>
           </div>
         </div>
       </div>

@@ -35,3 +35,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    if (!body.name?.trim()) {
+      return NextResponse.json({ success: false, message: "Nama guru wajib diisi" }, { status: 400 });
+    }
+
+    const employee = await prisma.employee.create({
+      data: {
+        name: body.name,
+        nip: body.nip || "",
+        type: "guru",
+        position: body.position || "",
+        status: body.status || "aktif",
+        phone: body.phone || "",
+        address: body.address || "",
+        joinDate: body.joinDate || "",
+        baseSalary: body.baseSalary ? Number(body.baseSalary) : 0,
+      },
+    });
+
+    return NextResponse.json({ success: true, message: "Data guru berhasil ditambahkan", data: employee });
+  } catch (error) {
+    console.error("Teacher POST error:", error);
+    return NextResponse.json({ success: false, message: "Gagal menyimpan data guru" }, { status: 500 });
+  }
+}

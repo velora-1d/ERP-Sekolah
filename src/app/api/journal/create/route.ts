@@ -3,16 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth, AuthError } from "@/lib/rbac";
 
 /**
- * POST /api/journal
+ * POST /api/journal/create
  * 
  * Catat transaksi baru ke jurnal umum.
- * Input: { type (in/out), amount, cashAccountId, categoryId, date, description }
+ * Input: { type (in/out), amount, cashAccountId (opsional), categoryId, date, description }
  * Logic:
- *   1. Validasi input + cek kas account exists
- *   2. Jika pengeluaran → validasi saldo cukup
- *   3. Buat GeneralTransaction
- *   4. Update saldo CashAccount
- *   5. Semua dalam $transaction (ACID)
+ *   1. Validasi input
+ *   2. Jika cashAccountId dikirim → validasi saldo & update kas (backward compatible)
+ *   3. Jika tidak → buat transaksi tanpa update saldo kas
+ *   4. Semua dalam $transaction (ACID)
  */
 export async function POST(request: Request) {
   try {
@@ -33,36 +32,35 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    if (!cashAccountId) {
-      return NextResponse.json(
-        { success: false, message: "Akun kas wajib dipilih" },
-        { status: 400 }
-      );
-    }
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Ambil akun kas dengan locking (serialized read)
-      const cashAccount = await tx.cashAccount.findUnique({
-        where: { id: Number(cashAccountId) },
-      });
+      let cashAccount = null;
+      let newBalance: number | null = null;
 
-      if (!cashAccount || cashAccount.deletedAt) {
-        throw new Error("Akun kas tidak ditemukan");
+      // Jika cashAccountId dikirim, proses akun kas (backward compatible)
+      if (cashAccountId) {
+        cashAccount = await tx.cashAccount.findUnique({
+          where: { id: Number(cashAccountId) },
+        });
+
+        if (!cashAccount || cashAccount.deletedAt) {
+          throw new Error("Akun kas tidak ditemukan");
+        }
+
+        // Validasi saldo untuk pengeluaran
+        if (type === "out" && cashAccount.balance < Number(amount)) {
+          throw new Error(
+            `Saldo tidak cukup. Saldo: Rp ${cashAccount.balance.toLocaleString("id-ID")}, Dibutuhkan: Rp ${Number(amount).toLocaleString("id-ID")}`
+          );
+        }
       }
 
-      // 2. Validasi saldo untuk pengeluaran
-      if (type === "out" && cashAccount.balance < Number(amount)) {
-        throw new Error(
-          `Saldo tidak cukup. Saldo: Rp ${cashAccount.balance.toLocaleString("id-ID")}, Dibutuhkan: Rp ${Number(amount).toLocaleString("id-ID")}`
-        );
-      }
-
-      // 3. Buat transaksi
+      // Buat transaksi
       const transaction = await tx.generalTransaction.create({
         data: {
           type,
           amount: Number(amount),
-          cashAccountId: Number(cashAccountId),
+          cashAccountId: cashAccountId ? Number(cashAccountId) : null,
           transactionCategoryId: categoryId ? Number(categoryId) : null,
           date: date || new Date().toISOString().split("T")[0],
           description: description || "",
@@ -72,17 +70,17 @@ export async function POST(request: Request) {
         },
       });
 
-      // 4. Update saldo kas
-      const balanceChange = type === "in" ? Number(amount) : -Number(amount);
-      await tx.cashAccount.update({
-        where: { id: cashAccount.id },
-        data: { balance: { increment: balanceChange } },
-      });
+      // Update saldo kas jika ada cashAccountId
+      if (cashAccount) {
+        const balanceChange = type === "in" ? Number(amount) : -Number(amount);
+        await tx.cashAccount.update({
+          where: { id: cashAccount.id },
+          data: { balance: { increment: balanceChange } },
+        });
+        newBalance = cashAccount.balance + balanceChange;
+      }
 
-      return {
-        transaction,
-        newBalance: cashAccount.balance + balanceChange,
-      };
+      return { transaction, newBalance };
     });
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 export default function PpdbPage() {
   const [data, setData] = useState<any[]>([]);
@@ -181,6 +182,9 @@ export default function PpdbPage() {
                 <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", margin: "0.125rem 0 0" }}>Kelola pendaftaran, penerimaan, dan konversi ke siswa.</p>
               </div>
             </div>
+            <Link href="/ppdb/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", textDecoration: "none" }} className="hover:bg-white/35 transition-all">
+              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Pendaftar
+            </Link>
           </div>
 
           {/* KPI Stats */}
