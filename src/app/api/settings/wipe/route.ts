@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireAuth, requireRole, AuthError } from "@/lib/rbac";
 
-const prisma = new PrismaClient();
-
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    // Basic implementation of wipe all transaction data.
-    // Extremely dangerous operation: MUST BE USED WITH CAUTION
+    // Verifikasi auth + role (hanya superadmin yang boleh wipe)
+    const user = await requireAuth();
+    requireRole(user, ["superadmin"]);
 
+    // Operasi SANGAT BERBAHAYA: hapus semua data transaksi dan master
     await prisma.$transaction([
       prisma.payrollDetail.deleteMany({}),
       prisma.payroll.deleteMany({}),
@@ -18,24 +19,22 @@ export async function POST(request: Request) {
       prisma.infaqBill.deleteMany({}),
       prisma.studentSaving.deleteMany({}),
       prisma.generalTransaction.deleteMany({}),
-      
       prisma.employeeSalary.deleteMany({}),
       prisma.inventory.deleteMany({}),
       prisma.salaryComponent.deleteMany({}),
       prisma.student.deleteMany({}),
       prisma.employee.deleteMany({}),
-
       prisma.transactionCategory.deleteMany({}),
       prisma.classroom.deleteMany({}),
-      // Account users and settings are explicitly kept
+      // User accounts dan settings TIDAK dihapus
     ]);
 
     return NextResponse.json({ success: true, message: "Semua data transaksi dan master telah dihapus." });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
+    }
     console.error(error);
-    return NextResponse.json(
-      { error: "Gagal menghapus semua data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Gagal menghapus semua data" }, { status: 500 });
   }
 }

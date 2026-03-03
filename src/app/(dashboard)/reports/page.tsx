@@ -22,11 +22,12 @@ export default function ReportsPage() {
     try {
       const res = await fetch(`/api/reports/${tab}`);
       const json = await res.json();
+      const d = json.data || json;
       
-      if (tab === "infaq") setInfaqData(json || []);
-      if (tab === "pendaftaran") setPendaftaranData(json || []);
-      if (tab === "tabungan") setTabunganData(json || []);
-      if (tab === "aruskas") setAruskasData(json || null);
+      if (tab === "infaq") setInfaqData(Array.isArray(d) ? d : []);
+      if (tab === "pendaftaran") setPendaftaranData(Array.isArray(d) ? d : []);
+      if (tab === "tabungan") setTabunganData(Array.isArray(d) ? d : []);
+      if (tab === "aruskas") setAruskasData(d || null);
 
     } catch (error) {
       console.error(error);

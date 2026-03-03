@@ -446,19 +446,42 @@ export default function SettingsPage() {
       {/* Tab 3: Alat Lanjut */}
       {activeTab === 'tools' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm p-8 animate-fade-in-up">
-           <div className="max-w-xl mx-auto text-center border border-rose-200 bg-rose-50 rounded-2xl p-8">
-              <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-              </div>
-              <h3 className="text-xl font-heading font-bold text-rose-700 mb-2">Zona Bahaya</h3>
-              <p className="text-sm text-slate-600 mb-6">Fungsi ini akan menghapus semua data transaksi, pendaftaran, dan data master di sistem Anda. Fitur ini berguna saat migrasi sistem atau saat tahun ajaran baru membutuhkan sistem bersih sepenuhnya dari nol.</p>
-              
-              <button onClick={wipeAllData} className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-lg shadow-rose-200 hover:-translate-y-1 transition-all inline-flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                WIPE OUT SEMUA DATA (RESET)
-              </button>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             {/* Backup */}
+             <div className="text-center border border-sky-200 bg-sky-50 rounded-2xl p-8 flex flex-col justify-between">
+                <div>
+                  <div className="w-16 h-16 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                  </div>
+                  <h3 className="text-xl font-heading font-bold text-sky-700 mb-2">Pencadangan Data</h3>
+                  <p className="text-sm text-slate-600 mb-6">Unduh data sistem (Siswa, Pegawai, Tabungan, Transaksi, dll) sebagai file cadangan (JSON) agar data Anda aman. Sangat disarankan dilakukan secara berkala.</p>
+                </div>
+                <div>
+                  <button onClick={() => window.location.href = "/api/settings/backup"} className="w-full justify-center px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg shadow-sky-200 hover:-translate-y-1 transition-all inline-flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    DOWNLOAD BACKUP DATA
+                  </button>
+                </div>
+             </div>
+
+             {/* Wipe */}
+             <div className="text-center border border-rose-200 bg-rose-50 rounded-2xl p-8 flex flex-col justify-between">
+                <div>
+                  <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-heading font-bold text-rose-700 mb-2">Zona Bahaya</h3>
+                  <p className="text-sm text-slate-600 mb-6">Fungsi ini akan menghapus semua data transaksi, pendaftaran, dan data master di sistem Anda. Fitur ini berguna saat migrasi sistem atau saat tahun ajaran baru membutuhkan sistem bersih sepenuhnya dari nol.</p>
+                </div>
+                <div>
+                  <button onClick={wipeAllData} className="w-full justify-center px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-lg shadow-rose-200 hover:-translate-y-1 transition-all inline-flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    WIPE OUT SEMUA DATA (RESET)
+                  </button>
+                </div>
+             </div>
            </div>
         </div>
       )}

@@ -7,6 +7,10 @@ datasource db {
   url       = env("DATABASE_URL")
 }
 
+// ============================================================
+// AUTH & USER
+// ============================================================
+
 model User {
   id         Int       @id @default(autoincrement())
   name       String
@@ -19,8 +23,16 @@ model User {
   updatedAt  DateTime  @updatedAt @map("updated_at")
   deletedAt  DateTime? @map("deleted_at")
 
+  auditLogs         AuditLog[]
+  receivedPayments  InfaqPayment[]     @relation("PaymentReceiver")
+  transactions      GeneralTransaction[] @relation("TransactionUser")
+
   @@map("users")
 }
+
+// ============================================================
+// AKADEMIK
+// ============================================================
 
 model AcademicYear {
   id        Int       @id @default(autoincrement())
@@ -32,20 +44,34 @@ model AcademicYear {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  classrooms          Classroom[]
+  infaqBills          InfaqBill[]
+  reRegistrations     ReRegistration[]
+  studentEnrollments  StudentEnrollment[]
+
   @@map("academic_years")
 }
 
 model Classroom {
   id             Int       @id @default(autoincrement())
   name           String
-  academicYearId String    @default("") @map("academic_year_id")
-  waliKelasId    String    @default("") @map("wali_kelas_id")
+  academicYearId Int?      @map("academic_year_id")
+  waliKelasId    Int?      @map("wali_kelas_id")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  waliKelas     Employee?     @relation(fields: [waliKelasId], references: [id], onDelete: SetNull)
+  students      Student[]
+  studentEnrollments StudentEnrollment[]
+
   @@map("classrooms")
 }
+
+// ============================================================
+// SISWA
+// ============================================================
 
 model Student {
   id           Int       @id @default(autoincrement())
@@ -56,7 +82,7 @@ model Student {
   name         String
   gender       String    @default("L")
   category     String    @default("reguler")
-  classroomId  String    @default("") @map("classroom_id")
+  classroomId  Int?      @map("classroom_id")
   status       String    @default("aktif")
   entryDate    String    @default("") @map("entry_date")
   unitId       String    @default("") @map("unit_id")
@@ -73,8 +99,18 @@ model Student {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
+  classroom    Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  infaqBills   InfaqBill[]
+  savings      StudentSaving[]
+  enrollments  StudentEnrollment[]
+  reRegistrations ReRegistration[]
+
   @@map("students")
 }
+
+// ============================================================
+// PPDB & DAFTAR ULANG
+// ============================================================
 
 model PpdbRegistration {
   id                 Int       @id @default(autoincrement())
@@ -106,8 +142,8 @@ model PpdbRegistration {
 
 model ReRegistration {
   id                 Int       @id @default(autoincrement())
-  studentId          String    @default("") @map("student_id")
-  academicYearId     String    @default("") @map("academic_year_id")
+  studentId          Int?      @map("student_id")
+  academicYearId     Int?      @map("academic_year_id")
   status             String    @default("pending")
   registrationSource String    @default("offline") @map("registration_source")
   confirmedAt        String?   @map("confirmed_at")
@@ -117,13 +153,16 @@ model ReRegistration {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
 
+  student       Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+
   @@map("re_registrations")
 }
 
 model RegistrationPayment {
   id          Int       @id @default(autoincrement())
   payableType String    @default("") @map("payable_type")
-  payableId   String    @default("") @map("payable_id")
+  payableId   Int?      @map("payable_id")
   paymentType String    @default("") @map("payment_type")
   nominal     Float     @default(0)
   isPaid      Boolean   @default(false) @map("is_paid")
@@ -137,6 +176,10 @@ model RegistrationPayment {
   @@map("registration_payments")
 }
 
+// ============================================================
+// KEUANGAN — INFAQ / SPP
+// ============================================================
+
 model TransactionCategory {
   id          Int       @id @default(autoincrement())
   name        String
@@ -147,13 +190,15 @@ model TransactionCategory {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
+  transactions GeneralTransaction[]
+
   @@map("transaction_categories")
 }
 
 model InfaqBill {
   id             Int       @id @default(autoincrement())
-  studentId      String    @default("") @map("student_id")
-  academicYearId String    @default("") @map("academic_year_id")
+  studentId      Int?      @map("student_id")
+  academicYearId Int?      @map("academic_year_id")
   month          String    @default("")
   year           String    @default("")
   nominal        Float     @default(0)
@@ -163,56 +208,82 @@ model InfaqBill {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
+  student       Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  payments      InfaqPayment[]
+
   @@map("infaq_bills")
 }
 
 model InfaqPayment {
   id          Int       @id @default(autoincrement())
-  billId      String    @default("") @map("bill_id")
+  billId      Int?      @map("bill_id")
   amountPaid  Float     @default(0) @map("amount_paid")
   paymentDate String    @default("") @map("payment_date")
-  receiverId  String    @default("") @map("receiver_id")
+  receiverId  Int?      @map("receiver_id")
   notes       String    @default("")
   unitId      String    @default("") @map("unit_id")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
+  bill     InfaqBill? @relation(fields: [billId], references: [id], onDelete: SetNull)
+  receiver User?      @relation("PaymentReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
+
   @@map("infaq_payments")
 }
 
+// ============================================================
+// KEUANGAN — TABUNGAN
+// ============================================================
+
 model StudentSaving {
   id           Int       @id @default(autoincrement())
-  studentId    String    @default("") @map("student_id")
+  studentId    Int?      @map("student_id")
   type         String    @default("")
   amount       Float     @default(0)
   balanceAfter Float     @default(0) @map("balance_after")
+  date         String    @default("")
   description  String    @default("")
-  status       String    @default("")
+  status       String    @default("active")
   unitId       String    @default("") @map("unit_id")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
+  student  Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
   @@map("student_savings")
 }
 
+// ============================================================
+// KEUANGAN — JURNAL UMUM & KAS
+// ============================================================
+
 model GeneralTransaction {
   id                    Int       @id @default(autoincrement())
-  transactionCategoryId String    @default("") @map("transaction_category_id")
-  cashAccountId         String    @default("") @map("cash_account_id")
+  transactionCategoryId Int?      @map("transaction_category_id")
+  cashAccountId         Int?      @map("cash_account_id")
+  userId                Int?      @map("user_id")
   type                  String    @default("in")
   amount                Float     @default(0)
   description           String    @default("")
-  transactionDate       String    @default("") @map("transaction_date")
+  date                  String    @default("") @map("transaction_date")
+  status                String    @default("valid")
   referenceType         String    @default("") @map("reference_type")
   referenceId           String    @default("") @map("reference_id")
-  wakafDonorId          String    @default("") @map("wakaf_donor_id")
-  wakafPurposeId        String    @default("") @map("wakaf_purpose_id")
+  wakafDonorId          Int?      @map("wakaf_donor_id")
+  wakafPurposeId        Int?      @map("wakaf_purpose_id")
   unitId                String    @default("") @map("unit_id")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")
+
+  category     TransactionCategory? @relation(fields: [transactionCategoryId], references: [id], onDelete: SetNull)
+  cashAccount  CashAccount?         @relation(fields: [cashAccountId], references: [id], onDelete: SetNull)
+  user         User?                @relation("TransactionUser", fields: [userId], references: [id], onDelete: SetNull)
+  wakafDonor   WakafDonor?          @relation(fields: [wakafDonorId], references: [id], onDelete: SetNull)
+  wakafPurpose WakafPurpose?        @relation(fields: [wakafPurposeId], references: [id], onDelete: SetNull)
 
   @@map("general_transactions")
 }
@@ -226,8 +297,14 @@ model CashAccount {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  transactions GeneralTransaction[]
+
   @@map("cash_accounts")
 }
+
+// ============================================================
+// KEPEGAWAIAN & PAYROLL
+// ============================================================
 
 model Employee {
   id         Int       @id @default(autoincrement())
@@ -245,6 +322,10 @@ model Employee {
   updatedAt  DateTime  @updatedAt @map("updated_at")
   deletedAt  DateTime? @map("deleted_at")
 
+  salaries       EmployeeSalary[]
+  payrolls       Payroll[]
+  waliKelasOf    Classroom[]
+
   @@map("employees")
 }
 
@@ -258,24 +339,30 @@ model SalaryComponent {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
+  employeeSalaries EmployeeSalary[]
+  payrollDetails   PayrollDetail[]
+
   @@map("salary_components")
 }
 
 model EmployeeSalary {
   id          Int       @id @default(autoincrement())
-  employeeId  String    @default("") @map("employee_id")
-  componentId String    @default("") @map("component_id")
+  employeeId  Int?      @map("employee_id")
+  componentId Int?      @map("component_id")
   amount      Float     @default(0)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
+
+  employee   Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  component  SalaryComponent? @relation(fields: [componentId], references: [id], onDelete: Cascade)
 
   @@map("employee_salaries")
 }
 
 model Payroll {
   id             Int       @id @default(autoincrement())
-  employeeId     String    @default("") @map("employee_id")
+  employeeId     Int?      @map("employee_id")
   month          String    @default("")
   year           String    @default("")
   baseSalary     Float     @default(0) @map("base_salary")
@@ -289,13 +376,16 @@ model Payroll {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
+  employee  Employee?       @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  details   PayrollDetail[]
+
   @@map("payrolls")
 }
 
 model PayrollDetail {
   id            Int       @id @default(autoincrement())
-  payrollId     String    @default("") @map("payroll_id")
-  componentId   String    @default("") @map("component_id")
+  payrollId     Int?      @map("payroll_id")
+  componentId   Int?      @map("component_id")
   componentName String    @default("") @map("component_name")
   type          String    @default("")
   amount        Float     @default(0)
@@ -303,8 +393,15 @@ model PayrollDetail {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
+  payroll    Payroll?          @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  component  SalaryComponent?  @relation(fields: [componentId], references: [id], onDelete: SetNull)
+
   @@map("payroll_details")
 }
+
+// ============================================================
+// INVENTARIS
+// ============================================================
 
 model Inventory {
   id              Int       @id @default(autoincrement())
@@ -322,12 +419,14 @@ model Inventory {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
 
+  logs InventoryLog[]
+
   @@map("inventories")
 }
 
 model InventoryLog {
   id             Int       @id @default(autoincrement())
-  inventoryId    String    @default("") @map("inventory_id")
+  inventoryId    Int?      @map("inventory_id")
   type           String    @default("")
   quantityChange Int       @default(0) @map("quantity_change")
   description    String    @default("")
@@ -336,22 +435,36 @@ model InventoryLog {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
+  inventory  Inventory? @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
   @@map("inventory_logs")
 }
 
+// ============================================================
+// ENROLLMENT
+// ============================================================
+
 model StudentEnrollment {
   id             Int       @id @default(autoincrement())
-  studentId      String    @default("") @map("student_id")
-  classroomId    String    @default("") @map("classroom_id")
-  academicYearId String    @default("") @map("academic_year_id")
+  studentId      Int?      @map("student_id")
+  classroomId    Int?      @map("classroom_id")
+  academicYearId Int?      @map("academic_year_id")
   enrollmentType String    @default("") @map("enrollment_type")
   notes          String    @default("")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
+  student       Student?      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroom     Classroom?    @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+
   @@map("student_enrollments")
 }
+
+// ============================================================
+// WAKAF
+// ============================================================
 
 model WakafDonor {
   id        Int       @id @default(autoincrement())
@@ -362,6 +475,8 @@ model WakafDonor {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
+
+  transactions GeneralTransaction[]
 
   @@map("wakaf_donors")
 }
@@ -377,8 +492,14 @@ model WakafPurpose {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   deletedAt       DateTime? @map("deleted_at")
 
+  transactions GeneralTransaction[]
+
   @@map("wakaf_purposes")
 }
+
+// ============================================================
+// SETTINGS & AUDIT
+// ============================================================
 
 model SchoolSetting {
   id        Int      @id @default(autoincrement())
@@ -393,13 +514,15 @@ model SchoolSetting {
 
 model AuditLog {
   id        Int      @id @default(autoincrement())
-  userId    String   @default("") @map("user_id")
+  userId    Int?     @map("user_id")
   action    String   @default("")
   modelType String   @default("") @map("model_type")
   modelId   String   @default("") @map("model_id")
   oldValues String   @default("") @map("old_values")
   newValues String   @default("") @map("new_values")
   createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
 }

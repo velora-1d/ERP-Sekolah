@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // GET /api/payroll
 export async function GET(request: Request) {
@@ -16,29 +14,20 @@ export async function GET(request: Request) {
 
     const payrolls = await prisma.payroll.findMany({
       where: whereClause,
+      include: { employee: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
 
-    // Ambil data pegawai untuk join nama manual karena ID nya string
-    const employeeIds = [...new Set(payrolls.map((p) => Number(p.employeeId)))].filter(id => !isNaN(id));
-    const employees = await prisma.employee.findMany({
-      where: { id: { in: employeeIds } },
-      select: { id: true, name: true },
-    });
-
-    const result = payrolls.map((p) => {
-      const emp = employees.find((e) => e.id === Number(p.employeeId));
-      return {
-        id: p.id,
-        code: `PAY-${p.year}${p.month.padStart(2, '0')}-${p.id.toString().padStart(4, '0')}`,
-        employee_name: emp ? emp.name : "Unknown",
-        total_earning: p.baseSalary + p.totalAllowance, // Base salary gabung allowance
-        total_deduction: p.totalDeduction,
-        net_salary: p.netSalary,
-        status: p.status,
-        created_at: p.createdAt,
-      };
-    });
+    const result = payrolls.map((p) => ({
+      id: p.id,
+      code: `PAY-${p.year}${p.month.padStart(2, '0')}-${p.id.toString().padStart(4, '0')}`,
+      employee_name: p.employee?.name || "Unknown",
+      total_earning: p.baseSalary + p.totalAllowance,
+      total_deduction: p.totalDeduction,
+      net_salary: p.netSalary,
+      status: p.status,
+      created_at: p.createdAt,
+    }));
 
     return NextResponse.json(result);
   } catch (error) {
@@ -49,8 +38,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/payroll/generate
-// Body: { month: "1", year: "2025" }
+// POST /api/payroll — Generate slip gaji bulanan
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -73,8 +61,10 @@ export async function POST(request: Request) {
     const allComponents = await prisma.salaryComponent.findMany({
       where: { deletedAt: null },
     });
-    
-    const employeeSalaries = await prisma.employeeSalary.findMany();
+
+    const employeeSalaries = await prisma.employeeSalary.findMany({
+      where: { deletedAt: null },
+    });
 
     // 3. Generate slip gaji per pegawai dalam transaction
     await prisma.$transaction(async (tx) => {
@@ -82,52 +72,52 @@ export async function POST(request: Request) {
         // Cek apakah sudah digenerate bulan ini
         const existing = await tx.payroll.findFirst({
           where: {
-            employeeId: String(emp.id),
+            employeeId: emp.id,
             month: month,
             year: year,
             deletedAt: null,
           },
         });
 
-        if (existing) continue; // Skip jika sudah ada
+        if (existing) continue;
 
         // Hitung gaji
         let totalEarning = emp.baseSalary || 0;
         let totalDeduction = 0;
-        const detailsData: any[] = [];
+        const detailsData: { componentId: number | null; componentName: string; type: string; amount: number }[] = [];
 
         // Masukkan base salary sebagai komponen detail jika > 0
         if (emp.baseSalary > 0) {
-           detailsData.push({
-             componentId: "base",
-             componentName: "Gaji Pokok",
-             type: "earning",
-             amount: emp.baseSalary,
-           });
+          detailsData.push({
+            componentId: null,
+            componentName: "Gaji Pokok",
+            type: "earning",
+            amount: emp.baseSalary,
+          });
         }
 
         // Ambil komponen spesifik dari employeeSalaries
-        const empComps = employeeSalaries.filter(es => es.employeeId === String(emp.id));
-        
+        const empComps = employeeSalaries.filter(es => es.employeeId === emp.id);
+
         // Loop ke semua master komponen
         for (const comp of allComponents) {
-           const setup = empComps.find(es => es.componentId === String(comp.id));
-           const amount = setup ? setup.amount : comp.defaultAmount;
+          const setup = empComps.find(es => es.componentId === comp.id);
+          const amount = setup ? setup.amount : comp.defaultAmount;
 
-           if (amount > 0) {
-             if (comp.type === "earning") {
-               totalEarning += amount;
-             } else {
-               totalDeduction += amount;
-             }
-             
-             detailsData.push({
-               componentId: String(comp.id),
-               componentName: comp.name,
-               type: comp.type,
-               amount: amount,
-             });
-           }
+          if (amount > 0) {
+            if (comp.type === "earning") {
+              totalEarning += amount;
+            } else {
+              totalDeduction += amount;
+            }
+
+            detailsData.push({
+              componentId: comp.id,
+              componentName: comp.name,
+              type: comp.type,
+              amount: amount,
+            });
+          }
         }
 
         const netSalary = totalEarning - totalDeduction;
@@ -135,7 +125,7 @@ export async function POST(request: Request) {
         // Create Payroll
         const newPayroll = await tx.payroll.create({
           data: {
-            employeeId: String(emp.id),
+            employeeId: emp.id,
             month: month,
             year: year,
             baseSalary: emp.baseSalary || 0,
@@ -151,7 +141,7 @@ export async function POST(request: Request) {
           await tx.payrollDetail.createMany({
             data: detailsData.map(d => ({
               ...d,
-              payrollId: String(newPayroll.id),
+              payrollId: newPayroll.id,
             })),
           });
         }

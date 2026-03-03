@@ -21,38 +21,38 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    const pending = list.filter((r) => r.status === "menunggu").length;
+    // Ambil payments terkait (relasi polymorphic)
+    const regIds = list.map(r => r.id);
+    const payments = regIds.length > 0
+      ? await prisma.registrationPayment.findMany({
+          where: {
+            payableType: "ppdb",
+            payableId: { in: regIds },
+            deletedAt: null,
+          },
+        })
+      : [];
+
+    // Gabungkan payments ke masing-masing registrasi
+    const dataWithPayments = list.map(r => ({
+      ...r,
+      payments: payments.filter(p => p.payableId === r.id),
+    }));
+
+    const pending = list.filter((r) => r.status === "menunggu" || r.status === "pending").length;
     const diterima = list.filter((r) => r.status === "diterima").length;
     const ditolak = list.filter((r) => r.status === "ditolak").length;
-
-    // Hitung Stats Payment
-    let totalFee = 0, countFee = 0;
-    let totalBooks = 0, countBooks = 0;
-    let totalUniform = 0, countUniform = 0;
-
-    const currentFee = 0;
-    const currentBooks = 0;
-    const currentUniform = 0;
 
     const stats = {
       total: list.length,
       pending,
       diterima,
       ditolak,
-      payments: {
-        total_fee: totalFee, count_fee: countFee,
-        total_books: totalBooks, count_books: countBooks,
-        total_uniform: totalUniform, count_uniform: countUniform,
-        grand_total: totalFee + totalBooks + totalUniform,
-        // fees setting reference
-        fee_amount: currentFee,
-        books_amount: currentBooks,
-        uniform_amount: currentUniform
-      }
     };
 
-    return NextResponse.json({ success: true, data: list, stats });
+    return NextResponse.json({ success: true, data: dataWithPayments, stats });
   } catch (error) {
+    console.error("PPDB GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }

@@ -1,17 +1,36 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth, AuthError } from "@/lib/rbac";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
   try {
+    await requireAuth();
+    const id = parseInt(params.id);
     const student = await prisma.student.findFirst({
-      where: { id: parseInt(params.id), deletedAt: null }
+      where: { id, deletedAt: null },
+      include: {
+        classroom: true,
+        infaqBills: { where: { deletedAt: null }, orderBy: { month: "desc" }, take: 12 },
+        savings: { where: { deletedAt: null, status: "active" }, orderBy: { createdAt: "desc" }, take: 10 },
+        enrollments: { include: { classroom: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+      },
     });
-    if (!student) return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
-    
-    return NextResponse.json({ success: true, data: student });
+    if (!student) return NextResponse.json({ success: false, message: "Siswa tidak ditemukan" }, { status: 404 });
+
+    // Hitung saldo tabungan
+    let savingsBalance = 0;
+    const allSv = await prisma.studentSaving.findMany({ where: { studentId: id, deletedAt: null, status: "active" } });
+    allSv.forEach((sv) => { if (sv.type === "setor") savingsBalance += sv.amount; else if (sv.type === "tarik") savingsBalance -= sv.amount; });
+
+    const tunggakan = student.infaqBills.filter((b) => b.status === "belum_lunas").length;
+
+    return NextResponse.json({ success: true, data: { ...student, savingsBalance, tunggakanCount: tunggakan } });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
+    }
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
@@ -37,7 +56,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         fatherName: father_name || "",
         motherName: mother_name || "",
         phone: parent_phone || "",
-        classroomId: classroom || "",
+        classroomId: classroom ? Number(classroom) : null,
       }
     });
 

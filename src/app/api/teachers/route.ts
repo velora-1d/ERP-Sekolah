@@ -2,16 +2,35 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
-  try {
-    const teachers = await prisma.employee.findMany({
-      where: {
-        type: "guru",
-        deletedAt: null
-      },
-      orderBy: { createdAt: "desc" }
-    });
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
+  const search = searchParams.get("q") || "";
 
-    return NextResponse.json({ success: true, data: teachers });
+  try {
+    const where: any = { type: "guru", deletedAt: null };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { nip: { contains: search } },
+      ];
+    }
+
+    const [teachers, total] = await Promise.all([
+      prisma.employee.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.employee.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: teachers,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }

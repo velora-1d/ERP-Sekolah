@@ -1,37 +1,49 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function StudentsPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async (p = page, q = search) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/students");
+      const res = await fetch(`/api/students?page=${p}&limit=20&q=${encodeURIComponent(q)}`);
       const json = await res.json();
-      if (json.success) setData(json.data || []);
+      if (json.success) {
+        setData(json.data || []);
+        if (json.pagination) setPagination(json.pagination);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search]);
 
   useEffect(() => {
     loadStudents();
   }, []);
 
-  const filteredData = data.filter((s) => {
-    const q = search.toLowerCase();
-    return (
-      (s.name || "").toLowerCase().includes(q) ||
-      (s.nisn || "").includes(q)
-    );
-  });
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
+    const q = e.target.value;
+    setSearch(q);
+    setPage(1);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => loadStudents(1, q), 400);
+  }
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    loadStudents(p, search);
+  }
 
   const handleDelete = (s: any) => {
     Swal.fire({
@@ -91,8 +103,27 @@ export default function StudentsPage() {
               </div>
             </div>
             <div className="flex gap-2 items-center flex-wrap">
-              <input type="text" placeholder="Cari nama/NISN..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", width: 180, outline: "none" }} className="placeholder-white/60 focus:bg-white/30 transition-colors" />
-              <button style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
+              <input type="text" placeholder="Cari nama/NISN..." value={search} onChange={handleSearch} style={{ padding: "0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", width: 180, outline: "none" }} className="placeholder-white/60 focus:bg-white/30 transition-colors" />
+              <button onClick={() => window.location.href = "/api/students/template"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
+                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Template
+              </button>
+              <label style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-colors">
+                <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>Import
+                <input type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const fd = new FormData();
+                  fd.append("file", file);
+                  try {
+                    const res = await fetch("/api/students/import", { method: "POST", body: fd });
+                    const json = await res.json();
+                    Swal.fire(json.success ? "Berhasil" : "Gagal", json.message, json.success ? "success" : "error");
+                    if (json.success) loadStudents();
+                  } catch { Swal.fire("Error", "Gagal import", "error"); }
+                  e.target.value = "";
+                }} />
+              </label>
+              <button onClick={() => window.location.href = "/api/students/export"} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 600, fontSize: "0.6875rem", border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer" }} className="hover:bg-white/30 transition-colors">
                 <svg style={{ width: "0.8rem", height: "0.8rem", marginRight: "0.25rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Export
               </button>
               <Link href="/students/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/35 transition-all">
@@ -127,7 +158,7 @@ export default function StudentsPage() {
                   <svg className="animate-spin" style={{ width: 24, height: 24, margin: "0 auto 8px", display: "block" }} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                   Memuat data...
                 </td></tr>
-              ) : filteredData.length === 0 ? (
+              ) : data.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: "4rem 2rem", textAlign: "center" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
@@ -138,8 +169,8 @@ export default function StudentsPage() {
                   </div>
                 </td></tr>
               ) : (
-                filteredData.map((s, i) => {
-                  const initial = (s.name || "?").charAt(0).toUpperCase();
+                data.map((s, i) => {
+                  const idx = ((pagination.page - 1) * pagination.limit) + i + 1;
                   const genderLabel = s.gender === "L" ? "♂ Laki-laki" : "♀ Perempuan";
                   const cc = catColors[s.category] || catColors.reguler;
                   const sc = statusColors[s.status] || statusColors.nonaktif;
@@ -147,10 +178,10 @@ export default function StudentsPage() {
 
                   return (
                     <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{i + 1}</td>
+                      <td style={{ padding: "1rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{idx}</td>
                       <td style={{ padding: "1rem 1.5rem", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                          <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{initial}</div>
+                          <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{(s.name || "?").charAt(0).toUpperCase()}</div>
                           <div>
                             <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{s.name || "-"}</p>
                             <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>NISN: {s.nisn || "-"} · {genderLabel}</p>
@@ -161,8 +192,8 @@ export default function StudentsPage() {
                         <span style={{ display: "inline-flex", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, borderRadius: 999, background: cc[0], color: cc[1] }}>{catLabel}</span>
                       </td>
                       <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                        {s.classroom ? (
-                          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{s.classroom}</span>
+                        {(s.classroom && s.classroom.name) ? (
+                          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{s.classroom.name}</span>
                         ) : (
                           <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", padding: "0.25rem 0.625rem", borderRadius: 999 }}>Tanpa Kelas</span>
                         )}
@@ -183,6 +214,7 @@ export default function StudentsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} onPageChange={handlePageChange} />
       </div>
     </div>
   );

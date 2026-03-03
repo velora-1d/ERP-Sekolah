@@ -1,40 +1,32 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
     const reregList = await prisma.reRegistration.findMany({
       where: { deletedAt: null },
+      include: {
+        student: {
+          select: { id: true, name: true, classroomId: true, gender: true },
+        },
+      },
       orderBy: { id: "desc" },
     });
 
-    const students = await prisma.student.findMany({
-      where: { deletedAt: null },
-      select: { id: true, name: true, classroomId: true, gender: true },
-    });
-    
+    // Map classrooms
     const classRooms = await prisma.classroom.findMany({
-      select: { id: true, name: true }
+      select: { id: true, name: true },
     });
-    const classMap = classRooms.reduce((acc, c) => {
-      acc[c.id.toString()] = c.name;
-      return acc;
-    }, {} as Record<string, string>);
+    const classMap = Object.fromEntries(classRooms.map(c => [c.id, c.name]));
 
-    const studentMap = students.reduce((acc, s) => {
-      acc[s.id.toString()] = s;
-      return acc;
-    }, {} as Record<string, any>);
-
+    // Map payments
     const payments = await prisma.registrationPayment.findMany({
       where: { payableType: "reregistration", deletedAt: null },
     });
-
     const paymentMap = payments.reduce((acc, p) => {
-      if (!acc[p.payableId]) acc[p.payableId] = {};
-      acc[p.payableId][p.paymentType] = p.isPaid;
+      const key = String(p.payableId);
+      if (!acc[key]) acc[key] = {};
+      acc[key][p.paymentType] = p.isPaid;
       return acc;
     }, {} as Record<string, Record<string, boolean>>);
 
@@ -47,17 +39,16 @@ export async function GET() {
       else if (reg.status === "not_registered") not_registered++;
       else pending++;
 
-      const s = studentMap[reg.studentId] || {};
       const p = paymentMap[reg.id.toString()] || {};
 
       return {
         id: reg.id,
-        student_name: s.name || "Anonim",
-        classroom: classMap[s.classroomId] || "-",
-        gender: s.gender || "L",
+        student_name: reg.student?.name || "Anonim",
+        classroom: reg.student?.classroomId ? classMap[reg.student.classroomId] || "-" : "-",
+        gender: reg.student?.gender || "L",
         status: reg.status,
         payment: {
-          id: reg.id.toString(), // ID for toggling
+          id: reg.id.toString(),
           is_fee_paid: p["fee"] || false,
           is_books_paid: p["books"] || false,
           is_uniform_paid: p["uniform"] || false,

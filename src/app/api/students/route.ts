@@ -2,13 +2,40 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
-  try {
-    const students = await prisma.student.findMany({
-      where: { deletedAt: null },
-      orderBy: { name: "asc" }
-    });
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
+  const search = searchParams.get("q") || "";
+  const classroom = searchParams.get("classroom") || "";
 
-    return NextResponse.json({ success: true, data: students });
+  try {
+    const where: any = { deletedAt: null };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { nisn: { contains: search } },
+      ];
+    }
+    if (classroom) {
+      where.classroomId = Number(classroom);
+    }
+
+    const [students, total] = await Promise.all([
+      prisma.student.findMany({
+        where,
+        include: { classroom: { select: { id: true, name: true } } },
+        orderBy: { name: "asc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.student.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: students,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
@@ -32,7 +59,7 @@ export async function POST(request: Request) {
         fatherName: father_name || "",
         motherName: mother_name || "",
         phone: parent_phone || "",
-        classroomId: classroom || "",
+        classroomId: classroom ? Number(classroom) : null,
       }
     });
 

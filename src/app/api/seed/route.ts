@@ -8,7 +8,7 @@ export async function POST() {
     const existing = await prisma.user.findFirst({ where: { email: "admin@assaodah.sch.id" } });
     if (!existing) {
       await prisma.user.create({
-        data: { name: "Administrator", email: "admin@assaodah.sch.id", password: hashPassword("admin123"), role: "superadmin", status: "aktif" }
+        data: { name: "Administrator", email: "admin@assaodah.sch.id", password: hashPassword("admin123"), role: "superadmin", status: "aktif" },
       });
     }
 
@@ -25,7 +25,7 @@ export async function POST() {
     for (const name of kelasNames) {
       const exists = await prisma.classroom.findFirst({ where: { name, deletedAt: null } });
       if (!exists) {
-        await prisma.classroom.create({ data: { name, academicYearId: String(ayId || "") } });
+        await prisma.classroom.create({ data: { name, academicYearId: ayId || null } });
       }
     }
     const allKelas = await prisma.classroom.findMany({ where: { deletedAt: null } });
@@ -36,7 +36,7 @@ export async function POST() {
       const exists = await prisma.employee.findFirst({ where: { name: guruNames[i], deletedAt: null } });
       if (!exists) {
         await prisma.employee.create({
-          data: { name: guruNames[i], nip: `G00${i + 1}`, type: "guru", position: `Wali ${kelasNames[i]}`, status: "aktif", phone: `08${1100000 + i}`, baseSalary: 2500000 + (i * 100000) }
+          data: { name: guruNames[i], nip: `G00${i + 1}`, type: "guru", position: `Wali ${kelasNames[i]}`, status: "aktif", phone: `08${1100000 + i}`, baseSalary: 2500000 + (i * 100000) },
         });
       }
     }
@@ -47,7 +47,7 @@ export async function POST() {
       const exists = await prisma.employee.findFirst({ where: { name: stafNames[i], deletedAt: null } });
       if (!exists) {
         await prisma.employee.create({
-          data: { name: stafNames[i], nip: `S00${i + 1}`, type: "staf", position: stafNames[i].split("(")[1]?.replace(")", "") || "Staf", status: "aktif", phone: `08${2200000 + i}`, baseSalary: 2000000 + (i * 50000) }
+          data: { name: stafNames[i], nip: `S00${i + 1}`, type: "staf", position: stafNames[i].split("(")[1]?.replace(")", "") || "Staf", status: "aktif", phone: `08${2200000 + i}`, baseSalary: 2000000 + (i * 50000) },
         });
       }
     }
@@ -59,11 +59,24 @@ export async function POST() {
     for (const kelas of allKelas) {
       for (let j = 0; j < 10; j++) {
         const gender = j < 5 ? "L" : "P";
-        const nama = gender === "L" ? `${namaPA[j % 5]} ${kelas.name.replace("Kelas ", "")}${String.fromCharCode(65 + j)}` : `${namaPI[j % 5]} ${kelas.name.replace("Kelas ", "")}${String.fromCharCode(65 + j)}`;
+        const nama = gender === "L"
+          ? `${namaPA[j % 5]} ${kelas.name.replace("Kelas ", "")}${String.fromCharCode(65 + j)}`
+          : `${namaPI[j % 5]} ${kelas.name.replace("Kelas ", "")}${String.fromCharCode(65 + j)}`;
         const exists = await prisma.student.findFirst({ where: { name: nama, deletedAt: null } });
         if (!exists) {
           await prisma.student.create({
-            data: { name: nama, nisn: `00${1000 + siswaCount}`, nis: `${2025}${String(siswaCount + 1).padStart(3, "0")}`, gender, category: "reguler", classroomId: String(kelas.id), status: "aktif", entryDate: "2025-07-14", infaqStatus: "reguler", infaqNominal: 150000 }
+            data: {
+              name: nama,
+              nisn: `00${1000 + siswaCount}`,
+              nis: `${2025}${String(siswaCount + 1).padStart(3, "0")}`,
+              gender,
+              category: "reguler",
+              classroomId: kelas.id,
+              status: "aktif",
+              entryDate: "2025-07-14",
+              infaqStatus: "reguler",
+              infaqNominal: 150000,
+            },
           });
         }
         siswaCount++;
@@ -76,7 +89,19 @@ export async function POST() {
       const exists = await prisma.ppdbRegistration.findFirst({ where: { name: ppdbNames[i], deletedAt: null } });
       if (!exists) {
         await prisma.ppdbRegistration.create({
-          data: { formNo: `PPDB-2025-${String(i + 1).padStart(3, "0")}`, name: ppdbNames[i], gender: i % 2 === 0 ? "P" : "L", birthPlace: "Bandung", birthDate: `201${8 + (i % 2)}-0${(i % 9) + 1}-${10 + i}`, fatherName: `Bapak ${ppdbNames[i].split(" ")[1]}`, motherName: `Ibu ${ppdbNames[i].split(" ")[1]}`, phone: `08${3300000 + i}`, address: `Jl. Contoh No. ${i + 1}`, status: i < 5 ? "pending" : "diterima", registrationSource: "offline" }
+          data: {
+            formNo: `PPDB-2025-${String(i + 1).padStart(3, "0")}`,
+            name: ppdbNames[i],
+            gender: i % 2 === 0 ? "P" : "L",
+            birthPlace: "Bandung",
+            birthDate: `201${8 + (i % 2)}-0${(i % 9) + 1}-${10 + i}`,
+            fatherName: `Bapak ${ppdbNames[i].split(" ")[1]}`,
+            motherName: `Ibu ${ppdbNames[i].split(" ")[1]}`,
+            phone: `08${3300000 + i}`,
+            address: `Jl. Contoh No. ${i + 1}`,
+            status: i < 5 ? "pending" : "diterima",
+            registrationSource: "offline",
+          },
         });
       }
     }
@@ -90,6 +115,32 @@ export async function POST() {
       const exists = await prisma.transactionCategory.findFirst({ where: { name: cat.name, deletedAt: null } });
       if (!exists) {
         await prisma.transactionCategory.create({ data: cat });
+      }
+    }
+
+    // 9. Kas/Bank Account
+    const cashAccounts = [
+      { name: "Kas Utama", balance: 0 },
+      { name: "Bank BSI", balance: 0 },
+    ];
+    for (const ca of cashAccounts) {
+      const exists = await prisma.cashAccount.findFirst({ where: { name: ca.name, deletedAt: null } });
+      if (!exists) {
+        await prisma.cashAccount.create({ data: ca });
+      }
+    }
+
+    // 10. Komponen Gaji
+    const salaryComps = [
+      { name: "Tunjangan Transport", type: "earning", defaultAmount: 300000 },
+      { name: "Tunjangan Makan", type: "earning", defaultAmount: 200000 },
+      { name: "BPJS Kesehatan", type: "deduction", defaultAmount: 50000 },
+      { name: "Potongan Lainnya", type: "deduction", defaultAmount: 0 },
+    ];
+    for (const comp of salaryComps) {
+      const exists = await prisma.salaryComponent.findFirst({ where: { name: comp.name, deletedAt: null } });
+      if (!exists) {
+        await prisma.salaryComponent.create({ data: comp });
       }
     }
 

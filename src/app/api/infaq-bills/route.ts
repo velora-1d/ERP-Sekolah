@@ -5,50 +5,65 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const month = searchParams.get("month") || "";
-  const status = searchParams.get("status") || "";
+  const statusFilter = searchParams.get("status") || "";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 25));
 
   try {
+    const where: any = { deletedAt: null };
+    if (month) where.month = month;
+    if (statusFilter) where.status = statusFilter;
+
+    // Jika ada search, kita filter by student name di memori (karena relasi)
+    let skip = (page - 1) * limit;
+
     const bills = await prisma.infaqBill.findMany({
-      where: {
-        deletedAt: null,
-        ...(month && { month }),
-        ...(status && { status }),
+      where,
+      include: {
+        student: {
+          select: { id: true, name: true, nisn: true, classroomId: true },
+        },
+        academicYear: {
+          select: { id: true, year: true },
+        },
       },
       orderBy: [{ createdAt: "desc" }],
-      take: 100, // Limit for performance demo
     });
 
-    const studentIds = bills.map(b => parseInt(b.studentId)).filter(id => !isNaN(id));
-    const students = await prisma.student.findMany({
-      where: { id: { in: studentIds } },
+    // Map classroom names
+    const classroomIds = bills
+      .map(b => b.student?.classroomId)
+      .filter((id): id is number => id != null);
+    const classrooms = await prisma.classroom.findMany({
+      where: { id: { in: [...new Set(classroomIds)] } },
     });
-    const academicYearIds = bills.map(b => parseInt(b.academicYearId)).filter(id => !isNaN(id));
-    const academicYears = await prisma.academicYear.findMany({
-      where: { id: { in: academicYearIds } },
-    });
+    const classMap = Object.fromEntries(classrooms.map(c => [c.id, c.name]));
 
-    const formattedBills = bills.map(b => {
-      const student = students.find(s => s.id === parseInt(b.studentId));
-      const year = academicYears.find(y => y.id === parseInt(b.academicYearId));
-      
-      // Filter by search term manually if search is provided
-      if (search && student && !student.name.toLowerCase().includes(search.toLowerCase())) {
+    let formattedBills = bills.map(b => {
+      const studentName = b.student?.name || "Unknown";
+      if (search && !studentName.toLowerCase().includes(search.toLowerCase())) {
         return null;
       }
-
       return {
         id: b.id,
-        student_name: student?.name || "Unknown",
-        nisn: student?.nisn || "-",
-        classroom: student?.classroomId || "-",
-        academic_year: year?.year || "-",
+        student_name: studentName,
+        nisn: b.student?.nisn || "-",
+        classroom: b.student?.classroomId ? classMap[b.student.classroomId] || "-" : "-",
+        academic_year: b.academicYear?.year || "-",
         month: b.month,
         nominal: b.nominal,
         status: b.status,
       };
-    }).filter(Boolean); // Remove nulls from search filter
+    }).filter(Boolean);
 
-    return NextResponse.json({ success: true, data: formattedBills });
+    const total = formattedBills.length;
+    const paginated = formattedBills.slice(skip, skip + limit);
+
+    return NextResponse.json({
+      success: true,
+      data: paginated,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }

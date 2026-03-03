@@ -11,33 +11,27 @@ export async function GET(request: Request) {
       where: {
         deletedAt: null,
         status: "aktif",
-        ...(classFilter && { classroomId: classFilter }),
+        ...(classFilter && { classroomId: Number(classFilter) }),
+      },
+      include: {
+        classroom: { select: { id: true, name: true } },
       },
       orderBy: { name: "asc" },
     });
 
-    // Ambil data classroom untuk di-map nanti
-    const classrooms = await prisma.classroom.findMany({
-      where: { deletedAt: null }
-    });
-    const classMap = Object.fromEntries(classrooms.map(c => [c.id.toString(), c.name]));
-
-    // Hitung saldo
-    // Karena tidak ada relasi langsung di prisma schema antara Student dan StudentSaving,
-    // kita ambil semua transaction savings yg belum dihapus.
-    // Asumsi: amount di database jika tarik mungkin sudah diset -amount atau selalu positif dan tipe yg menentukan.
+    // Hitung saldo dari transaksi tabungan aktif
     const allSavings = await prisma.studentSaving.findMany({
-      where: { deletedAt: null }
+      where: { deletedAt: null, status: "active" },
     });
 
-    const balanceMap: Record<string, number> = {};
+    const balanceMap: Record<number, number> = {};
     allSavings.forEach(s => {
-      const sId = s.studentId;
-      if (!balanceMap[sId]) balanceMap[sId] = 0;
+      if (s.studentId == null) return;
+      if (!balanceMap[s.studentId]) balanceMap[s.studentId] = 0;
       if (s.type === "setor") {
-        balanceMap[sId] += s.amount;
+        balanceMap[s.studentId] += s.amount;
       } else if (s.type === "tarik") {
-        balanceMap[sId] -= s.amount;
+        balanceMap[s.studentId] -= s.amount;
       }
     });
 
@@ -45,8 +39,8 @@ export async function GET(request: Request) {
       id: s.id,
       name: s.name,
       nisn: s.nisn,
-      classroom: classMap[s.classroomId] || "-",
-      balance: balanceMap[s.id.toString()] || 0,
+      classroom: s.classroom?.name || "-",
+      balance: balanceMap[s.id] || 0,
     }));
 
     return NextResponse.json({ success: true, data });

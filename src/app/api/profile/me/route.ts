@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Fungsi helper simulasi untuk mendapatkan user yang sedang login (mengambil admin pertama)
 async function getMe() {

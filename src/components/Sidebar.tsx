@@ -1,6 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { SIDEBAR_PERMISSIONS, type Role } from "@/lib/rbac-permissions";
 
 const menuItems = [
   { group: "UTAMA", items: [
@@ -35,6 +36,19 @@ const menuItems = [
   ]},
 ];
 
+/**
+ * Cek apakah user dengan role tertentu boleh melihat menu item
+ */
+function hasMenuAccess(href: string, role: string): boolean {
+  // Superadmin selalu akses semua
+  if (role === "superadmin") return true;
+
+  const allowed = SIDEBAR_PERMISSIONS[href];
+  // Jika tidak ada di permission map → tampilkan (default show)
+  if (!allowed) return true;
+  return allowed.includes(role as Role);
+}
+
 export default function Sidebar({ user }: { user: { name: string; role: string } }) {
   const pathname = usePathname();
 
@@ -48,29 +62,37 @@ export default function Sidebar({ user }: { user: { name: string; role: string }
         <span className="ml-3 text-xl font-bold text-white" style={{ letterSpacing: "-0.02em" }}>MI As-Saodah</span>
       </div>
 
-      {/* Nav Menu */}
+      {/* Nav Menu — filtered by role */}
       <div id="sidebar-nav" className="flex-1 overflow-y-auto py-6">
         <nav className="px-4 space-y-1">
-          {menuItems.map((group, gi) => (
-            <div key={gi}>
-              <div className={`px-4 pb-2 ${gi > 0 ? "pt-4 mt-4" : "pt-2"}`} style={gi > 0 ? { borderTop: "1px solid rgba(99,102,241,0.15)" } : {}}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(129,140,248,0.5)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{group.group}</span>
+          {menuItems.map((group, gi) => {
+            // Filter items berdasarkan role
+            const visibleItems = group.items.filter(item => hasMenuAccess(item.href, user.role));
+
+            // Jika tidak ada item yang visible di group ini, skip group
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={gi}>
+                <div className={`px-4 pb-2 ${gi > 0 ? "pt-4 mt-4" : "pt-2"}`} style={gi > 0 ? { borderTop: "1px solid rgba(99,102,241,0.15)" } : {}}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(129,140,248,0.5)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{group.group}</span>
+                </div>
+                {visibleItems.map((item, ii) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link key={ii} href={item.href}
+                      className={`sidebar-menu flex items-center px-4 py-3 text-sm font-bold rounded-xl ${isActive ? "active" : ""}`}
+                      style={{ color: "#c7d2fe" }}>
+                      <svg className={`menu-icon mr-3 flex-shrink-0 h-5 w-5`} style={{ color: isActive ? "#f59e0b" : "#818cf8" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                      </svg>
+                      <span className="menu-text">{item.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
-              {group.items.map((item, ii) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link key={ii} href={item.href}
-                    className={`sidebar-menu flex items-center px-4 py-3 text-sm font-bold rounded-xl ${isActive ? "active" : ""}`}
-                    style={{ color: "#c7d2fe" }}>
-                    <svg className={`menu-icon mr-3 flex-shrink-0 h-5 w-5`} style={{ color: isActive ? "#f59e0b" : "#818cf8" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                    </svg>
-                    <span className="menu-text">{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </nav>
       </div>
 

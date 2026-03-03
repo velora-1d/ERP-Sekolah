@@ -25,9 +25,9 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
     district: initialData?.district || "",
     father_name: initialData?.fatherName || "",
     mother_name: initialData?.motherName || "",
-    parent_phone: initialData?.parentPhone || "",
-    parent_job: initialData?.parentJob || "",
-    classroom: initialData?.classroom || "",
+    parent_phone: initialData?.phone || "",
+    parent_job: "",
+    classroom: initialData?.classroomId || "",
   });
 
   const handleChange = (e: any) => {
