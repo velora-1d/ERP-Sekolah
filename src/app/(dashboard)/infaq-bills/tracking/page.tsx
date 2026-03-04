@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 const semesterMonths: Record<number, number[]> = {
   1: [7, 8, 9, 10, 11, 12],
@@ -58,9 +59,22 @@ export default function TrackingPerKelasPage() {
   const fmtRp = (n: number) => `Rp ${Number(n).toLocaleString("id-ID")}`;
 
   // === Aksi ===
-  async function handleEditNominal(billId: number, currentNominal: number, studentName: string) {
-    const newVal = prompt(`Edit nominal ${studentName}:`, String(currentNominal));
-    if (!newVal || isNaN(Number(newVal))) return;
+  async function handleEditNominal(billId: string, studentName: string, currentNominal: number) {
+    const { value: newValStr } = await Swal.fire({
+      title: "Edit Nominal",
+      input: "number",
+      inputLabel: `Edit nominal tagihan untuk ${studentName}`,
+      inputValue: currentNominal,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal"
+    });
+    if (newValStr === undefined || newValStr === null || newValStr === "") return;
+    const newVal = parseInt(newValStr, 10);
+    if (isNaN(newVal) || newVal < 0) {
+      Swal.fire("Error", "Nominal tidak valid", "error");
+      return;
+    }
     try {
       const res = await fetch(`/api/infaq-bills/${billId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
@@ -72,8 +86,17 @@ export default function TrackingPerKelasPage() {
     } catch { showToast("Gagal edit", "error"); }
   }
 
-  async function handleDelete(billId: number) {
-    if (!confirm("Yakin hapus tagihan ini?")) return;
+  async function handleDelete(billId: string) {
+    const result = await Swal.fire({
+      title: "Hapus Tagihan?",
+      text: "Hapus tagihan ini? Tindakan ini tidak dapat dibatalkan.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Hapus"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}`, { method: "DELETE" });
       const json = await res.json();
@@ -82,8 +105,17 @@ export default function TrackingPerKelasPage() {
     } catch { showToast("Gagal hapus", "error"); }
   }
 
-  async function handleRevert(billId: number) {
-    if (!confirm("Revert tagihan ini ke belum lunas?")) return;
+  async function handleRevert(billId: string) {
+    const result = await Swal.fire({
+      title: "Batalkan Pelunasan?",
+      text: "Ubah status tagihan ini menjadi belum lunas?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Batalkan"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}/revert`, { method: "POST" });
       const json = await res.json();

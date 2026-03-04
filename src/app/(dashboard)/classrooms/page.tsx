@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 
 export default function ClassroomsPage() {
   const [data, setData] = useState([]);
@@ -109,10 +110,40 @@ export default function ClassroomsPage() {
                     <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
                       <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
                         <button onClick={async () => {
-                          const newName = prompt("Nama kelas:", c.name);
-                          if (newName === null) return;
-                          const newInfaq = prompt("Tarif Infaq/SPP:", String(c.infaq_nominal || c.infaqNominal || 0));
-                          if (newInfaq === null) return;
+                          const result = await Swal.fire({
+                            title: "Edit Data Kelas",
+                            html: `
+                              <div style="text-align: left; margin-bottom: 10px;">
+                                <label style="font-size: 14px; font-weight: 600;">Nama Kelas</label>
+                                <input id="swal-input1" class="swal2-input" value="${c.name || ''}" style="margin-top: 5px;">
+                              </div>
+                              <div style="text-align: left;">
+                                <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
+                                <input id="swal-input2" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
+                              </div>
+                            `,
+                            focusConfirm: false,
+                            showCancelButton: true,
+                            confirmButtonText: "Simpan",
+                            cancelButtonText: "Batal",
+                            preConfirm: () => {
+                              const input1 = document.getElementById('swal-input1') as HTMLInputElement;
+                              const input2 = document.getElementById('swal-input2') as HTMLInputElement;
+                              return {
+                                newName: input1 ? input1.value : '',
+                                newInfaq: input2 ? input2.value : '0'
+                              }
+                            }
+                          });
+
+                          if (!result.isConfirmed) return;
+                          
+                          const { newName, newInfaq } = result.value || {};
+                          if (!newName) {
+                            Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
+                            return;
+                          }
+
                           try {
                             const res = await fetch(`/api/classrooms/${c.id}`, {
                               method: "PUT", headers: { "Content-Type": "application/json" },
@@ -124,7 +155,16 @@ export default function ClassroomsPage() {
                           } catch { showToast("Gagal update", "error"); }
                         }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
                         <button onClick={async () => {
-                          if (!confirm(`Hapus kelas ${c.name}?`)) return;
+                          const result = await Swal.fire({
+                            title: "Hapus Kelas?",
+                            text: `Hapus kelas ${c.name}?`,
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#e11d48",
+                            cancelButtonColor: "#64748b",
+                            confirmButtonText: "Ya, Hapus"
+                          });
+                          if (!result.isConfirmed) return;
                           try {
                             const res = await fetch(`/api/classrooms/${c.id}`, { method: "DELETE" });
                             const json = await res.json();

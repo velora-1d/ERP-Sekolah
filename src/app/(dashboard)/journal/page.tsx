@@ -87,7 +87,16 @@ export default function JournalPage() {
 
   // === Void Transaksi ===
   async function handleVoid(txId: number) {
-    if (!confirm("Yakin ingin VOID transaksi ini? Saldo kas akan dikembalikan.")) return;
+    const result = await Swal.fire({
+      title: "Void Transaksi?",
+      text: "Yakin ingin VOID transaksi ini? Saldo kas akan dikembalikan.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Void"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/journal/${txId}/void`, { method: "POST" });
       const json = await res.json();

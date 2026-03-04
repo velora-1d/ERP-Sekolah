@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
 
 const monthNames: Record<number, string> = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
@@ -128,8 +129,21 @@ export default function InfaqBillsPage() {
 
   // === Edit Nominal Tagihan ===
   async function handleEditNominal(bill: any) {
-    const newNominal = prompt(`Edit nominal tagihan ${bill.student_name}:`, String(bill.nominal));
-    if (!newNominal || isNaN(Number(newNominal))) return;
+    const { value: newValStr } = await Swal.fire({
+      title: "Edit Nominal",
+      input: "number",
+      inputLabel: `Edit nominal tagihan untuk ${bill.student_name}`,
+      inputValue: bill.nominal,
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal"
+    });
+    if (newValStr === undefined || newValStr === null || newValStr === "") return;
+    const newNominal = parseInt(newValStr, 10);
+    if (isNaN(newNominal) || newNominal < 0) {
+      Swal.fire("Error", "Nominal tidak valid", "error");
+      return;
+    }
     try {
       const res = await fetch(`/api/infaq-bills/${bill.id}`, {
         method: "PUT",
@@ -144,7 +158,16 @@ export default function InfaqBillsPage() {
 
   // === Hapus Tagihan ===
   async function handleDelete(billId: number) {
-    if (!confirm("Yakin ingin HAPUS tagihan ini? Tagihan yang sudah ada pembayaran tidak bisa dihapus.")) return;
+    const result = await Swal.fire({
+      title: "Hapus Tagihan?",
+      text: "Hapus tagihan ini? Tagihan yang sudah ada pembayaran tidak bisa dihapus.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Hapus"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}`, { method: "DELETE" });
       const json = await res.json();
@@ -155,7 +178,16 @@ export default function InfaqBillsPage() {
 
   // === Void Tagihan ===
   async function handleVoid(billId: number) {
-    if (!confirm("Yakin ingin VOID tagihan ini?")) return;
+    const result = await Swal.fire({
+      title: "Void Tagihan?",
+      text: "Batalkan (Void) tagihan ini?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Void"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}/void`, { method: "POST" });
       const json = await res.json();
@@ -166,7 +198,16 @@ export default function InfaqBillsPage() {
 
   // === Revert Tagihan ===
   async function handleRevert(billId: number) {
-    if (!confirm("Yakin ingin REVERT tagihan ini? Status kembali ke belum lunas.")) return;
+    const result = await Swal.fire({
+      title: "Batalkan Pelunasan?",
+      text: "Ubah status tagihan ini kembali menjadi belum lunas?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Batalkan"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/infaq-bills/${billId}/revert`, { method: "POST" });
       const json = await res.json();
@@ -522,7 +563,16 @@ export default function InfaqBillsPage() {
                 if (resetClassId) body.classroomId = Number(resetClassId);
 
                 if (resetMode === "bulan" && resetMonths.length === 0) { showToast("Pilih minimal 1 bulan", "error"); return; }
-                if (!confirm("YAKIN reset tagihan ini? Data pembayaran juga akan dihapus!")) return;
+                const result = await Swal.fire({
+                  title: "Reset Tagihan?",
+                  text: "YAKIN reset tagihan ini? Data pembayaran juga akan dihapus!",
+                  icon: "warning",
+                  showCancelButton: true,
+                  confirmButtonColor: "#e11d48",
+                  cancelButtonColor: "#64748b",
+                  confirmButtonText: "Ya, Reset"
+                });
+                if (!result.isConfirmed) return;
 
                 setResetLoading(true);
                 try {

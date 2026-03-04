@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Swal from "sweetalert2";
 import Link from "next/link";
 
 export default function PpdbPage() {
@@ -110,7 +111,16 @@ export default function PpdbPage() {
 
   // === Terima  ===
   async function handleApprove(reg: any) {
-    if (!confirm(`Terima ${reg.name}? Payment items akan dibuat otomatis.`)) return;
+    const result = await Swal.fire({
+      title: "Terima Pendaftar?",
+      text: `Terima ${reg.name}? Payment items akan dibuat otomatis.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#059669",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Terima"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/ppdb/${reg.id}/approve`, { method: "POST" });
       const json = await res.json();
@@ -121,7 +131,16 @@ export default function PpdbPage() {
 
   // === Tolak ===
   async function handleReject(reg: any) {
-    if (!confirm(`Tolak ${reg.name}?`)) return;
+    const result = await Swal.fire({
+      title: "Tolak Pendaftar?",
+      text: `Tolak ${reg.name}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Tolak"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/ppdb/${reg.id}/reject`, { method: "POST" });
       const json = await res.json();
@@ -164,10 +183,19 @@ export default function PpdbPage() {
   }
 
   // === Toggle Payment (dengan modal) ===
-  function openPayModal(payment: any) {
+  async function openPayModal(payment: any) {
     if (payment.isPaid) {
       // Revert langsung dengan konfirmasi
-      if (!confirm(`Batalkan pembayaran ${payment.paymentType}?`)) return;
+      const result = await Swal.fire({
+        title: "Batalkan Pembayaran?",
+        text: `Batalkan pembayaran ${payment.paymentType}?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d97706",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Ya, Batalkan"
+      });
+      if (!result.isConfirmed) return;
       doTogglePayment(payment.id, 0, 0);
       return;
     }
@@ -203,7 +231,16 @@ export default function PpdbPage() {
 
   // === Reset / Batalkan ===
   async function handleReset(reg: any) {
-    if (!confirm(`Batalkan status "${reg.status}" untuk ${reg.name}? Status akan kembali ke Menunggu.`)) return;
+    const result = await Swal.fire({
+      title: "Batalkan Status?",
+      text: `Batalkan status "${reg.status}" untuk ${reg.name}? Status akan kembali ke Menunggu.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d97706",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Batalkan"
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`/api/ppdb/${reg.id}/reset`, { method: "POST" });
       const json = await res.json();
@@ -244,7 +281,16 @@ export default function PpdbPage() {
               <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Pendaftar
             </Link>
             <button onClick={async () => {
-              if (!confirm("Perbaiki data pembayaran untuk pendaftar yang sudah diterima tapi belum punya record pembayaran?")) return;
+              const result = await Swal.fire({
+                title: "Perbaiki Data?",
+                text: "Perbaiki data pembayaran untuk pendaftar yang sudah diterima tapi belum punya record pembayaran?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#0284c7",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: "Ya, Perbaiki"
+              });
+              if (!result.isConfirmed) return;
               try {
                 const res = await fetch("/api/ppdb/fix-payments", { method: "POST" });
                 const json = await res.json();
@@ -469,7 +515,16 @@ export default function PpdbPage() {
                             <button onClick={() => handleApprove(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", cursor: "pointer" }}>Terima</button>
                             <button onClick={() => handleReject(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Tolak</button>
                             <button onClick={async () => {
-                              if (!confirm(`Hapus pendaftar ${reg.name}?`)) return;
+                              const result = await Swal.fire({
+                                title: "Hapus Pendaftar?",
+                                text: `Hapus pendaftar ${reg.name}?`,
+                                icon: "warning",
+                                showCancelButton: true,
+                                confirmButtonColor: "#e11d48",
+                                cancelButtonColor: "#64748b",
+                                confirmButtonText: "Ya, Hapus"
+                              });
+                              if (!result.isConfirmed) return;
                               try {
                                 const res = await fetch(`/api/ppdb/${reg.id}`, { method: "DELETE" });
                                 const json = await res.json();

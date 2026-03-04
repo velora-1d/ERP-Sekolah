@@ -2,6 +2,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Swal from "sweetalert2";
 
 // Breadcrumb label mapping
 const labelMap: Record<string, string> = {
@@ -79,7 +80,16 @@ export default function Header({ user }: HeaderProps) {
   });
 
   async function handleLogout() {
-    if (!confirm("Keluar dari Sistem?")) return;
+    const result = await Swal.fire({
+      title: "Keluar Sistem?",
+      text: "Anda akan keluar dari sesi ini.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Keluar"
+    });
+    if (!result.isConfirmed) return;
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
