@@ -31,13 +31,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Query siswa aktif (filter kelas jika diberikan)
-    const studentWhere: Record<string, unknown> = {
+    // Query siswa aktif (filter kelas atau tahun akademik jika diberikan)
+    const studentWhere: any = {
       deletedAt: null,
       status: "aktif",
     };
     if (classroomId) {
       studentWhere.classroomId = Number(classroomId);
+    }
+    
+    // Jika ada academicYearId, pastikan kita hanya mengambil siswa yang memiliki enrollment di tahun tersebut
+    // Atau jika model Student Anda langsung terikat ke classroom yang terikat ke academicYear
+    if (academicYearId) {
+      studentWhere.classroom = {
+        academicYearId: Number(academicYearId)
+      };
     }
 
     const students = await prisma.student.findMany({

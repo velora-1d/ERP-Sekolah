@@ -47,6 +47,7 @@ export default function InfaqBillsPage() {
   // Generate form
   const [genMonths, setGenMonths] = useState<number[]>([]);
   const [genYear, setGenYear] = useState(new Date().getFullYear().toString());
+  const [genAcademicYearId, setGenAcademicYearId] = useState("");
   const [genClassroomId, setGenClassroomId] = useState("");
   const [genLoading, setGenLoading] = useState(false);
 
@@ -137,6 +138,7 @@ export default function InfaqBillsPage() {
         body: JSON.stringify({ 
           months: genMonths.map(String), 
           year: genYear,
+          academicYearId: genAcademicYearId ? Number(genAcademicYearId) : undefined,
           classroomId: genClassroomId ? Number(genClassroomId) : undefined
         }),
       });
@@ -544,6 +546,14 @@ export default function InfaqBillsPage() {
                   );
                 })}
               </div>
+            </div>
+
+            <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Tahun Akademik</label>
+              <select value={genAcademicYearId} onChange={e => setGenAcademicYearId(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="">-- Pilih Tahun Akademik --</option>
+                {academicYears.map((ay: any) => <option key={ay.id} value={ay.id}>{ay.year} {ay.isActive ? "(Aktif)" : ""}</option>)}
+              </select>
             </div>
 
             <div style={{ marginTop: "1rem" }}>
