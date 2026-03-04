@@ -16,6 +16,18 @@ export default function PpdbPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   // Settings biaya PPDB
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ppdbSettings, setPpdbSettings] = useState({ daftar: 0, buku: 0, seragam: 0 });
@@ -519,43 +531,81 @@ export default function PpdbPage() {
                       </div>
                     </td>
                     <td style={{ padding: "1rem", textAlign: "center" }}>{statusBadge}</td>
-                    <td style={{ padding: "1rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", flexWrap: "wrap" }}>
-                        {(s === "menunggu" || s === "pending") && (
-                          <>
-                            <button onClick={() => handleApprove(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", cursor: "pointer" }}>Terima</button>
-                            <button onClick={() => handleReject(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Tolak</button>
-                            <button onClick={async () => {
-                              const result = await Swal.fire({
-                                title: "Hapus Pendaftar?",
-                                text: `Hapus pendaftar ${reg.name}?`,
-                                icon: "warning",
-                                showCancelButton: true,
-                                confirmButtonColor: "#e11d48",
-                                cancelButtonColor: "#64748b",
-                                confirmButtonText: "Ya, Hapus"
-                              });
-                              if (!result.isConfirmed) return;
-                              try {
-                                const res = await fetch(`/api/ppdb/${reg.id}`, { method: "DELETE" });
-                                const json = await res.json();
-                                if (json.success) { showToast(json.message); loadData(); }
-                                else showToast(json.message, "error");
-                              } catch { showToast("Gagal hapus", "error"); }
-                            }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
-                          </>
-                        )}
-                        {s === "diterima" && (
-                          <>
-                            <button onClick={() => openConvert(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Konversi ke Siswa</button>
-                            <button onClick={() => handleReset(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.5rem", cursor: "pointer" }}>Batalkan</button>
-                          </>
-                        )}
-                        {s === "converted" && <span style={{ color: "#a5b4fc", fontSize: "0.6875rem", fontWeight: 600 }}>Sudah Siswa</span>}
-                        {s === "ditolak" && (
-                          <button onClick={() => handleReset(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.5rem", cursor: "pointer" }}>Batalkan</button>
-                        )}
-                      </div>
+                    <td style={{ padding: "1rem", textAlign: "center", position: "relative" }}>
+                      <button 
+                        onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === reg.id ? null : reg.id); }}
+                        style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                        className="hover:bg-slate-100 transition-colors"
+                      >
+                        <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {openActionId === reg.id && (
+                        <div 
+                          style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "160px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                          onClick={(ev) => ev.stopPropagation()}
+                        >
+                          <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem", textAlign: "left" }}>
+                            Aksi PPDB
+                          </div>
+                          
+                          <button onClick={() => { setOpenActionId(null); router.push(`/ppdb/${reg.id}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                            Detail & Berkas
+                          </button>
+
+                          {(s === "menunggu" || s === "pending") && (
+                            <>
+                              <button onClick={() => { setOpenActionId(null); handleApprove(reg); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Terima Calon
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleReject(reg); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Tolak Calon
+                              </button>
+                            </>
+                          )}
+
+                          {s === "diterima" && (
+                            <>
+                              <button onClick={() => { setOpenActionId(null); openConvert(reg); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Konversi ke Siswa
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleReset(reg); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Batal Terima
+                              </button>
+                            </>
+                          )}
+
+                          {s === "ditolak" && (
+                            <button onClick={() => { setOpenActionId(null); handleReset(reg); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                              Batalkan Tolak
+                            </button>
+                          )}
+
+                          <button onClick={async () => {
+                            setOpenActionId(null);
+                            const result = await Swal.fire({
+                              title: "Hapus Pendaftar?",
+                              text: `Hapus pendaftar ${reg.name}?`,
+                              icon: "warning",
+                              showCancelButton: true,
+                              confirmButtonColor: "#e11d48",
+                              cancelButtonColor: "#64748b",
+                              confirmButtonText: "Ya, Hapus"
+                            });
+                            if (!result.isConfirmed) return;
+                            try {
+                              const res = await fetch(`/api/ppdb/${reg.id}`, { method: "DELETE" });
+                              const json = await res.json();
+                              if (json.success) { showToast(json.message); loadData(); }
+                              else showToast(json.message, "error");
+                            } catch { showToast("Gagal hapus", "error"); }
+                          }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                            Hapus Data
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

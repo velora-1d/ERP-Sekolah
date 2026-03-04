@@ -10,6 +10,18 @@ export default function ReRegistrationPage() {
   const [paymentStats, setPaymentStats] = useState<any>({});
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
   
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
@@ -463,19 +475,42 @@ export default function ReRegistrationPage() {
 
                         </div>
                       </td>
-                      <td className="p-3 align-top text-center w-36">
-                        <div className="flex flex-col gap-2">
-                          {item.status === 'pending' ? (
-                            <>
-                              <button onClick={() => updateStatus(item.id, 'confirmed')} className="w-full px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors">Konfirmasi</button>
-                              <button onClick={() => updateStatus(item.id, 'not_registered')} className="w-full px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors">Tidak Daftar</button>
-                            </>
-                          ) : (
-                            <button onClick={() => updateStatus(item.id, 'pending')} className="w-full px-3 py-1.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors">
-                              Batalkan
-                            </button>
-                          )}
-                        </div>
+                      <td className="p-3 align-top text-center relative">
+                        <button 
+                          onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === item.id.toString() ? null : item.id.toString()); }}
+                          style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                          className="hover:bg-slate-100 transition-colors"
+                        >
+                          <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+
+                        {openActionId === item.id.toString() && (
+                          <div 
+                            style={{ position: "absolute", top: "100%", right: "1rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "160px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                            onClick={(ev) => ev.stopPropagation()}
+                          >
+                            <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem", textAlign: "left" }}>
+                              Opsi Registrasi
+                            </div>
+                            
+                            {item.status === 'pending' ? (
+                              <>
+                                <button onClick={() => { setOpenActionId(null); updateStatus(item.id, 'confirmed'); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                  Konfirmasi Reg
+                                </button>
+                                <button onClick={() => { setOpenActionId(null); updateStatus(item.id, 'not_registered'); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                  Tidak Daftar
+                                </button>
+                              </>
+                            ) : (
+                              <button onClick={() => { setOpenActionId(null); updateStatus(item.id, 'pending'); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Batalkan Status
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )

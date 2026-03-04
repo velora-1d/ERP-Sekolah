@@ -25,6 +25,18 @@ export default function PayrollPage() {
   const [payTotalPages, setPayTotalPages] = useState(1);
   const [payTotal, setPayTotal] = useState(0);
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   // --- Load Data ---
   useEffect(() => {
     if (activeTab === "riwayat") loadPayrolls();
@@ -396,13 +408,33 @@ export default function PayrollPage() {
                         </td>
                         <td className="px-6 py-3 font-semibold text-sm text-slate-800">{p.employee_name}</td>
                         <td className="px-6 py-3 font-bold text-sm text-slate-800">Rp {p.net_salary.toLocaleString("id-ID")}</td>
-                        <td className="px-6 py-3 flex gap-2 justify-end">
-                          <button onClick={() => printPayroll(p.id)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center hover:bg-emerald-100">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <td className="px-6 py-3 text-right relative">
+                          <button 
+                            onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === p.id ? null : p.id); }}
+                            style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                            className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                          >
+                            <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
                           </button>
-                          <button onClick={() => deletePayroll(p.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 border border-red-200 flex items-center justify-center hover:bg-red-100">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                          </button>
+
+                          {openActionId === p.id && (
+                            <div 
+                              style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                                Aksi Slip
+                              </div>
+                              <button onClick={() => { setOpenActionId(null); printPayroll(p.id); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Cetak Slip
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); deletePayroll(p.id); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                                Hapus Slip
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -435,9 +467,29 @@ export default function PayrollPage() {
                       <h5 className="font-bold text-slate-800 text-sm">{e.name}</h5>
                       <p className="text-xs text-slate-500 capitalize">{e.type === 'guru' ? 'Guru' : 'Staff'} · {e.position || 'Tanpa Posisi'}</p>
                     </div>
-                    <button onClick={() => setupSalary(e.id, e.name)} className="w-full py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
-                      Atur Komponen Gaji
-                    </button>
+                    <div className="relative flex justify-end">
+                      <button 
+                        onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === e.id ? null : e.id); }}
+                        style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                        className="hover:bg-white transition-colors"
+                      >
+                        <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {openActionId === e.id && (
+                        <div 
+                          style={{ position: "absolute", bottom: "100%", right: 0, zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                          onClick={(ev) => ev.stopPropagation()}
+                        >
+                          <button onClick={() => { setOpenActionId(null); setupSalary(e.id, e.name); }} className="flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-md transition-colors text-left border-none bg-transparent cursor-pointer">
+                            Atur Gaji
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 ))}
               </div>
