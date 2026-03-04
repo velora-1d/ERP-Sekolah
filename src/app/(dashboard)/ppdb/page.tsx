@@ -2,9 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Pagination from "@/components/Pagination";
 
 export default function PpdbPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
