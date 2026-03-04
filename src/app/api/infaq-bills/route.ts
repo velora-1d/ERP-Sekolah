@@ -3,20 +3,47 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const search = searchParams.get("search") || "";
+  const search = searchParams.get("search") || searchParams.get("q") || "";
   const month = searchParams.get("month") || "";
+  const semester = searchParams.get("semester") || "";
+  const academicYearId = searchParams.get("academicYearId") || "";
+  const classroomId = searchParams.get("classroomId") || "";
+  const gender = searchParams.get("gender") || "";
   const statusFilter = searchParams.get("status") || "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 25));
 
   try {
-    // Build where clause — search sekarang di database, bukan di memori
+    // 1. Tentukan Tahun Ajaran Target
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    if (!targetAcademicYearId) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { isActive: true, deletedAt: null },
+      });
+      targetAcademicYearId = activeYear?.id || null;
+    }
+
+    // 2. Build where clause
     const where: any = { deletedAt: null };
+    
+    if (targetAcademicYearId) where.academicYearId = targetAcademicYearId;
     if (month) where.month = month;
     if (statusFilter) where.status = statusFilter;
-    if (search) {
+
+    // Filter Semester
+    if (semester) {
+      const ganjilMonths = ["Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      const genapMonths = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
+      where.month = { in: semester.toLowerCase() === "ganjil" ? ganjilMonths : genapMonths };
+    }
+
+    // Filter Relasi Siswa
+    if (search || classroomId || gender) {
       where.student = {
-        name: { contains: search, mode: "insensitive" },
+        deletedAt: null,
+        ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+        ...(classroomId ? { classroomId: Number(classroomId) } : {}),
+        ...(gender ? { gender } : {}),
       };
     }
 
@@ -25,7 +52,7 @@ export async function GET(request: Request) {
         where,
         include: {
           student: {
-            select: { id: true, name: true, nisn: true, classroomId: true },
+            select: { id: true, name: true, nisn: true, classroomId: true, gender: true },
           },
           academicYear: {
             select: { id: true, year: true },
@@ -42,15 +69,10 @@ export async function GET(request: Request) {
       prisma.infaqBill.count({ where }),
     ]);
 
-    // Map classroom names — hanya untuk halaman ini
-    const classroomIds = bills
-      .map(b => b.student?.classroomId)
-      .filter((id): id is number => id != null);
-    const classrooms = classroomIds.length > 0
-      ? await prisma.classroom.findMany({
-          where: { id: { in: [...new Set(classroomIds)] } },
-          select: { id: true, name: true },
-        })
+    // Ambil semua Classroom ID unik untuk mapping nama kelas
+    const classIds = [...new Set(bills.map(b => b.student?.classroomId).filter((id): id is number => id != null))];
+    const classrooms = classIds.length > 0 
+      ? await prisma.classroom.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } }) 
       : [];
     const classMap = Object.fromEntries(classrooms.map(c => [c.id, c.name]));
 
@@ -61,6 +83,7 @@ export async function GET(request: Request) {
         student_id: b.studentId,
         student_name: b.student?.name || "Unknown",
         nisn: b.student?.nisn || "-",
+        gender: b.student?.gender || "-",
         classroom: b.student?.classroomId ? classMap[b.student.classroomId] || "-" : "-",
         academic_year: b.academicYear?.year || "-",
         month: b.month,

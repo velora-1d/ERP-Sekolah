@@ -69,30 +69,76 @@ export async function GET(request: Request) {
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
   const search = searchParams.get("q") || "";
-  const classroom = searchParams.get("classroom") || "";
+  const classroomId = searchParams.get("classroomId") || searchParams.get("classroom") || "";
+  const academicYearId = searchParams.get("academicYearId") || "";
+  const gender = searchParams.get("gender") || "";
+  const status = searchParams.get("status") || "aktif";
 
   try {
-    const where: any = { deletedAt: null };
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { nisn: { contains: search } },
-      ];
-    }
-    if (classroom) {
-      where.classroomId = Number(classroom);
+    // 1. Tentukan Tahun Ajaran Target
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    if (!targetAcademicYearId) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { isActive: true, deletedAt: null },
+      });
+      targetAcademicYearId = activeYear?.id || null;
     }
 
-    const [students, total] = await Promise.all([
-      prisma.student.findMany({
-        where,
-        include: { classroom: { select: { id: true, name: true } } },
-        orderBy: { name: "asc" },
+    // 2. Bangun Filter Enrollment (Sumber Utama Kebenaran Data per Tahun Ajaran)
+    const enrollmentWhere: any = { 
+      deletedAt: null,
+      student: { deletedAt: null }
+    };
+
+    if (targetAcademicYearId) {
+      enrollmentWhere.academicYearId = targetAcademicYearId;
+    }
+
+    if (classroomId) {
+      enrollmentWhere.classroomId = Number(classroomId);
+    }
+
+    // Filter di level Siswa (Nested)
+    if (search || gender || status) {
+      enrollmentWhere.student = {
+        ...enrollmentWhere.student,
+        ...(search ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { nisn: { contains: search } },
+            { nis: { contains: search } },
+          ]
+        } : {}),
+        ...(gender ? { gender } : {}),
+        ...(status ? { status } : {}),
+      };
+    }
+
+    const [enrollments, total] = await Promise.all([
+      prisma.studentEnrollment.findMany({
+        where: enrollmentWhere,
+        include: { 
+          student: true,
+          classroom: { select: { id: true, name: true } },
+          academicYear: { select: { id: true, year: true } }
+        },
+        orderBy: { student: { name: "asc" } },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.student.count({ where }),
+      prisma.studentEnrollment.count({ where: enrollmentWhere }),
     ]);
+
+    // Transform agar format output tetap sama dengan yang diharapkan frontend (List of Students)
+    const students = enrollments.map(e => ({
+      ...e.student,
+      classroom: e.classroom,
+      enrollment: {
+        id: e.id,
+        enrollmentType: e.enrollmentType,
+        academicYear: e.academicYear
+      }
+    }));
 
     return NextResponse.json({
       success: true,
@@ -100,6 +146,7 @@ export async function GET(request: Request) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
+    console.error("GET Students error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }

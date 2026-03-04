@@ -1,22 +1,20 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Swal from "sweetalert2";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Pagination from "@/components/Pagination";
+import FilterBar from "@/components/FilterBar";
 
 const monthNames: Record<number, string> = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
 const monthShort: Record<number, string> = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Mei',6:'Jun',7:'Jul',8:'Agu',9:'Sep',10:'Okt',11:'Nov',12:'Des'};
 
-export default function InfaqBillsPage() {
+function InfaqBillsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [month, setMonth] = useState("");
-  const [status, setStatus] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
 
   // Modal states
   const [showGenerate, setShowGenerate] = useState(false);
@@ -50,6 +48,8 @@ export default function InfaqBillsPage() {
   const [genAcademicYearId, setGenAcademicYearId] = useState("");
   const [genClassroomId, setGenClassroomId] = useState("");
   const [genLoading, setGenLoading] = useState(false);
+  const [genPeriod, setGenPeriod] = useState<"bulanan" | "semester">("bulanan");
+  const [genSemester, setGenSemester] = useState("1");
 
   // Reset form
   const [resetMode, setResetMode] = useState<"semester" | "bulan">("semester");
@@ -76,44 +76,50 @@ export default function InfaqBillsPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const loadData = useCallback(async (qObj = { s: search, m: month, st: status }) => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams();
-      if (qObj.s) q.append("search", qObj.s);
-      if (qObj.m) q.append("month", qObj.m);
-      if (qObj.st) q.append("status", qObj.st);
-      const res = await fetch(`/api/infaq-bills?${q.toString()}`);
+      const query = searchParams.toString();
+      const res = await fetch(`/api/infaq-bills?${query}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success) {
+        setData(json.data);
+        if (json.pagination) setPagination(json.pagination);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [search, month, status]);
+  }, [searchParams]);
 
   useEffect(() => {
     loadData();
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
     fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
     fetch("/api/academic-years").then(r => r.json()).then(j => { if (j.success) setAcademicYears(j.data || []); }).catch(() => {});
-  }, []);
+  }, [loadData]);
 
   // === Generate Tagihan ===
   async function handleGenerate() {
-    if (genMonths.length === 0) { showToast("Pilih minimal 1 bulan", "error"); return; }
+    // Validasi bulan berdasarkan mode periode
+    if (genPeriod === "bulanan" && genMonths.length === 0) {
+      showToast("Pilih minimal 1 bulan", "error"); return;
+    }
     
-    // Validasi: Cek apakah ada kelas yang tarifnya 0
-    const zeroInfaqClasses = classrooms.filter(c => !c.infaqNominal || c.infaqNominal <= 0);
+    // Validasi: Cek apakah ada kelas yang tarifnya 0 (hanya cek kelas target jika dipilih)
+    const targetClasses = genClassroomId
+      ? classrooms.filter(c => c.id === Number(genClassroomId))
+      : classrooms;
+    const zeroInfaqClasses = targetClasses.filter(c => !c.infaqNominal || c.infaqNominal <= 0);
     if (zeroInfaqClasses.length > 0) {
       const classNames = zeroInfaqClasses.map(c => c.name).join(", ");
       const result = await Swal.fire({
-        title: "Tarif Belum Diatur!",
+        title: "Nominal SPP / Infaq Belum Diatur!",
         html: `
           <div style="text-align: left; font-size: 0.875rem;">
-            <p>Terdapat <strong>${zeroInfaqClasses.length} kelas</strong> yang masih memiliki tarif <strong>Rp 0</strong>:</p>
+            <p>Terdapat <strong>${zeroInfaqClasses.length} kelas</strong> yang belum memiliki nominal:</p>
             <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 0.5rem; margin: 0.5rem 0; color: #475569; font-family: monospace; max-height: 80px; overflow-y: auto;">
               ${classNames}
             </div>
-            <p style="color: #ef4444; font-weight: 700; margin-top: 0.5rem;">Tagihan tidak bisa dibuat jika tarif masih kosong.</p>
+            <p style="color: #ef4444; font-weight: 700; margin-top: 0.5rem;">Silakan atur nominal terlebih dahulu sebelum generate tagihan.</p>
           </div>
         `,
         icon: "error",
@@ -132,15 +138,23 @@ export default function InfaqBillsPage() {
 
     setGenLoading(true);
     try {
+      // Siapkan body request berdasarkan mode periode
+      const reqBody: any = {
+        year: genYear,
+        period: genPeriod,
+        academicYearId: genAcademicYearId ? Number(genAcademicYearId) : undefined,
+        classroomId: genClassroomId ? Number(genClassroomId) : undefined,
+      };
+      if (genPeriod === "semester") {
+        reqBody.semester = Number(genSemester);
+      } else {
+        reqBody.months = genMonths.map(m => monthNames[m]);
+      }
+
       const res = await fetch("/api/infaq-bills/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          months: genMonths.map(String), 
-          year: genYear,
-          academicYearId: genAcademicYearId ? Number(genAcademicYearId) : undefined,
-          classroomId: genClassroomId ? Number(genClassroomId) : undefined
-        }),
+        body: JSON.stringify(reqBody),
       });
       const json = await res.json();
       if (json.success) {
@@ -313,17 +327,8 @@ export default function InfaqBillsPage() {
     setGenMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
   }
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
-  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    setSearch(val);
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => loadData({ s: val, m: month, st: status }), 400);
-  }
-
   const thStyle: React.CSSProperties = { padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" };
-  const btnStyle = (color: string, bg: string, border: string): React.CSSProperties => ({ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color, background: bg, border: `1px solid ${border}`, borderRadius: "0.5rem", cursor: "pointer", transition: "all 0.15s" });
-
+  
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Toast */}
@@ -332,6 +337,8 @@ export default function InfaqBillsPage() {
           {toast.msg}
         </div>
       )}
+
+      <FilterBar />
 
       {/* Hero Header */}
       <div style={{ background: "linear-gradient(135deg,#f59e0b 0%,#d97706 50%,#b45309 100%)", borderRadius: "1rem", overflow: "hidden", position: "relative" }}>
@@ -345,7 +352,7 @@ export default function InfaqBillsPage() {
               </div>
               <div>
                 <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.25rem", color: "#fff", margin: 0 }}>Tagihan Infaq / SPP</h2>
-                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola tagihan bulanan dan status pembayaran siswa.</p>
+                <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Monitor tagihan sesuai filter periode yang dipilih.</p>
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -364,42 +371,6 @@ export default function InfaqBillsPage() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#f59e0b,#d97706)", borderRadius: "50%" }} />
-          <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Filter Data</h4>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div className="md:col-span-2">
-            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Cari Nama</label>
-            <input type="text" value={search} onChange={handleSearch} placeholder="Ketik nama..." style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} className="focus:border-amber-500 transition-colors" />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Bulan</label>
-            <select value={month} onChange={e => { setMonth(e.target.value); loadData({ s: search, m: e.target.value, st: status }); }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
-              <option value="">Semua</option>
-              {Array.from({length: 12}).map((_, i) => <option key={i+1} value={String(i+1)}>{monthShort[i+1]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Status</label>
-            <select value={status} onChange={e => { setStatus(e.target.value); loadData({ s: search, m: month, st: e.target.value }); }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
-              <option value="">Semua</option>
-              <option value="belum_lunas">Belum Lunas</option>
-              <option value="sebagian">Sebagian</option>
-              <option value="lunas">Lunas</option>
-              <option value="void">Void</option>
-            </select>
-          </div>
-          <div>
-            <button onClick={() => loadData()} style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", padding: "0.625rem 1rem", fontSize: "0.75rem", fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.625rem", cursor: "pointer" }} className="hover:opacity-90 active:scale-95">
-              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>Filter
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Tabel Tagihan */}
       <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -407,7 +378,7 @@ export default function InfaqBillsPage() {
             <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#f59e0b,#d97706)", borderRadius: "50%" }} />
             <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Tagihan</h4>
           </div>
-          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{data.length} Data</span>
+          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{pagination.total} Data</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -432,10 +403,11 @@ export default function InfaqBillsPage() {
                       <svg style={{ width: 28, height: 28, color: "#d97706" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     </div>
                     <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Tagihan</p>
-                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Klik <strong>Generate Tagihan</strong> untuk membuat tagihan baru.</p>
+                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Periksa filter Anda atau klik <strong>Generate Tagihan</strong>.</p>
                   </div>
                 </td></tr>
-              ) : data.slice((page - 1) * limit, page * limit).map((b: any, i: number) => {
+              ) : data.map((b: any, i: number) => {
+                const idx = ((pagination.page - 1) * pagination.limit) + i + 1;
                 const initial = (b.student_name || "?").charAt(0).toUpperCase();
                 let statusBadge;
                 if (b.status === "lunas") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}>✓ Lunas</span>;
@@ -445,7 +417,7 @@ export default function InfaqBillsPage() {
 
                 return (
                   <tr key={b.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: b.status === "void" ? 0.45 : 1 }}>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
+                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{idx}</td>
                     <td style={{ padding: "1rem 1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#fef3c7,#fde68a)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#b45309" }}>{initial}</div>
@@ -457,7 +429,7 @@ export default function InfaqBillsPage() {
                     </td>
                     <td style={{ padding: "1rem 1.5rem" }}><span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{b.classroom || "-"}</span></td>
                     <td style={{ padding: "1rem 1.5rem" }}>
-                      <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{monthShort[b.month] || "-"}</p>
+                      <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>{b.month || "-"}</p>
                       <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.125rem" }}>{b.academic_year || b.year || "-"}</p>
                     </td>
                     <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
@@ -488,7 +460,6 @@ export default function InfaqBillsPage() {
                             Aksi Tagihan
                           </div>
 
-                          {/* Tombol Tracking (Selalu Ada) */}
                           <button onClick={() => { setOpenActionId(null); router.push("/infaq-bills/tracking"); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#0ea5e9", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-sky-50">
                             Tracking
                           </button>
@@ -522,7 +493,25 @@ export default function InfaqBillsPage() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} totalPages={Math.ceil(data.length / limit) || 1} total={data.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
+        <Pagination 
+          page={pagination.page} 
+          totalPages={pagination.totalPages} 
+          total={pagination.total} 
+          limit={pagination.limit} 
+          onPageChange={(p) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("page", String(p));
+            window.history.pushState({}, "", `?${params.toString()}`);
+            loadData();
+          }} 
+          onLimitChange={(l) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("limit", String(l));
+            params.set("page", "1");
+            window.history.pushState({}, "", `?${params.toString()}`);
+            loadData();
+          }} 
+        />
       </div>
 
       {/* Modal Generate Tagihan */}
@@ -531,44 +520,54 @@ export default function InfaqBillsPage() {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowGenerate(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 520, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Generate Tagihan Baru</h3>
-            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>Pilih bulan dan tahun untuk generate tagihan infaq/SPP.</p>
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>Pilih periode dan tahun untuk generate tagihan infaq/SPP.</p>
 
-            <div style={{ marginTop: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Pilih Bulan (bisa lebih dari 1)</label>
-                <div style={{ display: "flex", gap: "0.375rem" }}>
-                  <button 
-                    onClick={() => setGenMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])}
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#1e293b", cursor: "pointer" }}
-                  >
-                    Pilih Semua
-                  </button>
-                  <button 
-                    onClick={() => setGenMonths([7, 8, 9, 10, 11, 12])}
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#6366f1", cursor: "pointer" }}
-                  >
-                    Smtr 1 (Jul-Des)
-                  </button>
-                  <button 
-                    onClick={() => setGenMonths([1, 2, 3, 4, 5, 6])}
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#4f46e5", cursor: "pointer" }}
-                  >
-                    Smtr 2 (Jan-Jun)
-                  </button>
+            {/* Toggle Periode: Bulanan / Semester */}
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem", marginBottom: "1rem" }}>
+              {(["bulanan", "semester"] as const).map(p => (
+                <button key={p} onClick={() => setGenPeriod(p)} style={{
+                  flex: 1, padding: "0.625rem", fontSize: "0.8125rem", fontWeight: 700, borderRadius: "0.625rem", border: "2px solid",
+                  borderColor: genPeriod === p ? "#f59e0b" : "#e2e8f0",
+                  background: genPeriod === p ? "#fef3c7" : "#fff",
+                  color: genPeriod === p ? "#b45309" : "#64748b", cursor: "pointer", textTransform: "capitalize",
+                }}>{p}</button>
+              ))}
+            </div>
+
+            {genPeriod === "bulanan" ? (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                  <label style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pilih Bulan</label>
+                  <div style={{ display: "flex", gap: "0.375rem" }}>
+                    <button onClick={() => setGenMonths([1,2,3,4,5,6,7,8,9,10,11,12])} style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#1e293b", cursor: "pointer" }}>Semua</button>
+                    <button onClick={() => setGenMonths([7,8,9,10,11,12])} style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#6366f1", cursor: "pointer" }}>Jul-Des</button>
+                    <button onClick={() => setGenMonths([1,2,3,4,5,6])} style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#4f46e5", cursor: "pointer" }}>Jan-Jun</button>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
+                  {Array.from({length: 12}).map((_, i) => {
+                    const m = i + 1;
+                    const selected = genMonths.includes(m);
+                    return (
+                      <button key={m} onClick={() => toggleGenMonth(m)} style={{ padding: "0.5rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: 600, border: selected ? "2px solid #f59e0b" : "1.5px solid #e2e8f0", background: selected ? "#fef3c7" : "#fff", color: selected ? "#b45309" : "#64748b", cursor: "pointer" }}>
+                        {monthNames[m]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
-                {Array.from({length: 12}).map((_, i) => {
-                  const m = i + 1;
-                  const selected = genMonths.includes(m);
-                  return (
-                    <button key={m} onClick={() => toggleGenMonth(m)} style={{ padding: "0.5rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontWeight: 600, border: selected ? "2px solid #f59e0b" : "1.5px solid #e2e8f0", background: selected ? "#fef3c7" : "#fff", color: selected ? "#b45309" : "#64748b", cursor: "pointer", transition: "all 0.15s" }}>
-                      {monthNames[m]}
-                    </button>
-                  );
-                })}
+            ) : (
+              <div>
+                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Pilih Semester</label>
+                <select value={genSemester} onChange={e => setGenSemester(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                  <option value="1">Semester 1 (Juli – Desember)</option>
+                  <option value="2">Semester 2 (Januari – Juni)</option>
+                </select>
+                <p style={{ fontSize: "0.6875rem", color: "#64748b", marginTop: "0.375rem" }}>
+                  Akan auto-generate tagihan untuk 6 bulan sekaligus.
+                </p>
               </div>
-            </div>
+            )}
 
             <div style={{ marginTop: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Tahun Akademik</label>
@@ -594,7 +593,7 @@ export default function InfaqBillsPage() {
             <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
               <button onClick={() => setShowGenerate(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
               <button onClick={handleGenerate} disabled={genLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: genLoading ? "#94a3b8" : "linear-gradient(135deg,#f59e0b,#d97706)", border: "none", borderRadius: "0.625rem", cursor: genLoading ? "not-allowed" : "pointer" }}>
-                {genLoading ? "Memproses..." : `Generate ${genMonths.length} Bulan`}
+                {genLoading ? "Memproses..." : genPeriod === "semester" ? `Generate Semester ${genSemester}` : `Generate ${genMonths.length} Bulan`}
               </button>
             </div>
           </div>
@@ -607,15 +606,13 @@ export default function InfaqBillsPage() {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayment(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 440, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Bayar Tagihan</h3>
-            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>{selectedBill.student_name} — {monthShort[selectedBill.month]} {selectedBill.year}</p>
-
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>{selectedBill.student_name} — {selectedBill.month} {selectedBill.year}</p>
             <div style={{ marginTop: "1rem", padding: "1rem", background: "#f8fafc", borderRadius: "0.75rem", border: "1px solid #e2e8f0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem" }}>
                 <span style={{ color: "#64748b" }}>Nominal Tagihan</span>
                 <span style={{ fontWeight: 700, color: "#1e293b" }}>Rp {Number(selectedBill.nominal).toLocaleString("id-ID")}</span>
               </div>
             </div>
-
             <div style={{ marginTop: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Metode Pembayaran</label>
               <select value={payMethod} onChange={e => setPayMethod(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
@@ -624,7 +621,6 @@ export default function InfaqBillsPage() {
                 <option value="tabungan">Potong Tabungan</option>
               </select>
             </div>
-
             {payMethod !== "tabungan" && (
               <div style={{ marginTop: "0.75rem" }}>
                 <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Akun Kas</label>
@@ -634,22 +630,18 @@ export default function InfaqBillsPage() {
                 </select>
               </div>
             )}
-
             <div style={{ marginTop: "0.75rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Jumlah Bayar</label>
               <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
             </div>
-
             <div style={{ marginTop: "0.75rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Tanggal Bayar</label>
               <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
             </div>
-
             <div style={{ marginTop: "0.75rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Catatan (opsional)</label>
               <input type="text" value={payNotes} onChange={e => setPayNotes(e.target.value)} placeholder="Keterangan..." style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
             </div>
-
             <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
               <button onClick={() => setShowPayment(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
               <button onClick={handlePayment} disabled={payLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: payLoading ? "#94a3b8" : "linear-gradient(135deg,#059669,#047857)", border: "none", borderRadius: "0.625rem", cursor: payLoading ? "not-allowed" : "pointer" }}>
@@ -667,25 +659,15 @@ export default function InfaqBillsPage() {
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 16px 48px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontWeight: 700, fontSize: "1.125rem", color: "#ef4444", margin: "0 0 0.25rem" }}>🔄 Reset Tagihan</h3>
             <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.25rem" }}>Hapus tagihan beserta pembayarannya agar bisa di-generate ulang.</p>
-
-            {/* Mode */}
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
               {(["semester", "bulan"] as const).map(m => (
-                <button key={m} onClick={() => setResetMode(m)} style={{
-                  flex: 1, padding: "0.5rem", fontSize: "0.8125rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid",
-                  borderColor: resetMode === m ? "#6366f1" : "#e2e8f0", background: resetMode === m ? "#eef2ff" : "#fff",
-                  color: resetMode === m ? "#4f46e5" : "#64748b", cursor: "pointer",
-                }}>{m === "semester" ? "Per Semester" : "Per Bulan"}</button>
+                <button key={m} onClick={() => setResetMode(m)} style={{ flex: 1, padding: "0.5rem", fontSize: "0.8125rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid", borderColor: resetMode === m ? "#6366f1" : "#e2e8f0", background: resetMode === m ? "#eef2ff" : "#fff", color: resetMode === m ? "#4f46e5" : "#64748b", cursor: "pointer" }}>{m === "semester" ? "Per Semester" : "Per Bulan"}</button>
               ))}
             </div>
-
-            {/* Tahun */}
             <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Tahun</label>
             <select value={resetYear} onChange={e => setResetYear(e.target.value)} style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
               {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-
-            {/* Semester atau Bulan */}
             {resetMode === "semester" ? (
               <>
                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Semester</label>
@@ -701,66 +683,36 @@ export default function InfaqBillsPage() {
                   {Object.entries(monthShort).map(([num, name]) => {
                     const n = Number(num);
                     const sel = resetMonths.includes(n);
-                    return (
-                      <button key={n} onClick={() => setResetMonths(sel ? resetMonths.filter(x => x !== n) : [...resetMonths, n])}
-                        style={{ padding: "0.375rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.375rem", border: "1.5px solid", cursor: "pointer",
-                          borderColor: sel ? "#6366f1" : "#e2e8f0", background: sel ? "#eef2ff" : "#fff", color: sel ? "#4f46e5" : "#64748b",
-                        }}>{name}</button>
-                    );
+                    return (<button key={n} onClick={() => setResetMonths(sel ? resetMonths.filter(x => x !== n) : [...resetMonths, n])} style={{ padding: "0.375rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.375rem", border: "1.5px solid", cursor: "pointer", borderColor: sel ? "#6366f1" : "#e2e8f0", background: sel ? "#eef2ff" : "#fff", color: sel ? "#4f46e5" : "#64748b" }}>{name}</button>);
                   })}
                 </div>
               </>
             )}
-
-            {/* Kelas (opsional) */}
             <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Kelas (Opsional)</label>
             <select value={resetClassId} onChange={e => setResetClassId(e.target.value)} style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "1rem" }}>
               <option value="">Semua Kelas</option>
               {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-
-            {/* Warning */}
             <div style={{ padding: "0.625rem 0.75rem", borderRadius: "0.5rem", background: "#fef2f2", border: "1px solid #fecaca", marginBottom: "1rem" }}>
-              <p style={{ fontSize: "0.75rem", color: "#991b1b", margin: 0, fontWeight: 600 }}>⚠️ Tagihan dan pembayaran terkait akan dihapus secara permanen. Pastikan data sudah benar sebelum reset.</p>
+              <p style={{ fontSize: "0.75rem", color: "#991b1b", margin: 0, fontWeight: 600 }}>⚠️ Tagihan dan pembayaran terkait akan dihapus secara permanen.</p>
             </div>
-
-            {/* Tombol */}
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
               <button onClick={() => setShowReset(false)} style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Batal</button>
               <button disabled={resetLoading} onClick={async () => {
-                const body: any = { year: resetYear };
-                if (resetMode === "semester") body.semester = Number(resetSemester);
-                else body.months = resetMonths;
-                if (resetClassId) body.classroomId = Number(resetClassId);
-
+                const reqBody: any = { year: resetYear };
+                if (resetMode === "semester") reqBody.semester = Number(resetSemester);
+                else reqBody.months = resetMonths;
+                if (resetClassId) reqBody.classroomId = Number(resetClassId);
                 if (resetMode === "bulan" && resetMonths.length === 0) { showToast("Pilih minimal 1 bulan", "error"); return; }
-                const result = await Swal.fire({
-                  title: "Reset Tagihan?",
-                  text: "YAKIN reset tagihan ini? Data pembayaran juga akan dihapus!",
-                  icon: "warning",
-                  showCancelButton: true,
-                  confirmButtonColor: "#e11d48",
-                  cancelButtonColor: "#64748b",
-                  confirmButtonText: "Ya, Reset"
-                });
+                const result = await Swal.fire({ title: "Reset Tagihan?", text: "YAKIN reset tagihan ini? Data pembayaran juga akan dihapus!", icon: "warning", showCancelButton: true, confirmButtonColor: "#e11d48", cancelButtonColor: "#64748b", confirmButtonText: "Ya, Reset" });
                 if (!result.isConfirmed) return;
-
                 setResetLoading(true);
                 try {
-                  const res = await fetch("/api/infaq-bills/reset", {
-                    method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                  });
+                  const res = await fetch("/api/infaq-bills/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(reqBody) });
                   const json = await res.json();
-                  if (json.success) { showToast(json.message); setShowReset(false); loadData(); }
-                  else showToast(json.message, "error");
-                } catch { showToast("Gagal reset", "error"); }
-                finally { setResetLoading(false); }
-              }} style={{
-                padding: "0.5rem 1.25rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff",
-                background: resetLoading ? "#94a3b8" : "linear-gradient(135deg,#ef4444,#dc2626)",
-                border: "none", borderRadius: "0.5rem", cursor: resetLoading ? "not-allowed" : "pointer",
-              }}>{resetLoading ? "Memproses..." : "Reset Sekarang"}</button>
+                  if (json.success) { showToast(json.message); setShowReset(false); loadData(); } else showToast(json.message, "error");
+                } catch { showToast("Gagal reset", "error"); } finally { setResetLoading(false); }
+              }} style={{ padding: "0.5rem 1.25rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: resetLoading ? "#94a3b8" : "linear-gradient(135deg,#ef4444,#dc2626)", border: "none", borderRadius: "0.5rem", cursor: resetLoading ? "not-allowed" : "pointer" }}>{resetLoading ? "Memproses..." : "Reset Sekarang"}</button>
             </div>
           </div>
         </div>
@@ -773,109 +725,37 @@ export default function InfaqBillsPage() {
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", padding: "2rem", width: "100%", maxWidth: 500, boxShadow: "0 16px 48px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: "0 0 0.25rem" }}>⚙️ Pengaturan Biaya SPP Masal</h3>
             <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.5rem" }}>Update nominal biaya SPP standar untuk kelas yang dipilih.</p>
-
-            {/* Filter Tahun Akademik */}
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Filter Tahun Akademik</label>
-              <select value={bulkYearId} onChange={e => {
-                const yId = e.target.value;
-                setBulkYearId(yId);
-                // Auto select semua kelas di tahun tersebut
-                if (yId) {
-                  const filteredIds = classrooms.filter(c => c.academicYearId === Number(yId)).map(c => c.id);
-                  setBulkClassIds(filteredIds);
-                } else {
-                  setBulkClassIds([]);
-                }
-              }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+              <select value={bulkYearId} onChange={e => { const yId = e.target.value; setBulkYearId(yId); if (yId) { setBulkClassIds(classrooms.filter(c => c.academicYearId === Number(yId)).map(c => c.id)); } else { setBulkClassIds([]); } }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
                 <option value="">-- Semua Tahun Akademik --</option>
                 {academicYears.map((ay: any) => <option key={ay.id} value={ay.id}>{ay.year} {ay.isActive ? "(Aktif)" : ""}</option>)}
               </select>
             </div>
-
-            {/* Pilih Kelas */}
             <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Pilih Kelas</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem", maxHeight: "160px", overflowY: "auto", padding: "0.5rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", marginBottom: "1rem" }}>
-              <button 
-                onClick={() => {
-                  const targetClasses = bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)) : classrooms;
-                  if (bulkClassIds.length === targetClasses.length) setBulkClassIds([]);
-                  else setBulkClassIds(targetClasses.map(c => c.id));
-                }}
-                style={{ gridColumn: "span 3", padding: "0.375rem", fontSize: "0.75rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px dashed #6366f1", background: "#f5f3ff", color: "#4f46e5", cursor: "pointer", marginBottom: "0.25rem" }}
-              >
+              <button onClick={() => { const tc = bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)) : classrooms; if (bulkClassIds.length === tc.length) setBulkClassIds([]); else setBulkClassIds(tc.map(c => c.id)); }} style={{ gridColumn: "span 3", padding: "0.375rem", fontSize: "0.75rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px dashed #6366f1", background: "#f5f3ff", color: "#4f46e5", cursor: "pointer", marginBottom: "0.25rem" }}>
                 {bulkClassIds.length > 0 && bulkClassIds.length === (bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)).length : classrooms.length) ? "Hapus Semua Pilihan" : "Pilih Semua Kelas Terfilter"}
               </button>
               {(bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)) : classrooms).map((c: any) => {
-                const isSelected = bulkClassIds.includes(c.id);
-                return (
-                  <button 
-                    key={c.id} 
-                    onClick={() => setBulkClassIds(prev => isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id])}
-                    style={{
-                      padding: "0.5rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid",
-                      borderColor: isSelected ? "#6366f1" : "#e2e8f0",
-                      background: isSelected ? "#eef2ff" : "#fff",
-                      color: isSelected ? "#4f46e5" : "#64748b",
-                      cursor: "pointer", transition: "all 0.15s"
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                );
+                const isSel = bulkClassIds.includes(c.id);
+                return (<button key={c.id} onClick={() => setBulkClassIds(prev => isSel ? prev.filter(id => id !== c.id) : [...prev, c.id])} style={{ padding: "0.5rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid", borderColor: isSel ? "#6366f1" : "#e2e8f0", background: isSel ? "#eef2ff" : "#fff", color: isSel ? "#4f46e5" : "#64748b", cursor: "pointer" }}>{c.name}</button>);
               })}
             </div>
-
-            {/* Nominal */}
             <div style={{ marginBottom: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "0.5rem" }}>
-                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Nominal Biaya Baru (Rp)</label>
-                {bulkClassIds.length > 0 && (
-                  <span style={{ fontSize: "0.65rem", color: "#6366f1", fontWeight: 700, background: "#eef2ff", padding: "0.15rem 0.5rem", borderRadius: "0.25rem" }}>
-                    Tarif Lama: {(() => {
-                      const selected = classrooms.filter(c => bulkClassIds.includes(c.id));
-                      const nominals = selected.map(c => c.infaqNominal || 0);
-                      const min = Math.min(...nominals);
-                      const max = Math.max(...nominals);
-                      return min === max ? `Rp ${min.toLocaleString("id-ID")}` : `Rp ${min.toLocaleString("id-ID")} - Rp ${max.toLocaleString("id-ID")}`;
-                    })()}
-                  </span>
-                )}
+                <label style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nominal Biaya Baru (Rp)</label>
+                {bulkClassIds.length > 0 && (<span style={{ fontSize: "0.65rem", color: "#6366f1", fontWeight: 700, background: "#eef2ff", padding: "0.15rem 0.5rem", borderRadius: "0.25rem" }}>Tarif Lama: {(() => { const sel = classrooms.filter(c => bulkClassIds.includes(c.id)); const noms = sel.map(c => c.infaqNominal || 0); const mn = Math.min(...noms); const mx = Math.max(...noms); return mn === mx ? `Rp ${mn.toLocaleString("id-ID")}` : `Rp ${mn.toLocaleString("id-ID")} - Rp ${mx.toLocaleString("id-ID")}`; })()}</span>)}
               </div>
-              <input 
-                type="number" 
-                value={bulkNominal} 
-                onChange={e => setBulkNominal(e.target.value)} 
-                placeholder="Masukkan nominal baru..."
-                style={{ width: "100%", padding: "0.75rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "1rem", fontWeight: 700, outline: "none" }}
-                className="focus:border-indigo-500"
-              />
-              {bulkNominal && bulkClassIds.length > 0 && (
-                <p style={{ fontSize: "0.7rem", color: "#059669", fontWeight: 600, marginTop: "0.5rem" }}>
-                  ✨ Semua kelas terpilih akan diseragamkan menjadi <strong>Rp {Number(bulkNominal).toLocaleString("id-ID")}</strong>
-                </p>
-              )}
+              <input type="number" value={bulkNominal} onChange={e => setBulkNominal(e.target.value)} placeholder="Masukkan nominal baru..." style={{ width: "100%", padding: "0.75rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "1rem", fontWeight: 700, outline: "none" }} className="focus:border-indigo-500" />
+              {bulkNominal && bulkClassIds.length > 0 && (<p style={{ fontSize: "0.7rem", color: "#059669", fontWeight: 600, marginTop: "0.5rem" }}>✨ Semua kelas terpilih akan diseragamkan menjadi <strong>Rp {Number(bulkNominal).toLocaleString("id-ID")}</strong></p>)}
             </div>
-
-            {/* Warning Info */}
             <div style={{ padding: "0.75rem", borderRadius: "0.75rem", background: "#fffbeb", border: "1px solid #fde68a", marginBottom: "1.5rem" }}>
-              <p style={{ fontSize: "0.75rem", color: "#92400e", margin: 0, lineHeight: 1.5 }}>
-                <strong>Catatan:</strong> Perubahan ini akan mengupdate biaya standar di tingkat kelas. Tagihan yang <strong>akan</strong> datang akan menggunakan nominal baru ini. Tagihan yang sudah terbit tidak akan berubah otomatis.
-              </p>
+              <p style={{ fontSize: "0.75rem", color: "#92400e", margin: 0, lineHeight: 1.5 }}><strong>Catatan:</strong> Perubahan ini akan mengupdate biaya standar di tingkat kelas. Tagihan yang <strong>akan</strong> datang akan menggunakan nominal baru ini.</p>
             </div>
-
-            {/* Tombol Aksi */}
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button onClick={() => setShowBulkUpdate(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
-              <button 
-                disabled={bulkLoading} 
-                onClick={handleBulkUpdate}
-                style={{
-                  padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff",
-                  background: bulkLoading ? "#94a3b8" : "linear-gradient(135deg,#6366f1,#4f46e5)",
-                  border: "none", borderRadius: "0.625rem", cursor: bulkLoading ? "not-allowed" : "pointer",
-                }}
-              >
+              <button disabled={bulkLoading} onClick={handleBulkUpdate} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: bulkLoading ? "#94a3b8" : "linear-gradient(135deg,#6366f1,#4f46e5)", border: "none", borderRadius: "0.625rem", cursor: bulkLoading ? "not-allowed" : "pointer" }}>
                 {bulkLoading ? "Memproses..." : `Update ${bulkClassIds.length} Kelas`}
               </button>
             </div>
@@ -883,5 +763,13 @@ export default function InfaqBillsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function InfaqBillsPage() {
+  return (
+    <Suspense fallback={<div>Loading Infaq Bills...</div>}>
+      <InfaqBillsContent />
+    </Suspense>
   );
 }
