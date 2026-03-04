@@ -84,17 +84,13 @@ export async function POST(request: Request) {
 
       // 3. Jika via tabungan — validasi saldo tabungan siswa
       if (method === "tabungan" && bill.studentId) {
-        const savingsAgg = await tx.studentSaving.aggregate({
-          where: { studentId: bill.studentId, status: "active", deletedAt: null },
-          _sum: { amount: true },
-        });
-        // Hitung saldo: sum of (in amounts) - sum of (out amounts)
+        // Hitung saldo: sum setor - sum tarik
         const savingsIn = await tx.studentSaving.aggregate({
-          where: { studentId: bill.studentId, type: "in", status: "active", deletedAt: null },
+          where: { studentId: bill.studentId, type: "setor", status: "active", deletedAt: null },
           _sum: { amount: true },
         });
         const savingsOut = await tx.studentSaving.aggregate({
-          where: { studentId: bill.studentId, type: "out", status: "active", deletedAt: null },
+          where: { studentId: bill.studentId, type: "tarik", status: "active", deletedAt: null },
           _sum: { amount: true },
         });
         const balance = (savingsIn._sum.amount || 0) - (savingsOut._sum.amount || 0);
@@ -109,7 +105,7 @@ export async function POST(request: Request) {
         await tx.studentSaving.create({
           data: {
             studentId: bill.studentId,
-            type: "out",
+            type: "tarik",
             amount: amount,
             date: paymentDate || new Date().toISOString().split("T")[0],
             description: `Potong Tabungan untuk bayar Infaq bulan ${bill.month}`,

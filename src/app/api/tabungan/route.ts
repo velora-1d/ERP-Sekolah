@@ -4,8 +4,23 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classFilter = searchParams.get("classId") || "";
+  const studentId = searchParams.get("studentId");
 
   try {
+    // Jika request saldo siswa tertentu → return balance langsung
+    if (studentId) {
+      const savingsIn = await prisma.studentSaving.aggregate({
+        where: { studentId: Number(studentId), type: "setor", status: "active", deletedAt: null },
+        _sum: { amount: true },
+      });
+      const savingsOut = await prisma.studentSaving.aggregate({
+        where: { studentId: Number(studentId), type: "tarik", status: "active", deletedAt: null },
+        _sum: { amount: true },
+      });
+      const balance = (savingsIn._sum.amount || 0) - (savingsOut._sum.amount || 0);
+      return NextResponse.json({ success: true, balance });
+    }
+
     // Ambil data siswa aktif
     const students = await prisma.student.findMany({
       where: {

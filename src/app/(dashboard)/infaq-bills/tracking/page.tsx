@@ -29,6 +29,7 @@ export default function TrackingPerKelasPage() {
   const [payMethod, setPayMethod] = useState("tunai");
   const [payCashId, setPayCashId] = useState("");
   const [payLoading, setPayLoading] = useState(false);
+  const [savingBalance, setSavingBalance] = useState<number | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -91,12 +92,19 @@ export default function TrackingPerKelasPage() {
     } catch { showToast("Gagal revert", "error"); }
   }
 
-  function openPay(student: any, monthData: any) {
+  async function openPay(student: any, monthData: any) {
     setPayTarget({ studentId: student.id, studentName: student.name, billId: monthData.billId, month: monthData.month, nominal: monthData.nominal, remaining: monthData.remaining });
     setPayAmount(String(monthData.remaining));
     setPayMethod("tunai");
     setPayCashId("");
+    setSavingBalance(null);
     setPayModal(true);
+    // Fetch saldo tabungan siswa
+    try {
+      const res = await fetch(`/api/tabungan?studentId=${student.id}`);
+      const json = await res.json();
+      if (json.success) setSavingBalance(json.balance ?? json.data?.balance ?? 0);
+    } catch { /* ignore */ }
   }
 
   async function handlePayConfirm() {
@@ -107,7 +115,7 @@ export default function TrackingPerKelasPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           billId: payTarget.billId,
-          amount: Number(payAmount),
+          amountPaid: Number(payAmount),
           paymentMethod: payMethod,
           cashAccountId: payCashId || undefined,
         }),
@@ -293,6 +301,18 @@ export default function TrackingPerKelasPage() {
               <option value="transfer">Transfer</option>
               <option value="tabungan">Potong Tabungan</option>
             </select>
+
+            {payMethod === "tabungan" && (
+              <div style={{ padding: "0.5rem 0.75rem", background: "#eff6ff", borderRadius: "0.5rem", marginBottom: "0.75rem", fontSize: "0.8125rem" }}>
+                <span style={{ fontWeight: 600, color: "#1e40af" }}>💰 Saldo Tabungan: </span>
+                <span style={{ fontWeight: 700, color: savingBalance !== null && savingBalance < Number(payAmount) ? "#ef4444" : "#059669" }}>
+                  {savingBalance !== null ? fmtRp(savingBalance) : "Memuat..."}
+                </span>
+                {savingBalance !== null && savingBalance < Number(payAmount) && (
+                  <p style={{ fontSize: "0.6875rem", color: "#ef4444", margin: "0.25rem 0 0", fontWeight: 600 }}>⚠️ Saldo tidak mencukupi!</p>
+                )}
+              </div>
+            )}
 
             {payMethod !== "tabungan" && (
               <>

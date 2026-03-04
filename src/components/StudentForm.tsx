@@ -210,10 +210,27 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
         <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", padding: "2rem", marginBottom: "1.5rem" }}>
           {sectionHeaderStyle("E", "Status & Administrasi Internal", "#8b5cf6")}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem" }}>
-            <Select label="Kategori Biaya" name="category" required options={[["reguler", "Reguler"], ["yatim", "Yatim"], ["kurang_mampu", "Kurang Mampu"]]} />
+            <Select label="Kategori Biaya" name="category" required options={[["reguler", "Reguler (Wajib Bayar)"], ["kurang_mampu", "Kurang Mampu"], ["yatim_piatu", "Yatim / Piatu"]]} />
             <Select label="Status Siswa" name="status" required options={[["aktif", "Aktif"], ["lulus", "Lulus"], ["pindah", "Pindah"], ["nonaktif", "Nonaktif"]]} />
-            <Select label="Skema Infaq" name="infaqStatus" options={[["reguler", "Reguler"], ["subsidi", "Subsidi"], ["gratis", "Gratis"]]} />
+            {f.category !== "reguler" ? (
+              <Select label="Skema Infaq/SPP" name="infaqStatus" options={[["bayar_penuh", "Bayar Penuh"], ["potongan", "Potongan (Nominal Custom)"], ["gratis", "Gratis (Rp 0)"]]} />
+            ) : (
+              <div>
+                <label style={labelStyle}>Skema Infaq/SPP</label>
+                <div style={{ ...inputStyle, background: "#f1f5f9", color: "#64748b", display: "flex", alignItems: "center" }}>Wajib Bayar Penuh</div>
+              </div>
+            )}
           </div>
+          {f.category !== "reguler" && f.infaqStatus === "potongan" && (
+            <div style={{ marginTop: "1.25rem", maxWidth: "33%" }}>
+              <label style={labelStyle}>Nominal Infaq/SPP Custom <span style={{ color: "#e11d48" }}>*</span></label>
+              <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e2e8f0", borderRadius: "0.5rem", overflow: "hidden" }}>
+                <span style={{ padding: "0.625rem 0.75rem", background: "#f8fafc", color: "#64748b", fontWeight: 700, fontSize: "0.8125rem", borderRight: "1.5px solid #e2e8f0" }}>Rp</span>
+                <input type="number" name="infaqNominal" value={f.infaqNominal} onChange={handleChange} min="0" style={{ flex: 1, padding: "0.625rem 0.875rem", border: "none", outline: "none", fontSize: "0.8125rem" }} />
+              </div>
+              <p style={{ fontSize: "0.6875rem", color: "#94a3b8", marginTop: "0.375rem" }}>Nominal SPP khusus untuk siswa ini (bukan tarif kelas)</p>
+            </div>
+          )}
         </div>
 
         {/* Submit */}

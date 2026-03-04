@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       select: {
         id: true,
         name: true,
+        category: true,
         infaqNominal: true,
         infaqStatus: true,
         classroomId: true,
@@ -90,22 +91,30 @@ export async function POST(request: Request) {
         const key = `${student.id}-${String(month)}`;
         if (existingSet.has(key)) continue;
 
-        // Logika sesuai Laravel: handle infaqStatus
+        // === Logic Kategori Siswa ===
+        // Nominal kelas = tarif standar
+        const kelasNominal = student.classroom?.infaqNominal || 0;
         let nominal = 0;
         let billStatus = "belum_lunas";
 
-        if (student.infaqStatus === "gratis") {
-          // Hanya gratis yang auto lunas
-          nominal = 0;
-          billStatus = "lunas";
-        } else if (student.infaqStatus === "subsidi") {
-          // Subsidi: pakai nominal siswa
-          nominal = student.infaqNominal || 0;
+        const cat = (student.category || "reguler").toLowerCase();
+        const status = (student.infaqStatus || "reguler").toLowerCase();
+
+        if (cat === "reguler") {
+          // Reguler: WAJIB bayar penuh → pakai nominal kelas
+          nominal = kelasNominal;
         } else {
-          // Reguler: prioritas nominal kelas, fallback ke nominal siswa
-          nominal = (student.classroom?.infaqNominal || 0) > 0
-            ? student.classroom!.infaqNominal
-            : (student.infaqNominal || 0);
+          // Kurang Mampu / Yatim Piatu → tergantung infaqStatus
+          if (status === "gratis") {
+            nominal = 0;
+            billStatus = "lunas"; // Auto lunas
+          } else if (status === "potongan" || status === "subsidi") {
+            // Potongan: pakai nominal custom per siswa
+            nominal = student.infaqNominal || 0;
+          } else {
+            // bayar_penuh / reguler → pakai nominal kelas
+            nominal = kelasNominal;
+          }
         }
 
         billsToCreate.push({
