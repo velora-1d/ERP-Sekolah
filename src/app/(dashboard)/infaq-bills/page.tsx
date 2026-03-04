@@ -534,7 +534,29 @@ export default function InfaqBillsPage() {
             <p style={{ fontSize: "0.8125rem", color: "#64748b", marginTop: "0.375rem" }}>Pilih bulan dan tahun untuk generate tagihan infaq/SPP.</p>
 
             <div style={{ marginTop: "1.5rem" }}>
-              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Pilih Bulan (bisa lebih dari 1)</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Pilih Bulan (bisa lebih dari 1)</label>
+                <div style={{ display: "flex", gap: "0.375rem" }}>
+                  <button 
+                    onClick={() => setGenMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])}
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#1e293b", cursor: "pointer" }}
+                  >
+                    Pilih Semua
+                  </button>
+                  <button 
+                    onClick={() => setGenMonths([7, 8, 9, 10, 11, 12])}
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#6366f1", cursor: "pointer" }}
+                  >
+                    Smtr 1 (Jul-Des)
+                  </button>
+                  <button 
+                    onClick={() => setGenMonths([1, 2, 3, 4, 5, 6])}
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#4f46e5", cursor: "pointer" }}
+                  >
+                    Smtr 2 (Jan-Jun)
+                  </button>
+                </div>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
                 {Array.from({length: 12}).map((_, i) => {
                   const m = i + 1;
