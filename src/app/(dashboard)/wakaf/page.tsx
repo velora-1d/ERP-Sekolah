@@ -21,9 +21,11 @@ export default function WakafPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
 
   useEffect(() => {
     if (activeTab === "riwayat") loadData();
@@ -320,7 +322,11 @@ export default function WakafPage() {
                       {t.status !== 'void' ? (
                         <>
                           <button 
-                            onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === t.id ? null : t.id); }}
+                            onClick={(ev) => { 
+                              ev.stopPropagation(); 
+                              (ev.nativeEvent as any).stopImmediatePropagation();
+                              setOpenActionId(openActionId === t.id ? null : t.id); 
+                            }}
                             style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                             className="hover:bg-slate-100 transition-colors"
                           >

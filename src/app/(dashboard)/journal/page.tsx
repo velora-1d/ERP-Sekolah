@@ -33,9 +33,11 @@ export default function JournalPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
 
   // Modal catat transaksi
   const [showCreate, setShowCreate] = useState(false);
@@ -308,7 +310,11 @@ export default function JournalPage() {
                       {!isVoid ? (
                         <>
                           <button 
-                            onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === entry.id ? null : entry.id); }}
+                            onClick={(ev) => { 
+                              ev.stopPropagation(); 
+                              (ev.nativeEvent as any).stopImmediatePropagation();
+                              setOpenActionId(openActionId === entry.id ? null : entry.id); 
+                            }}
                             style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                             className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
                           >

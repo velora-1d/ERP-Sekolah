@@ -20,9 +20,11 @@ export default function StudentsPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
 
   const loadStudents = useCallback(async (p = page, q = search) => {
     setLoading(true);
@@ -222,7 +224,11 @@ export default function StudentsPage() {
                       </td>
                       <td style={{ padding: "1rem 1.5rem", textAlign: "center", position: "relative" }}>
                         <button 
-                          onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === s.id ? null : s.id); }}
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            (e.nativeEvent as any).stopImmediatePropagation();
+                            setOpenActionId(openActionId === s.id ? null : s.id); 
+                          }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                           className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
                         >

@@ -33,9 +33,11 @@ export default function PayrollPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
 
   // --- Load Data ---
   useEffect(() => {
@@ -410,7 +412,11 @@ export default function PayrollPage() {
                         <td className="px-6 py-3 font-bold text-sm text-slate-800">Rp {p.net_salary.toLocaleString("id-ID")}</td>
                         <td className="px-6 py-3 text-right relative">
                           <button 
-                            onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === p.id ? null : p.id); }}
+                            onClick={(ev) => { 
+                              ev.stopPropagation(); 
+                              (ev.nativeEvent as any).stopImmediatePropagation();
+                              setOpenActionId(openActionId === p.id ? null : p.id); 
+                            }}
                             style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                             className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
                           >
@@ -469,7 +475,11 @@ export default function PayrollPage() {
                     </div>
                     <div className="relative flex justify-end">
                       <button 
-                        onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === e.id ? null : e.id); }}
+                        onClick={(ev) => { 
+                          ev.stopPropagation(); 
+                          (ev.nativeEvent as any).stopImmediatePropagation();
+                          setOpenActionId(openActionId === e.id ? null : e.id); 
+                        }}
                         style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                         className="hover:bg-white transition-colors"
                       >

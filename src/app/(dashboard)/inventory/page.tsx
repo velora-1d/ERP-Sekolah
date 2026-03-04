@@ -21,9 +21,11 @@ export default function InventoryPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
 
   const loadInventory = useCallback(async (q = search, cond = conditionFilter, p = page) => {
     setLoading(true);
@@ -316,7 +318,11 @@ export default function InventoryPage() {
                       <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", verticalAlign: "middle" }} dangerouslySetInnerHTML={{ __html: badge }}></td>
                       <td style={{ padding: "1.25rem 1.5rem", textAlign: "right", verticalAlign: "middle", position: "relative" }}>
                         <button 
-                          onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === item.id ? null : item.id); }}
+                          onClick={(ev) => { 
+                            ev.stopPropagation(); 
+                            (ev.nativeEvent as any).stopImmediatePropagation();
+                            setOpenActionId(openActionId === item.id ? null : item.id); 
+                          }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                           className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
                         >

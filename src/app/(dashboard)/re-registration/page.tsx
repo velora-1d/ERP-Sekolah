@@ -19,9 +19,11 @@ export default function ReRegistrationPage() {
     function handleClickOutside() {
       setOpenActionId(null);
     }
-    document.addEventListener("click", handleClickOutside);
+    if (openActionId !== null) {
+      document.addEventListener("click", handleClickOutside);
+    }
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [openActionId]);
   
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
@@ -477,7 +479,11 @@ export default function ReRegistrationPage() {
                       </td>
                       <td className="p-3 align-top text-center relative">
                         <button 
-                          onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === item.id.toString() ? null : item.id.toString()); }}
+                          onClick={(ev) => { 
+                            ev.stopPropagation(); 
+                            (ev.nativeEvent as any).stopImmediatePropagation();
+                            setOpenActionId(openActionId === item.id.toString() ? null : item.id.toString()); 
+                          }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
                           className="hover:bg-slate-100 transition-colors"
                         >
