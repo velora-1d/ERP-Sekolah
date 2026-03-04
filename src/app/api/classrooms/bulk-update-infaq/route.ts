@@ -12,10 +12,12 @@ export async function PATCH(request: Request) {
   try {
     const user = await requireAuth();
 
-    // Pastikan user memiliki akses admin (sesuai role di schema)
-    if (user.role !== "admin" && user.role !== "super_admin") {
+    // Sesuaikan dengan ROUTE_PERMISSIONS di src/lib/rbac-permissions.ts
+    // Fitur keuangan (SPP/Infaq) biasanya diakses oleh superadmin atau bendahara
+    const allowedRoles = ["superadmin", "bendahara"];
+    if (!allowedRoles.includes(user.role)) {
       return NextResponse.json(
-        { success: false, message: "Akses ditolak. Anda bukan admin." },
+        { success: false, message: "Akses ditolak. Fitur ini khusus untuk Superadmin atau Bendahara." },
         { status: 403 }
       );
     }
