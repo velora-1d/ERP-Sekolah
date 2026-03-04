@@ -12,6 +12,18 @@ export default function StudentsPage() {
   const [limit, setLimit] = useState(20);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const loadStudents = useCallback(async (p = page, q = search) => {
     setLoading(true);
     try {
@@ -208,11 +220,41 @@ export default function StudentsPage() {
                       <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
                         <span style={{ display: "inline-flex", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, borderRadius: 999, textTransform: "capitalize", background: sc[0], color: sc[1] }}>{s.status || "-"}</span>
                       </td>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                        <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                          <Link href={`/students/${s.id}/edit`} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }} className="hover:bg-indigo-100 transition-colors">Edit</Link>
-                          <button onClick={() => handleDelete(s)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Hapus</button>
-                        </div>
+                      <td style={{ padding: "1rem 1.5rem", textAlign: "center", position: "relative" }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === s.id ? null : s.id); }}
+                          style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                          className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                        >
+                          <svg style={{ width: 20, height: 20 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+
+                        {openActionId === s.id && (
+                          <div 
+                            style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                              Opsi Siswa
+                            </div>
+                            <Link 
+                              href={`/students/${s.id}/edit`} 
+                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#6366f1", textDecoration: "none", borderRadius: "0.5rem" }}
+                              className="hover:bg-indigo-50"
+                            >
+                              Edit Data
+                            </Link>
+                            <button 
+                              onClick={() => { setOpenActionId(null); handleDelete(s); }} 
+                              style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} 
+                              className="hover:bg-rose-50"
+                            >
+                              Hapus Siswa
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

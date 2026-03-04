@@ -25,6 +25,18 @@ export default function JournalPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   // Modal catat transaksi
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ type: "in", amountDisplay: "", amount: 0, categoryId: "", date: new Date().toISOString().split("T")[0], description: "" });
@@ -270,35 +282,61 @@ export default function JournalPage() {
                     <p style={{ fontSize: "0.875rem", color: "#64748b", fontWeight: 500, margin: 0 }}>Belum ada riwayat jurnal.</p>
                   </div>
                 </td></tr>
-              ) : data.slice((page - 1) * limit, page * limit).map((e: any, i: number) => {
-                const date = e.date ? new Date(e.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-";
-                const isIn = e.type === "in";
-                const isVoid = e.status === "void";
+              ) : data.slice((page - 1) * limit, page * limit).map((entry: any, i: number) => {
+                const date = entry.date ? new Date(entry.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-";
+                const isIn = entry.type === "in";
+                const isVoid = entry.status === "void";
 
                 return (
-                  <tr key={e.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: isVoid ? 0.4 : 1 }}>
+                  <tr key={entry.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: isVoid ? 0.4 : 1 }}>
                     <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                     <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", color: "#475569" }}>{date}</td>
                     <td style={{ padding: "0.875rem 1.5rem" }}>
                       <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>
-                        {e.description || "-"}
+                        {entry.description || "-"}
                         {isVoid && <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 700, marginLeft: 6 }}>[VOID]</span>}
                       </p>
-                      <span style={{ fontSize: "0.6875rem", color: "#94a3b8" }}>{e.category_name}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "#94a3b8" }}>{entry.category_name}</span>
                     </td>
                     <td style={{ padding: "0.875rem 1.5rem", textAlign: "right", fontWeight: 700, color: isIn ? "#059669" : "#cbd5e1", fontSize: "0.8125rem" }}>
-                      {isIn ? fmtRp(e.amount) : "-"}
+                      {isIn ? fmtRp(entry.amount) : "-"}
                     </td>
                     <td style={{ padding: "0.875rem 1.5rem", textAlign: "right", fontWeight: 700, color: !isIn ? "#e11d48" : "#cbd5e1", fontSize: "0.8125rem" }}>
-                      {!isIn ? fmtRp(e.amount) : "-"}
+                      {!isIn ? fmtRp(entry.amount) : "-"}
                     </td>
-                    <td style={{ padding: "0.875rem 1.5rem", textAlign: "center" }}>
+                    <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", position: "relative" }}>
                       {!isVoid ? (
-                        <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                          <button onClick={() => handleEdit(e)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-indigo-100 transition-colors">Edit</button>
-                          <button onClick={() => handleDelete(e.id)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Hapus</button>
-                          <button onClick={() => handleVoid(e.id)} style={{ display: "inline-flex", alignItems: "center", padding: "0.3rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#d97706", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "0.375rem", cursor: "pointer" }} className="hover:bg-amber-100 transition-colors">Void</button>
-                        </div>
+                        <>
+                          <button 
+                            onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === entry.id ? null : entry.id); }}
+                            style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                            className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                          >
+                            <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                          </button>
+
+                          {openActionId === entry.id && (
+                            <div 
+                              style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                                Aksi Jurnal
+                              </div>
+                              <button onClick={() => { setOpenActionId(null); handleEdit(entry); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#6366f1", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-indigo-50">
+                                Edit Transaksi
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleVoid(entry.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#d97706", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-amber-50">
+                                Void (Batal)
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleDelete(entry.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
+                                Hapus Jurnal
+                              </button>
+                            </div>
+                          )}
+                        </>
                       ) : <span style={{ color: "#cbd5e1", fontSize: "0.75rem" }}>—</span>}
                     </td>
                   </tr>

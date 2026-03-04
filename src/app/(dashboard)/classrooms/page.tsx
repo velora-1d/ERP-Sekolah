@@ -6,6 +6,19 @@ export default function ClassroomsPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
+
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const showToast = (msg: string, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
 
   async function loadData() {
@@ -107,72 +120,96 @@ export default function ClassroomsPage() {
                     <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
                       <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "#059669" }}>Rp {formatRp(c.infaq_nominal || 0)}</span>
                     </td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                        <button onClick={async () => {
-                          const result = await Swal.fire({
-                            title: "Edit Data Kelas",
-                            html: `
-                              <div style="text-align: left; margin-bottom: 10px;">
-                                <label style="font-size: 14px; font-weight: 600;">Nama Kelas</label>
-                                <input id="swal-input1" class="swal2-input" value="${c.name || ''}" style="margin-top: 5px;">
-                              </div>
-                              <div style="text-align: left;">
-                                <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
-                                <input id="swal-input2" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
-                              </div>
-                            `,
-                            focusConfirm: false,
-                            showCancelButton: true,
-                            confirmButtonText: "Simpan",
-                            cancelButtonText: "Batal",
-                            preConfirm: () => {
-                              const input1 = document.getElementById('swal-input1') as HTMLInputElement;
-                              const input2 = document.getElementById('swal-input2') as HTMLInputElement;
-                              return {
-                                newName: input1 ? input1.value : '',
-                                newInfaq: input2 ? input2.value : '0'
+                    <td style={{ padding: "1rem 1.5rem", textAlign: "center", position: "relative" }}>
+                      <button 
+                        onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === c.id ? null : c.id); }}
+                        style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                        className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                      >
+                        <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {openActionId === c.id && (
+                        <div 
+                          style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                          onClick={(ev) => ev.stopPropagation()}
+                        >
+                          <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                            Aksi Kelas
+                          </div>
+                          <button onClick={async () => {
+                            setOpenActionId(null);
+                            const result = await Swal.fire({
+                              title: "Edit Data Kelas",
+                              html: `
+                                <div style="text-align: left; margin-bottom: 10px;">
+                                  <label style="font-size: 14px; font-weight: 600;">Nama Kelas</label>
+                                  <input id="swal-input1" class="swal2-input" value="${c.name || ''}" style="margin-top: 5px;">
+                                </div>
+                                <div style="text-align: left;">
+                                  <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
+                                  <input id="swal-input2" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
+                                </div>
+                              `,
+                              focusConfirm: false,
+                              showCancelButton: true,
+                              confirmButtonText: "Simpan",
+                              cancelButtonText: "Batal",
+                              preConfirm: () => {
+                                const input1 = document.getElementById('swal-input1') as HTMLInputElement;
+                                const input2 = document.getElementById('swal-input2') as HTMLInputElement;
+                                return {
+                                  newName: input1 ? input1.value : '',
+                                  newInfaq: input2 ? input2.value : '0'
+                                }
                               }
-                            }
-                          });
-
-                          if (!result.isConfirmed) return;
-                          
-                          const { newName, newInfaq } = result.value || {};
-                          if (!newName) {
-                            Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
-                            return;
-                          }
-
-                          try {
-                            const res = await fetch(`/api/classrooms/${c.id}`, {
-                              method: "PUT", headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ name: newName, infaqNominal: Number(newInfaq) }),
                             });
-                            const json = await res.json();
-                            if (json.success) { showToast("Kelas berhasil diupdate"); loadData(); }
-                            else showToast(json.message, "error");
-                          } catch { showToast("Gagal update", "error"); }
-                        }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
-                        <button onClick={async () => {
-                          const result = await Swal.fire({
-                            title: "Hapus Kelas?",
-                            text: `Hapus kelas ${c.name}?`,
-                            icon: "warning",
-                            showCancelButton: true,
-                            confirmButtonColor: "#e11d48",
-                            cancelButtonColor: "#64748b",
-                            confirmButtonText: "Ya, Hapus"
-                          });
-                          if (!result.isConfirmed) return;
-                          try {
-                            const res = await fetch(`/api/classrooms/${c.id}`, { method: "DELETE" });
-                            const json = await res.json();
-                            if (json.success) { showToast("Kelas berhasil dihapus"); loadData(); }
-                            else showToast(json.message, "error");
-                          } catch { showToast("Gagal hapus", "error"); }
-                        }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
-                      </div>
+
+                            if (!result.isConfirmed) return;
+                            
+                            const { newName, newInfaq } = result.value || {};
+                            if (!newName) {
+                              Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
+                              return;
+                            }
+
+                            try {
+                              const res = await fetch(`/api/classrooms/${c.id}`, {
+                                method: "PUT", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name: newName, infaqNominal: Number(newInfaq) }),
+                              });
+                              const json = await res.json();
+                              if (json.success) { showToast("Kelas berhasil diupdate"); loadData(); }
+                              else showToast(json.message, "error");
+                            } catch { showToast("Gagal update", "error"); }
+                          }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#6366f1", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-indigo-50">
+                            Edit Data
+                          </button>
+                          <button onClick={async () => {
+                            setOpenActionId(null);
+                            const result = await Swal.fire({
+                              title: "Hapus Kelas?",
+                              text: `Hapus kelas ${c.name}?`,
+                              icon: "warning",
+                              showCancelButton: true,
+                              confirmButtonColor: "#e11d48",
+                              cancelButtonColor: "#64748b",
+                              confirmButtonText: "Ya, Hapus"
+                            });
+                            if (!result.isConfirmed) return;
+                            try {
+                              const res = await fetch(`/api/classrooms/${c.id}`, { method: "DELETE" });
+                              const json = await res.json();
+                              if (json.success) { showToast("Kelas berhasil dihapus"); loadData(); }
+                              else showToast(json.message, "error");
+                            } catch { showToast("Gagal hapus", "error"); }
+                          }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
+                            Hapus Kelas
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
