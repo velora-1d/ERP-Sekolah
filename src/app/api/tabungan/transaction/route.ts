@@ -87,6 +87,47 @@ export async function POST(request: Request) {
         },
       });
 
+      // 6. Jurnal otomatis + update saldo kas
+      // Setor: uang masuk ke tabungan siswa → jurnal type "in" (penerimaan titipan)
+      // Tarik: uang keluar dari tabungan siswa → jurnal type "out" (pengembalian titipan)
+      const txDate = date || new Date().toISOString().split("T")[0];
+
+      // Cari akun kas default (pertama yang aktif)
+      const defaultCash = await tx.cashAccount.findFirst({
+        where: { deletedAt: null },
+        orderBy: { id: "asc" },
+      });
+
+      if (defaultCash) {
+        await tx.generalTransaction.create({
+          data: {
+            type: type === "setor" ? "in" : "out",
+            amount: Number(amount),
+            cashAccountId: defaultCash.id,
+            description: `Tabungan ${type} - ${student.name}${description ? ` (${description})` : ""}`,
+            date: txDate,
+            status: "valid",
+            referenceType: "student_saving",
+            referenceId: String(saving.id),
+            userId: user.userId,
+            unitId: user.unitId || "",
+          },
+        });
+
+        // Update saldo kas: setor → uang masuk ke kas, tarik → uang keluar dari kas
+        if (type === "setor") {
+          await tx.cashAccount.update({
+            where: { id: defaultCash.id },
+            data: { balance: { increment: Number(amount) } },
+          });
+        } else {
+          await tx.cashAccount.update({
+            where: { id: defaultCash.id },
+            data: { balance: { decrement: Number(amount) } },
+          });
+        }
+      }
+
       return { saving, student, currentBalance, newBalance };
     });
 

@@ -324,7 +324,7 @@ export default function InfaqBillsPage() {
                         ) : (
                           <span style={{ color: "#cbd5e1" }}>—</span>
                         )}
-                        {b.student_id && <button onClick={() => router.push(`/infaq-bills/tracking/${b.student_id}`)} style={btnStyle("#0ea5e9", "#f0f9ff", "#bae6fd")}>Tracking</button>}
+                        <button onClick={() => router.push("/infaq-bills/tracking")} style={btnStyle("#0ea5e9", "#f0f9ff", "#bae6fd")}>Tracking</button>
                       </div>
                     </td>
                   </tr>

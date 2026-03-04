@@ -243,6 +243,17 @@ export default function PpdbPage() {
             <Link href="/ppdb/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", textDecoration: "none" }} className="hover:bg-white/35 transition-all">
               <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Pendaftar
             </Link>
+            <button onClick={async () => {
+              if (!confirm("Perbaiki data pembayaran untuk pendaftar yang sudah diterima tapi belum punya record pembayaran?")) return;
+              try {
+                const res = await fetch("/api/ppdb/fix-payments", { method: "POST" });
+                const json = await res.json();
+                if (json.success) { showToast(json.message); loadData(); }
+                else showToast(json.message, "error");
+              } catch { showToast("Gagal memperbaiki data", "error"); }
+            }} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-all">
+              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Perbaiki Data
+            </button>
           </div>
 
           {/* KPI Stats */}
@@ -457,6 +468,15 @@ export default function PpdbPage() {
                           <>
                             <button onClick={() => handleApprove(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#059669", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "0.5rem", cursor: "pointer" }}>Terima</button>
                             <button onClick={() => handleReject(reg)} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}>Tolak</button>
+                            <button onClick={async () => {
+                              if (!confirm(`Hapus pendaftar ${reg.name}?`)) return;
+                              try {
+                                const res = await fetch(`/api/ppdb/${reg.id}`, { method: "DELETE" });
+                                const json = await res.json();
+                                if (json.success) { showToast(json.message); loadData(); }
+                                else showToast(json.message, "error");
+                              } catch { showToast("Gagal hapus", "error"); }
+                            }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
                           </>
                         )}
                         {s === "diterima" && (

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 export default function ClassroomsPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
+  const showToast = (msg: string, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 4000); };
 
   async function loadData() {
     setLoading(true);
@@ -106,7 +108,30 @@ export default function ClassroomsPage() {
                     </td>
                     <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
                       <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem" }}>
-                        <button style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
+                        <button onClick={async () => {
+                          const newName = prompt("Nama kelas:", c.name);
+                          if (newName === null) return;
+                          const newInfaq = prompt("Tarif Infaq/SPP:", String(c.infaq_nominal || c.infaqNominal || 0));
+                          if (newInfaq === null) return;
+                          try {
+                            const res = await fetch(`/api/classrooms/${c.id}`, {
+                              method: "PUT", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name: newName, infaqNominal: Number(newInfaq) }),
+                            });
+                            const json = await res.json();
+                            if (json.success) { showToast("Kelas berhasil diupdate"); loadData(); }
+                            else showToast(json.message, "error");
+                          } catch { showToast("Gagal update", "error"); }
+                        }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}>Edit</button>
+                        <button onClick={async () => {
+                          if (!confirm(`Hapus kelas ${c.name}?`)) return;
+                          try {
+                            const res = await fetch(`/api/classrooms/${c.id}`, { method: "DELETE" });
+                            const json = await res.json();
+                            if (json.success) { showToast("Kelas berhasil dihapus"); loadData(); }
+                            else showToast(json.message, "error");
+                          } catch { showToast("Gagal hapus", "error"); }
+                        }} style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "0.5rem", cursor: "pointer" }}>Hapus</button>
                       </div>
                     </td>
                   </tr>
@@ -116,6 +141,16 @@ export default function ClassroomsPage() {
           </table>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
+          background: toast.type === "error" ? "#fef2f2" : "#f0fdf4", color: toast.type === "error" ? "#991b1b" : "#166534",
+          border: `1px solid ${toast.type === "error" ? "#fecaca" : "#bbf7d0"}`, fontWeight: 600, fontSize: "0.8125rem",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 200,
+        }}>{toast.msg}</div>
+      )}
     </div>
   );
 }

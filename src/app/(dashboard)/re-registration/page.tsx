@@ -12,7 +12,6 @@ export default function ReRegistrationPage() {
   const [settings, setSettings] = useState({
     re_registration_fee: 0,
     books_fee: 0,
-    uniform_fee: 0
   });
   const [cashAccounts, setCashAccounts] = useState<any[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -48,7 +47,6 @@ export default function ReRegistrationPage() {
       setSettings({
         re_registration_fee: json.re_registration_fee || 0,
         books_fee: json.books_fee || 0,
-        uniform_fee: json.uniform_fee || 0,
       });
     } catch (e) {
       console.error(e);
@@ -166,7 +164,7 @@ export default function ReRegistrationPage() {
   };
 
   // Field yang melibatkan uang (butuh modal konfirmasi)
-  const monetaryFields = ['is_fee_paid', 'is_books_paid', 'is_uniform_paid'];
+  const monetaryFields = ['is_fee_paid', 'is_books_paid'];
 
   const openPayModal = (regId: string, field: string, amount: number) => {
     // Cek apakah field ini sekarang true (mau revert)
@@ -330,18 +328,6 @@ export default function ReRegistrationPage() {
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-xl p-5 hover:border-rose-400 transition-colors">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
-                  </div>
-                  <p className="text-sm font-bold text-slate-700 m-0">Biaya Seragam</p>
-                </div>
-                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 ring-rose-200 transition-all">
-                  <span className="px-3 py-2 bg-slate-50 text-slate-500 font-bold text-sm border-r border-slate-200">Rp</span>
-                  <input type="number" value={settings.uniform_fee} onChange={(e) => setSettings({...settings, uniform_fee: Number(e.target.value)})} className="flex-1 px-3 py-2 border-none outline-none text-sm font-semibold" min="0" />
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-end mb-8">
@@ -368,11 +354,7 @@ export default function ReRegistrationPage() {
                   <p className="font-heading font-extrabold text-xl text-amber-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_books)}</p>
                   <p className="text-[11px] text-slate-500 mt-1">{paymentStats.count_books || 0} siswa lunas</p>
                 </div>
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
-                  <p className="text-xs font-bold text-rose-700 m-0">Seragam</p>
-                  <p className="font-heading font-extrabold text-xl text-rose-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_uniform)}</p>
-                  <p className="text-[11px] text-slate-500 mt-1">{paymentStats.count_uniform || 0} siswa lunas</p>
-                </div>
+
                 <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-center shadow-inner">
                   <p className="text-xs font-bold text-emerald-700 m-0">Total Penerimaan</p>
                   <p className="font-heading font-extrabold text-xl text-emerald-900 mt-1.5 mb-0">{fmtRp(paymentStats.grand_total)}</p>
@@ -475,22 +457,6 @@ export default function ReRegistrationPage() {
                             </button>
                           </div>
 
-                          <div className="flex gap-1.5">
-                            <button 
-                              onClick={() => openPayModal(item.id.toString(), 'is_uniform_paid', settings.uniform_fee)}
-                              className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_uniform_paid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-                            >
-                              <span>Baju {settings.uniform_fee > 0 && <span className="opacity-60">({settings.uniform_fee/1000}k)</span>}</span>
-                              <span className="font-black">{p.is_uniform_paid ? '✓' : '−'}</span>
-                            </button>
-                            <button 
-                              onClick={() => togglePayment(item.id.toString(), 'is_uniform_received', 0, undefined)}
-                              className={`flex-1 text-left px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors flex justify-between items-center ${p.is_uniform_received ? 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-                            >
-                              <span>Ambil</span>
-                              <span className="font-black">{p.is_uniform_received ? '✓' : '−'}</span>
-                            </button>
-                          </div>
 
                         </div>
                       </td>
