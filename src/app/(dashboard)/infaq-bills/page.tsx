@@ -23,8 +23,14 @@ export default function InfaqBillsPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [showReset, setShowReset] = useState(false);
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
-  // Generate form
+  // Bulk update classroom infaq form
+  const [bulkClassIds, setBulkClassIds] = useState<number[]>([]);
+  const [bulkNominal, setBulkNominal] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Reset form
   const [genMonths, setGenMonths] = useState<number[]>([]);
   const [genYear, setGenYear] = useState(new Date().getFullYear().toString());
   const [genLoading, setGenLoading] = useState(false);
@@ -219,6 +225,31 @@ export default function InfaqBillsPage() {
     } catch { showToast("Gagal revert tagihan", "error"); }
   }
 
+  // === Bulk Update Infaq Kelas ===
+  async function handleBulkUpdate() {
+    if (bulkClassIds.length === 0) { showToast("Pilih minimal satu kelas", "error"); return; }
+    if (bulkNominal === "") { showToast("Isi nominal biaya", "error"); return; }
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/classrooms/bulk-update-infaq", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classIds: bulkClassIds, nominal: Number(bulkNominal) }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message);
+        setShowBulkUpdate(false);
+        setBulkClassIds([]);
+        setBulkNominal("");
+        fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
+      } else {
+        showToast(json.message, "error");
+      }
+    } catch { showToast("Gagal memperbarui biaya kelas", "error"); }
+    finally { setBulkLoading(false); }
+  }
+
   function toggleGenMonth(m: number) {
     setGenMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
   }
@@ -259,7 +290,11 @@ export default function InfaqBillsPage() {
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button onClick={() => setShowGenerate(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30">
+              <button onClick={() => setShowBulkUpdate(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(99,102,241,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(99,102,241,0.3)", cursor: "pointer" }} className="hover:bg-indigo-500/30">
+                <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>Setting Biaya
+              </button>
+              <button onClick={() => setShowGenerate(true)}
+ style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30">
                 <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Generate Tagihan
               </button>
               <button onClick={() => setShowReset(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(239,68,68,0.3)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(239,68,68,0.4)", cursor: "pointer" }} className="hover:bg-red-500/40">
@@ -594,6 +629,85 @@ export default function InfaqBillsPage() {
                 background: resetLoading ? "#94a3b8" : "linear-gradient(135deg,#ef4444,#dc2626)",
                 border: "none", borderRadius: "0.5rem", cursor: resetLoading ? "not-allowed" : "pointer",
               }}>{resetLoading ? "Memproses..." : "Reset Sekarang"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Setting Biaya Masal */}
+      {showBulkUpdate && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }} onClick={() => setShowBulkUpdate(false)} />
+          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", padding: "2rem", width: "100%", maxWidth: 500, boxShadow: "0 16px 48px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: "0 0 0.25rem" }}>⚙️ Pengaturan Biaya SPP Masal</h3>
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.5rem" }}>Update nominal biaya SPP standar untuk kelas yang dipilih.</p>
+
+            {/* Pilih Kelas */}
+            <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Pilih Kelas</label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem", maxHeight: "200px", overflowY: "auto", padding: "0.5rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", marginBottom: "1rem" }}>
+              <button 
+                onClick={() => {
+                  if (bulkClassIds.length === classrooms.length) setBulkClassIds([]);
+                  else setBulkClassIds(classrooms.map(c => c.id));
+                }}
+                style={{ gridColumn: "span 3", padding: "0.375rem", fontSize: "0.75rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px dashed #6366f1", background: "#f5f3ff", color: "#4f46e5", cursor: "pointer", marginBottom: "0.25rem" }}
+              >
+                {bulkClassIds.length === classrooms.length ? "Hapus Semua Pilihan" : "Pilih Semua Kelas"}
+              </button>
+              {classrooms.map((c: any) => {
+                const isSelected = bulkClassIds.includes(c.id);
+                return (
+                  <button 
+                    key={c.id} 
+                    onClick={() => setBulkClassIds(prev => isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                    style={{
+                      padding: "0.5rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid",
+                      borderColor: isSelected ? "#6366f1" : "#e2e8f0",
+                      background: isSelected ? "#eef2ff" : "#fff",
+                      color: isSelected ? "#4f46e5" : "#64748b",
+                      cursor: "pointer", transition: "all 0.15s"
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Nominal */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal Biaya Baru (Rp)</label>
+              <input 
+                type="number" 
+                value={bulkNominal} 
+                onChange={e => setBulkNominal(e.target.value)} 
+                placeholder="Contoh: 150000"
+                style={{ width: "100%", padding: "0.75rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "1rem", fontWeight: 700, outline: "none" }}
+                className="focus:border-indigo-500"
+              />
+            </div>
+
+            {/* Warning Info */}
+            <div style={{ padding: "0.75rem", borderRadius: "0.75rem", background: "#fffbeb", border: "1px solid #fde68a", marginBottom: "1.5rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#92400e", margin: 0, lineHeight: 1.5 }}>
+                <strong>Catatan:</strong> Perubahan ini akan mengupdate biaya standar di tingkat kelas. Tagihan yang <strong>akan</strong> datang akan menggunakan nominal baru ini. Tagihan yang sudah terbit tidak akan berubah otomatis.
+              </p>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowBulkUpdate(false)} style={{ padding: "0.625rem 1.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.625rem", cursor: "pointer" }}>Batal</button>
+              <button 
+                disabled={bulkLoading} 
+                onClick={handleBulkUpdate}
+                style={{
+                  padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff",
+                  background: bulkLoading ? "#94a3b8" : "linear-gradient(135deg,#6366f1,#4f46e5)",
+                  border: "none", borderRadius: "0.625rem", cursor: bulkLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {bulkLoading ? "Memproses..." : `Update ${bulkClassIds.length} Kelas`}
+              </button>
             </div>
           </div>
         </div>
