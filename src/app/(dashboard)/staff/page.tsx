@@ -3,12 +3,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function StaffPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const router = useRouter();
 
   const loadStaff = async () => {
@@ -36,6 +39,9 @@ export default function StaffPage() {
     const matchStatus = statusFilter ? s.status === statusFilter : true;
     return matchSearch && matchStatus;
   });
+
+  const totalPages = Math.ceil(filteredData.length / limit) || 1;
+  const paginatedData = filteredData.slice((page - 1) * limit, page * limit);
 
 
 
@@ -135,7 +141,7 @@ export default function StaffPage() {
                   </div>
                 </td></tr>
               ) : (
-                filteredData.map((s, i) => {
+                paginatedData.map((s, i) => {
                   const initial = (s.name || "?").charAt(0).toUpperCase();
                   const statusBadge = s.status === "aktif"
                     ? <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669" }}></div>Aktif</span>
@@ -143,7 +149,7 @@ export default function StaffPage() {
 
                   return (
                     <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                      <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                       <td style={{ padding: "1rem 1.5rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                           <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#e0f2fe,#bae6fd)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#0284c7" }}>{initial}</div>
@@ -170,6 +176,7 @@ export default function StaffPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={filteredData.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
     </div>
   );

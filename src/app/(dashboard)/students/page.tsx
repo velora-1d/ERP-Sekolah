@@ -9,12 +9,13 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
 
   const loadStudents = useCallback(async (p = page, q = search) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/students?page=${p}&limit=20&q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/students?page=${p}&limit=${limit}&q=${encodeURIComponent(q)}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data || []);
@@ -25,7 +26,7 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, limit]);
 
   useEffect(() => {
     loadStudents();
@@ -43,6 +44,12 @@ export default function StudentsPage() {
   function handlePageChange(p: number) {
     setPage(p);
     loadStudents(p, search);
+  }
+
+  function handleLimitChange(newLimit: number) {
+    setLimit(newLimit);
+    setPage(1);
+    loadStudents(1, search);
   }
 
   const handleDelete = (s: any) => {
@@ -214,7 +221,7 @@ export default function StudentsPage() {
             </tbody>
           </table>
         </div>
-        <Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} onPageChange={handlePageChange} />
+        <Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} limit={limit} onPageChange={handlePageChange} onLimitChange={handleLimitChange} />
       </div>
     </div>
   );

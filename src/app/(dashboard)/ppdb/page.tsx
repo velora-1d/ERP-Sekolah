@@ -12,6 +12,7 @@ export default function PpdbPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -69,7 +70,7 @@ export default function PpdbPage() {
   const loadData = useCallback(async (q = search, p = page) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}&page=${p}&limit=20`);
+      const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}&page=${p}&limit=${limit}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -81,7 +82,7 @@ export default function PpdbPage() {
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [search, page]);
+  }, [search, page, limit]);
 
   async function loadClassrooms() {
     try {
@@ -562,7 +563,7 @@ export default function PpdbPage() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
 
       {/* Modal Konversi ke Siswa */}

@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function ReRegistrationPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>({});
   const [paymentStats, setPaymentStats] = useState<any>({});
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
@@ -411,11 +414,11 @@ export default function ReRegistrationPage() {
               ) : data.length === 0 ? (
                 <tr><td colSpan={7} className="p-10 text-center text-slate-400 text-sm">Belum ada data. Silakan Generate Batch.</td></tr>
               ) : (
-                data.map((item, i) => {
+                data.slice((page - 1) * limit, page * limit).map((item, i) => {
                   const p = item.payment || {};
                   return (
                     <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="p-3 text-sm text-slate-400 font-semibold text-center align-top">{i + 1}</td>
+                      <td className="p-3 text-sm text-slate-400 font-semibold text-center align-top">{(page - 1) * limit + i + 1}</td>
                       <td className="p-3 text-sm font-bold text-slate-800 align-top">{item.student_name}</td>
                       <td className="p-3 align-top text-center"><span className="px-3 py-1 bg-violet-100 text-violet-700 text-xs font-bold rounded-full">{item.classroom}</span></td>
                       <td className="p-3 align-top text-center">
@@ -481,6 +484,7 @@ export default function ReRegistrationPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={Math.ceil(data.length / limit) || 1} total={data.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
       {/* Modal Konfirmasi Bayar */}
       {showPayModal && payTarget && (

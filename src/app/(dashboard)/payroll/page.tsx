@@ -21,6 +21,7 @@ export default function PayrollPage() {
 
   const [loading, setLoading] = useState(false);
   const [payPage, setPayPage] = useState(1);
+  const [payLimit, setPayLimit] = useState(20);
   const [payTotalPages, setPayTotalPages] = useState(1);
   const [payTotal, setPayTotal] = useState(0);
 
@@ -35,7 +36,7 @@ export default function PayrollPage() {
   const loadPayrolls = async (p = payPage) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/payroll?page=${p}&limit=20`);
+      const res = await fetch(`/api/payroll?page=${p}&limit=${payLimit}`);
       const json = await res.json();
       if (json.success) {
         setPayrolls(json.data || []);
@@ -409,7 +410,7 @@ export default function PayrollPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={payPage} totalPages={payTotalPages} total={payTotal} onPageChange={(p) => { setPayPage(p); loadPayrolls(p); }} />
+            <Pagination page={payPage} totalPages={payTotalPages} total={payTotal} limit={payLimit} onPageChange={(p) => { setPayPage(p); loadPayrolls(p); }} onLimitChange={(l) => { setPayLimit(l); setPayPage(1); loadPayrolls(1); }} />
           </div>
         </div>
       )}

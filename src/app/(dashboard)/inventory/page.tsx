@@ -9,13 +9,14 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
   const loadInventory = useCallback(async (q = search, cond = conditionFilter, p = page) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      const params = new URLSearchParams({ page: String(p), limit: String(limit) });
       if (q) params.set("q", q);
       if (cond) params.set("condition", cond);
       const res = await fetch(`/api/inventory?${params}`);
@@ -34,7 +35,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, conditionFilter, page]);
+  }, [search, conditionFilter, page, limit]);
 
   useEffect(() => {
     loadInventory();
@@ -291,7 +292,7 @@ export default function InventoryPage() {
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{(page - 1) * 20 + i + 1}</td>
+                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{(page - 1) * limit + i + 1}</td>
                       <td style={{ padding: "1.25rem 1.5rem", verticalAlign: "middle" }}>
                         <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>{item.name}</p>
                         {item.location && <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.25rem" }}>📍 {item.location}</p>}
@@ -314,7 +315,7 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function WakafPage() {
   const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, donatur, tujuan
@@ -9,6 +10,8 @@ export default function WakafPage() {
   const [purposes, setPurposes] = useState<any[]>([]);
   const [kpi, setKpi] = useState({ total: 0, monthly: 0, donorCount: 0, purposeCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   useEffect(() => {
     if (activeTab === "riwayat") loadData();
@@ -292,7 +295,7 @@ export default function WakafPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.map(t => (
+                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.slice((page - 1) * limit, page * limit).map((t, i) => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50" style={{ opacity: t.status === 'void' ? 0.5 : 1}}>
                     <td className="px-6 py-3 text-sm">{new Date(t.date).toLocaleDateString("id-ID")}</td>
                     <td className="px-6 py-3 text-sm font-semibold">{t.donor_name}</td>
@@ -311,6 +314,7 @@ export default function WakafPage() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} totalPages={Math.ceil(data.length / limit) || 1} total={data.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
         </div>
       )}
 

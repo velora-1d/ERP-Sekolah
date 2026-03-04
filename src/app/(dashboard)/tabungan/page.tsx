@@ -9,6 +9,7 @@ export default function TabunganPage() {
   const [classFilter, setClassFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -38,7 +39,7 @@ export default function TabunganPage() {
   const loadData = useCallback(async (filter = classFilter, p = page) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/tabungan?classId=${filter}&page=${p}&limit=20`);
+      const res = await fetch(`/api/tabungan?classId=${filter}&page=${p}&limit=${limit}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -49,7 +50,7 @@ export default function TabunganPage() {
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [classFilter, page]);
+  }, [classFilter, page, limit]);
 
   async function loadClassrooms() {
     try {
@@ -195,7 +196,7 @@ export default function TabunganPage() {
 
                 return (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * 20 + i + 1}</td>
+                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                     <td style={{ padding: "1rem 1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{initial}</div>
@@ -222,7 +223,7 @@ export default function TabunganPage() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
 
       {/* Modal Setor/Tarik */}

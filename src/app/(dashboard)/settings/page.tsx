@@ -226,10 +226,54 @@ export default function SettingsPage() {
     });
   };
 
-  const wipeAllData = () => {
-    Swal.fire({
+  const wipeAllData = async () => {
+    // Langkah 1: Peringatan awal
+    const step1 = await Swal.fire({
       title: '⚠️ ZONA BAHAYA',
-      html: `<p style="font-size:0.875rem;color:#dc2626;font-weight:700;">Menghapus SEMUA data kecuali akun user.</p><p style="font-size:0.8125rem;color:#475569;">Aksi ini TIDAK BISA dibatalkan!</p><p style="font-size:0.75rem;color:#94a3b8;margin-top:8px;">Ketik <strong>HAPUS SEMUA</strong> untuk konfirmasi.</p>`,
+      html: `<div style="text-align:left">
+        <p style="font-size:0.875rem;color:#dc2626;font-weight:700;">Anda akan menghapus SEMUA data dalam sistem.</p>
+        <ul style="font-size:0.8125rem;color:#475569;margin-top:8px;padding-left:1.5rem;list-style:disc;">
+          <li>Semua data siswa, pegawai, transaksi, dll akan hilang</li>
+          <li>Aksi ini <strong>TIDAK BISA</strong> dibatalkan</li>
+          <li>Anda <strong>WAJIB</strong> backup data terlebih dahulu</li>
+        </ul>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d97706',
+      confirmButtonText: 'Lanjutkan ke Backup',
+      cancelButtonText: 'Batal',
+    });
+    if (!step1.isConfirmed) return;
+
+    // Langkah 2: Wajib backup dulu
+    const step2 = await Swal.fire({
+      title: '📦 Backup Data Wajib',
+      html: `<div style="text-align:left">
+        <p style="font-size:0.875rem;color:#475569;">Sebelum menghapus data, Anda <strong style="color:#dc2626;">WAJIB</strong> mengunduh backup terlebih dahulu.</p>
+        <p style="font-size:0.8125rem;color:#94a3b8;margin-top:8px;">Klik tombol di bawah untuk mengunduh file backup, lalu lanjutkan.</p>
+      </div>`,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonColor: '#0ea5e9',
+      confirmButtonText: '⬇ Download Backup Sekarang',
+      cancelButtonText: 'Batal Proses',
+    });
+    if (!step2.isConfirmed) return;
+
+    // Trigger download backup
+    window.location.href = '/api/settings/backup';
+
+    // Tunggu sebentar sebelum lanjut ke langkah 3
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Langkah 3: Konfirmasi akhir dengan ketik HAPUS SEMUA
+    const step3 = await Swal.fire({
+      title: '🔴 Konfirmasi Akhir',
+      html: `<div style="text-align:left">
+        <p style="font-size:0.875rem;color:#dc2626;font-weight:700;">Pastikan file backup sudah terdownload!</p>
+        <p style="font-size:0.8125rem;color:#475569;margin-top:8px;">Ketik <strong>HAPUS SEMUA</strong> untuk konfirmasi penghapusan seluruh data.</p>
+      </div>`,
       icon: 'warning',
       input: 'text',
       inputPlaceholder: 'Ketik HAPUS SEMUA',
@@ -244,23 +288,94 @@ export default function SettingsPage() {
         }
         return true;
       }
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        Swal.fire({ title: "Menghapus...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        try {
-          const res = await fetch('/api/settings/wipe', { method: "POST" });
-          const json = await res.json();
-          Swal.close();
-          if (res.ok && json.success) {
-            Swal.fire('Selesai', 'Semua data telah dihapus.', 'success');
-          } else {
-            Swal.fire('Gagal', json.error || 'Terjadi kesalahan', 'error');
-          }
-        } catch (e) {
-          Swal.fire("Error", "Gagal menghubungi server", "error");
-        }
-      }
     });
+    if (!step3.isConfirmed) return;
+
+    // Eksekusi wipe
+    Swal.fire({ title: "Menghapus...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    try {
+      const res = await fetch('/api/settings/wipe', { method: "POST" });
+      const json = await res.json();
+      Swal.close();
+      if (res.ok && json.success) {
+        Swal.fire('Selesai', 'Semua data telah dihapus. Backup Anda aman.', 'success');
+      } else {
+        Swal.fire('Gagal', json.error || 'Terjadi kesalahan', 'error');
+      }
+    } catch (e) {
+      Swal.fire("Error", "Gagal menghubungi server", "error");
+    }
+  };
+
+  const handleRestore = async () => {
+    const { value: file } = await Swal.fire({
+      title: '📥 Restore Data dari Backup',
+      html: `<div style="text-align:left">
+        <p style="font-size:0.875rem;color:#475569;">Pilih file backup JSON yang ingin di-restore.</p>
+        <p style="font-size:0.75rem;color:#94a3b8;margin-top:6px;">⚠️ Data saat ini akan <strong>digantikan</strong> sepenuhnya oleh data dari backup.</p>
+      </div>`,
+      input: 'file',
+      inputAttributes: { accept: '.json', 'aria-label': 'Upload file backup JSON' },
+      showCancelButton: true,
+      confirmButtonColor: '#059669',
+      confirmButtonText: 'Restore Data',
+      cancelButtonText: 'Batal',
+    });
+    if (!file) return;
+
+    // Baca file
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const backup = JSON.parse(e.target?.result as string);
+
+        // Validasi format
+        if (!backup.meta || !backup.data) {
+          Swal.fire('Format Salah', 'File bukan backup yang valid. Pastikan menggunakan file dari fitur Backup.', 'error');
+          return;
+        }
+
+        // Konfirmasi restore
+        const confirm = await Swal.fire({
+          title: 'Konfirmasi Restore',
+          html: `<div style="text-align:left">
+            <p style="font-size:0.875rem;color:#475569;">File backup dari:</p>
+            <p style="font-size:0.8125rem;font-weight:700;color:#1e293b;margin-top:4px;">${new Date(backup.meta.exportedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p style="font-size:0.75rem;color:#dc2626;margin-top:8px;font-weight:600;">Data saat ini akan dihapus dan digantikan oleh data dari backup ini.</p>
+          </div>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#059669',
+          confirmButtonText: 'Ya, Restore Sekarang',
+          cancelButtonText: 'Batal',
+        });
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({ title: 'Restoring data...', html: 'Proses ini bisa memakan waktu beberapa menit.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const res = await fetch('/api/settings/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(backup),
+        });
+        const json = await res.json();
+        Swal.close();
+
+        if (res.ok && json.success) {
+          const list = (json.restored || []).join(', ');
+          Swal.fire({
+            title: '✅ Restore Berhasil!',
+            html: `<div style="text-align:left"><p style="font-size:0.875rem;color:#475569;">Data berhasil di-restore:</p><p style="font-size:0.8125rem;color:#1e293b;margin-top:6px;">${list || 'Semua data'}</p></div>`,
+            icon: 'success'
+          });
+        } else {
+          Swal.fire('Gagal', json.error || 'Terjadi kesalahan saat restore', 'error');
+        }
+      } catch (err) {
+        Swal.fire('Error', 'File JSON tidak valid atau corrupt.', 'error');
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -446,39 +561,56 @@ export default function SettingsPage() {
       {/* Tab 3: Alat Lanjut */}
       {activeTab === 'tools' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm p-8 animate-fade-in-up">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              {/* Backup */}
-             <div className="text-center border border-sky-200 bg-sky-50 rounded-2xl p-8 flex flex-col justify-between">
+             <div className="text-center border border-sky-200 bg-sky-50 rounded-2xl p-6 flex flex-col justify-between">
                 <div>
-                  <div className="w-16 h-16 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                  <div className="w-14 h-14 bg-sky-100 text-sky-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                   </div>
-                  <h3 className="text-xl font-heading font-bold text-sky-700 mb-2">Pencadangan Data</h3>
-                  <p className="text-sm text-slate-600 mb-6">Unduh data sistem (Siswa, Pegawai, Tabungan, Transaksi, dll) sebagai file cadangan (JSON) agar data Anda aman. Sangat disarankan dilakukan secara berkala.</p>
+                  <h3 className="text-lg font-heading font-bold text-sky-700 mb-1.5">Pencadangan Data</h3>
+                  <p className="text-sm text-slate-600 mb-5">Unduh seluruh data sistem sebagai file backup JSON. Disarankan dilakukan secara berkala.</p>
                 </div>
                 <div>
-                  <button onClick={() => window.location.href = "/api/settings/backup"} className="w-full justify-center px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg shadow-sky-200 hover:-translate-y-1 transition-all inline-flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    DOWNLOAD BACKUP DATA
+                  <button onClick={() => window.location.href = "/api/settings/backup"} className="w-full justify-center px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg shadow-sky-200 hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 text-sm">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    DOWNLOAD BACKUP
+                  </button>
+                </div>
+             </div>
+
+             {/* Restore */}
+             <div className="text-center border border-emerald-200 bg-emerald-50 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  </div>
+                  <h3 className="text-lg font-heading font-bold text-emerald-700 mb-1.5">Restore Data</h3>
+                  <p className="text-sm text-slate-600 mb-5">Pulihkan data dari file backup JSON. Data saat ini akan digantikan oleh data dari backup.</p>
+                </div>
+                <div>
+                  <button onClick={handleRestore} className="w-full justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 text-sm">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m4-8l-4-4m0 0L16 8m4-4v12" /></svg>
+                    UPLOAD & RESTORE
                   </button>
                 </div>
              </div>
 
              {/* Wipe */}
-             <div className="text-center border border-rose-200 bg-rose-50 rounded-2xl p-8 flex flex-col justify-between">
+             <div className="text-center border border-rose-200 bg-rose-50 rounded-2xl p-6 flex flex-col justify-between">
                 <div>
-                  <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-14 h-14 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                   </div>
-                  <h3 className="text-xl font-heading font-bold text-rose-700 mb-2">Zona Bahaya</h3>
-                  <p className="text-sm text-slate-600 mb-6">Fungsi ini akan menghapus semua data transaksi, pendaftaran, dan data master di sistem Anda. Fitur ini berguna saat migrasi sistem atau saat tahun ajaran baru membutuhkan sistem bersih sepenuhnya dari nol.</p>
+                  <h3 className="text-lg font-heading font-bold text-rose-700 mb-1.5">Zona Bahaya</h3>
+                  <p className="text-sm text-slate-600 mb-5">Hapus seluruh data sistem. Backup wajib diunduh terlebih dahulu sebagai syarat.</p>
                 </div>
                 <div>
-                  <button onClick={wipeAllData} className="w-full justify-center px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-lg shadow-rose-200 hover:-translate-y-1 transition-all inline-flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    WIPE OUT SEMUA DATA (RESET)
+                  <button onClick={wipeAllData} className="w-full justify-center px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-lg shadow-rose-200 hover:-translate-y-0.5 transition-all inline-flex items-center gap-2 text-sm">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    WIPE OUT (RESET)
                   </button>
                 </div>
              </div>

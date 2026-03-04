@@ -3,12 +3,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function TeachersPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const router = useRouter();
 
   const loadTeachers = async () => {
@@ -36,6 +39,9 @@ export default function TeachersPage() {
     const matchStatus = statusFilter ? t.status === statusFilter : true;
     return matchSearch && matchStatus;
   });
+
+  const totalPages = Math.ceil(filteredData.length / limit) || 1;
+  const paginatedData = filteredData.slice((page - 1) * limit, page * limit);
 
 
 
@@ -159,7 +165,7 @@ export default function TeachersPage() {
                   </div>
                 </td></tr>
               ) : (
-                filteredData.map((t, i) => {
+                paginatedData.map((t, i) => {
                   const initial = (t.name || "?").charAt(0).toUpperCase();
                   const statusBadge = t.status === "aktif"
                     ? <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669" }}></div>Aktif</span>
@@ -167,7 +173,7 @@ export default function TeachersPage() {
 
                   return (
                     <tr key={t.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                      <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                       <td style={{ padding: "1rem 1.5rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                           <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#eef2ff,#c7d2fe)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#4f46e5" }}>{initial}</div>
@@ -194,6 +200,7 @@ export default function TeachersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={filteredData.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
     </div>
   );

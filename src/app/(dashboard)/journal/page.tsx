@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 // Fungsi format angka ke format rupiah (titik pemisah ribuan)
 function formatRupiah(value: string): string {
@@ -21,6 +22,8 @@ export default function JournalPage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   // Modal catat transaksi
   const [showCreate, setShowCreate] = useState(false);
@@ -267,14 +270,14 @@ export default function JournalPage() {
                     <p style={{ fontSize: "0.875rem", color: "#64748b", fontWeight: 500, margin: 0 }}>Belum ada riwayat jurnal.</p>
                   </div>
                 </td></tr>
-              ) : data.map((e: any, i: number) => {
+              ) : data.slice((page - 1) * limit, page * limit).map((e: any, i: number) => {
                 const date = e.date ? new Date(e.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-";
                 const isIn = e.type === "in";
                 const isVoid = e.status === "void";
 
                 return (
                   <tr key={e.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: isVoid ? 0.4 : 1 }}>
-                    <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                     <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", color: "#475569" }}>{date}</td>
                     <td style={{ padding: "0.875rem 1.5rem" }}>
                       <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>
@@ -304,6 +307,7 @@ export default function JournalPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={Math.ceil(data.length / limit) || 1} total={data.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
 
       {/* Modal Catat Transaksi */}

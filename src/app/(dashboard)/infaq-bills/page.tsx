@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
+import Pagination from "@/components/Pagination";
 
 const monthNames: Record<number, string> = {1:'Januari',2:'Februari',3:'Maret',4:'April',5:'Mei',6:'Juni',7:'Juli',8:'Agustus',9:'September',10:'Oktober',11:'November',12:'Desember'};
 const monthShort: Record<number, string> = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Mei',6:'Jun',7:'Jul',8:'Agu',9:'Sep',10:'Okt',11:'Nov',12:'Des'};
@@ -14,6 +15,8 @@ export default function InfaqBillsPage() {
   const [month, setMonth] = useState("");
   const [status, setStatus] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
 
   // Modal states
   const [showGenerate, setShowGenerate] = useState(false);
@@ -338,7 +341,7 @@ export default function InfaqBillsPage() {
                     <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Klik <strong>Generate Tagihan</strong> untuk membuat tagihan baru.</p>
                   </div>
                 </td></tr>
-              ) : data.map((b: any, i: number) => {
+              ) : data.slice((page - 1) * limit, page * limit).map((b: any, i: number) => {
                 const initial = (b.student_name || "?").charAt(0).toUpperCase();
                 let statusBadge;
                 if (b.status === "lunas") statusBadge = <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}>✓ Lunas</span>;
@@ -348,7 +351,7 @@ export default function InfaqBillsPage() {
 
                 return (
                   <tr key={b.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9", opacity: b.status === "void" ? 0.45 : 1 }}>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * limit + i + 1}</td>
                     <td style={{ padding: "1rem 1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#fef3c7,#fde68a)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#b45309" }}>{initial}</div>
@@ -390,6 +393,7 @@ export default function InfaqBillsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={Math.ceil(data.length / limit) || 1} total={data.length} limit={limit} onPageChange={(p) => setPage(p)} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
 
       {/* Modal Generate Tagihan */}
