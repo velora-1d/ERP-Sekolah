@@ -18,11 +18,21 @@ export default function InfaqBillsPage() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
+  const [showReset, setShowReset] = useState(false);
 
   // Generate form
   const [genMonths, setGenMonths] = useState<number[]>([]);
   const [genYear, setGenYear] = useState(new Date().getFullYear().toString());
   const [genLoading, setGenLoading] = useState(false);
+
+  // Reset form
+  const [resetMode, setResetMode] = useState<"semester" | "bulan">("semester");
+  const [resetYear, setResetYear] = useState(new Date().getFullYear().toString());
+  const [resetSemester, setResetSemester] = useState("1");
+  const [resetMonths, setResetMonths] = useState<number[]>([]);
+  const [resetClassId, setResetClassId] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [classrooms, setClassrooms] = useState<any[]>([]);
 
   // Payment form
   const [payAmount, setPayAmount] = useState("");
@@ -55,6 +65,7 @@ export default function InfaqBillsPage() {
   useEffect(() => {
     loadData();
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
+    fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
   }, []);
 
   // === Generate Tagihan ===
@@ -203,9 +214,14 @@ export default function InfaqBillsPage() {
                 <p style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,0.7)", marginTop: "0.125rem" }}>Kelola tagihan bulanan dan status pembayaran siswa.</p>
               </div>
             </div>
-            <button onClick={() => setShowGenerate(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30">
-              <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Generate Tagihan
-            </button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button onClick={() => setShowGenerate(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30">
+                <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Generate Tagihan
+              </button>
+              <button onClick={() => setShowReset(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(239,68,68,0.3)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(239,68,68,0.4)", cursor: "pointer" }} className="hover:bg-red-500/40">
+                <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Reset Tagihan
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -427,6 +443,103 @@ export default function InfaqBillsPage() {
               <button onClick={handlePayment} disabled={payLoading} style={{ padding: "0.625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff", background: payLoading ? "#94a3b8" : "linear-gradient(135deg,#059669,#047857)", border: "none", borderRadius: "0.625rem", cursor: payLoading ? "not-allowed" : "pointer" }}>
                 {payLoading ? "Memproses..." : "Bayar Sekarang"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reset Tagihan */}
+      {showReset && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }} onClick={() => setShowReset(false)} />
+          <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", padding: "2rem", width: "100%", maxWidth: 440, boxShadow: "0 16px 48px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ fontWeight: 700, fontSize: "1.125rem", color: "#ef4444", margin: "0 0 0.25rem" }}>🔄 Reset Tagihan</h3>
+            <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.25rem" }}>Hapus tagihan beserta pembayarannya agar bisa di-generate ulang.</p>
+
+            {/* Mode */}
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+              {(["semester", "bulan"] as const).map(m => (
+                <button key={m} onClick={() => setResetMode(m)} style={{
+                  flex: 1, padding: "0.5rem", fontSize: "0.8125rem", fontWeight: 600, borderRadius: "0.5rem", border: "1.5px solid",
+                  borderColor: resetMode === m ? "#6366f1" : "#e2e8f0", background: resetMode === m ? "#eef2ff" : "#fff",
+                  color: resetMode === m ? "#4f46e5" : "#64748b", cursor: "pointer",
+                }}>{m === "semester" ? "Per Semester" : "Per Bulan"}</button>
+              ))}
+            </div>
+
+            {/* Tahun */}
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Tahun</label>
+            <select value={resetYear} onChange={e => setResetYear(e.target.value)} style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+
+            {/* Semester atau Bulan */}
+            {resetMode === "semester" ? (
+              <>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Semester</label>
+                <select value={resetSemester} onChange={e => setResetSemester(e.target.value)} style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+                  <option value="1">Semester 1 (Jul–Des)</option>
+                  <option value="2">Semester 2 (Jan–Jun)</option>
+                </select>
+              </>
+            ) : (
+              <>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.375rem" }}>Pilih Bulan</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.375rem", marginBottom: "0.75rem" }}>
+                  {Object.entries(monthShort).map(([num, name]) => {
+                    const n = Number(num);
+                    const sel = resetMonths.includes(n);
+                    return (
+                      <button key={n} onClick={() => setResetMonths(sel ? resetMonths.filter(x => x !== n) : [...resetMonths, n])}
+                        style={{ padding: "0.375rem", fontSize: "0.75rem", fontWeight: 600, borderRadius: "0.375rem", border: "1.5px solid", cursor: "pointer",
+                          borderColor: sel ? "#6366f1" : "#e2e8f0", background: sel ? "#eef2ff" : "#fff", color: sel ? "#4f46e5" : "#64748b",
+                        }}>{name}</button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Kelas (opsional) */}
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Kelas (Opsional)</label>
+            <select value={resetClassId} onChange={e => setResetClassId(e.target.value)} style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "1rem" }}>
+              <option value="">Semua Kelas</option>
+              {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+
+            {/* Warning */}
+            <div style={{ padding: "0.625rem 0.75rem", borderRadius: "0.5rem", background: "#fef2f2", border: "1px solid #fecaca", marginBottom: "1rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "#991b1b", margin: 0, fontWeight: 600 }}>⚠️ Tagihan dan pembayaran terkait akan dihapus secara permanen. Pastikan data sudah benar sebelum reset.</p>
+            </div>
+
+            {/* Tombol */}
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowReset(false)} style={{ padding: "0.5rem 1rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "#f1f5f9", border: "none", borderRadius: "0.5rem", cursor: "pointer" }}>Batal</button>
+              <button disabled={resetLoading} onClick={async () => {
+                const body: any = { year: resetYear };
+                if (resetMode === "semester") body.semester = Number(resetSemester);
+                else body.months = resetMonths;
+                if (resetClassId) body.classroomId = Number(resetClassId);
+
+                if (resetMode === "bulan" && resetMonths.length === 0) { showToast("Pilih minimal 1 bulan", "error"); return; }
+                if (!confirm("YAKIN reset tagihan ini? Data pembayaran juga akan dihapus!")) return;
+
+                setResetLoading(true);
+                try {
+                  const res = await fetch("/api/infaq-bills/reset", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                  });
+                  const json = await res.json();
+                  if (json.success) { showToast(json.message); setShowReset(false); loadData(); }
+                  else showToast(json.message, "error");
+                } catch { showToast("Gagal reset", "error"); }
+                finally { setResetLoading(false); }
+              }} style={{
+                padding: "0.5rem 1.25rem", fontSize: "0.8125rem", fontWeight: 700, color: "#fff",
+                background: resetLoading ? "#94a3b8" : "linear-gradient(135deg,#ef4444,#dc2626)",
+                border: "none", borderRadius: "0.5rem", cursor: resetLoading ? "not-allowed" : "pointer",
+              }}>{resetLoading ? "Memproses..." : "Reset Sekarang"}</button>
             </div>
           </div>
         </div>
