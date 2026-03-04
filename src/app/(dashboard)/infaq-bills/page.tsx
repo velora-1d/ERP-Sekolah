@@ -24,6 +24,18 @@ export default function InfaqBillsPage() {
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [showReset, setShowReset] = useState(false);
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+  
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   // Bulk update classroom infaq form
   const [bulkClassIds, setBulkClassIds] = useState<number[]>([]);
@@ -426,22 +438,53 @@ export default function InfaqBillsPage() {
                       {b.nominal <= 0 ? <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "#059669" }}>GRATIS</span> : <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "#1e293b" }}>Rp {Number(b.nominal).toLocaleString("id-ID")}</span>}
                     </td>
                     <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>{statusBadge}</td>
-                    <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>
-                      <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem", flexWrap: "wrap" }}>
-                        {b.status === "belum_lunas" || b.status === "sebagian" ? (
-                          <>
-                            <button onClick={() => { setSelectedBill(b); setPayAmount(String(b.nominal - (b.total_paid || 0))); setShowPayment(true); }} style={btnStyle("#059669", "#ecfdf5", "#a7f3d0")}>Bayar</button>
-                            <button onClick={() => handleEditNominal(b)} style={btnStyle("#6366f1", "#eef2ff", "#c7d2fe")}>Edit</button>
-                            <button onClick={() => handleVoid(b.id)} style={btnStyle("#e11d48", "#fff1f2", "#fecdd3")}>Void</button>
-                            <button onClick={() => handleDelete(b.id)} style={btnStyle("#64748b", "#f8fafc", "#e2e8f0")}>Hapus</button>
-                          </>
-                        ) : b.status === "lunas" ? (
-                          <button onClick={() => handleRevert(b.id)} style={btnStyle("#d97706", "#fef3c7", "#fde68a")}>Revert</button>
-                        ) : (
-                          <span style={{ color: "#cbd5e1" }}>—</span>
-                        )}
-                        <button onClick={() => router.push("/infaq-bills/tracking")} style={btnStyle("#0ea5e9", "#f0f9ff", "#bae6fd")}>Tracking</button>
-                      </div>
+                    <td style={{ padding: "1rem 1.5rem", textAlign: "center", position: "relative" }}>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setOpenActionId(openActionId === b.id ? null : b.id); }}
+                        style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                        className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                      >
+                        <svg style={{ width: 20, height: 20 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {openActionId === b.id && (
+                        <div 
+                          style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "160px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                            Aksi Tagihan
+                          </div>
+
+                          {/* Tombol Tracking (Selalu Ada) */}
+                          <button onClick={() => { setOpenActionId(null); router.push("/infaq-bills/tracking"); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#0ea5e9", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-sky-50">
+                            Tracking
+                          </button>
+
+                          {b.status === "belum_lunas" || b.status === "sebagian" ? (
+                            <>
+                              <button onClick={() => { setOpenActionId(null); setSelectedBill(b); setPayAmount(String(b.nominal - (b.total_paid || 0))); setShowPayment(true); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#059669", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-emerald-50">
+                                Bayar Tagihan
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleEditNominal(b); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#6366f1", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-indigo-50">
+                                Edit Nominal
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleVoid(b.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
+                                Void (Batalkan)
+                              </button>
+                              <button onClick={() => { setOpenActionId(null); handleDelete(b.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#64748b", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-slate-100">
+                                Hapus Tagihan
+                              </button>
+                            </>
+                          ) : b.status === "lunas" ? (
+                            <button onClick={() => { setOpenActionId(null); handleRevert(b.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600, color: "#d97706", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-amber-50">
+                              Revert (Belum Lunas)
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
