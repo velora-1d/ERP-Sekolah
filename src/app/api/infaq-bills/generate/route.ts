@@ -75,6 +75,23 @@ export async function POST(request: Request) {
       existingBills.map(b => `${b.studentId}-${b.month}`)
     );
 
+    // [VALIDASI STRICT] Cek apakah ada kelas yang tarifnya 0 tapi siswanya wajib bayar
+    const invalidStudents = students.filter(s => {
+      const cat = (s.category || "reguler").toLowerCase();
+      const status = (s.infaqStatus || "reguler").toLowerCase();
+      const isWajibBayar = cat === "reguler" || (status !== "gratis");
+      const currentNominal = status === "potongan" || status === "subsidi" ? s.infaqNominal : s.classroom?.infaqNominal;
+      return isWajibBayar && (!currentNominal || currentNominal <= 0);
+    });
+
+    if (invalidStudents.length > 0) {
+      return NextResponse.json({
+        success: false,
+        message: `Gagal! Terdapat ${invalidStudents.length} siswa yang belum memiliki tarif SPP. Silakan lakukan 'Setting Biaya' per kelas atau per siswa terlebih dahulu.`,
+        invalidCount: invalidStudents.length
+      }, { status: 400 });
+    }
+
     // Siapkan data tagihan baru (skip yang sudah ada)
     const billsToCreate: {
       studentId: number;

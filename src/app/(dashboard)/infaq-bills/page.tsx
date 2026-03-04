@@ -44,9 +44,10 @@ export default function InfaqBillsPage() {
   const [bulkNominal, setBulkNominal] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Reset form
+  // Generate form
   const [genMonths, setGenMonths] = useState<number[]>([]);
   const [genYear, setGenYear] = useState(new Date().getFullYear().toString());
+  const [genClassroomId, setGenClassroomId] = useState("");
   const [genLoading, setGenLoading] = useState(false);
 
   // Reset form
@@ -57,6 +58,8 @@ export default function InfaqBillsPage() {
   const [resetClassId, setResetClassId] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [bulkYearId, setBulkYearId] = useState("");
 
   // Payment form
   const [payAmount, setPayAmount] = useState("");
@@ -90,6 +93,7 @@ export default function InfaqBillsPage() {
     loadData();
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
     fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
+    fetch("/api/academic-years").then(r => r.json()).then(j => { if (j.success) setAcademicYears(j.data || []); }).catch(() => {});
   }, []);
 
   // === Generate Tagihan ===
@@ -121,7 +125,11 @@ export default function InfaqBillsPage() {
       const res = await fetch("/api/infaq-bills/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ months: genMonths.map(String), year: genYear }),
+        body: JSON.stringify({ 
+          months: genMonths.map(String), 
+          year: genYear,
+          classroomId: genClassroomId ? Number(genClassroomId) : undefined
+        }),
       });
       const json = await res.json();
       if (json.success) {
@@ -525,6 +533,14 @@ export default function InfaqBillsPage() {
             </div>
 
             <div style={{ marginTop: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Target Kelas</label>
+              <select value={genClassroomId} onChange={e => setGenClassroomId(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="">Semua Kelas</option>
+                {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ marginTop: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Tahun</label>
               <input type="text" value={genYear} onChange={e => setGenYear(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }} />
             </div>
@@ -712,19 +728,39 @@ export default function InfaqBillsPage() {
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: "0 0 0.25rem" }}>⚙️ Pengaturan Biaya SPP Masal</h3>
             <p style={{ fontSize: "0.8125rem", color: "#64748b", margin: "0 0 1.5rem" }}>Update nominal biaya SPP standar untuk kelas yang dipilih.</p>
 
+            {/* Filter Tahun Akademik */}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Filter Tahun Akademik</label>
+              <select value={bulkYearId} onChange={e => {
+                const yId = e.target.value;
+                setBulkYearId(yId);
+                // Auto select semua kelas di tahun tersebut
+                if (yId) {
+                  const filteredIds = classrooms.filter(c => c.academicYearId === Number(yId)).map(c => c.id);
+                  setBulkClassIds(filteredIds);
+                } else {
+                  setBulkClassIds([]);
+                }
+              }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+                <option value="">-- Semua Tahun Akademik --</option>
+                {academicYears.map((ay: any) => <option key={ay.id} value={ay.id}>{ay.year} {ay.isActive ? "(Aktif)" : ""}</option>)}
+              </select>
+            </div>
+
             {/* Pilih Kelas */}
             <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Pilih Kelas</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem", maxHeight: "200px", overflowY: "auto", padding: "0.5rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", marginBottom: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem", maxHeight: "160px", overflowY: "auto", padding: "0.5rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", marginBottom: "1rem" }}>
               <button 
                 onClick={() => {
-                  if (bulkClassIds.length === classrooms.length) setBulkClassIds([]);
-                  else setBulkClassIds(classrooms.map(c => c.id));
+                  const targetClasses = bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)) : classrooms;
+                  if (bulkClassIds.length === targetClasses.length) setBulkClassIds([]);
+                  else setBulkClassIds(targetClasses.map(c => c.id));
                 }}
                 style={{ gridColumn: "span 3", padding: "0.375rem", fontSize: "0.75rem", fontWeight: 700, borderRadius: "0.375rem", border: "1px dashed #6366f1", background: "#f5f3ff", color: "#4f46e5", cursor: "pointer", marginBottom: "0.25rem" }}
               >
-                {bulkClassIds.length === classrooms.length ? "Hapus Semua Pilihan" : "Pilih Semua Kelas"}
+                {bulkClassIds.length > 0 && bulkClassIds.length === (bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)).length : classrooms.length) ? "Hapus Semua Pilihan" : "Pilih Semua Kelas Terfilter"}
               </button>
-              {classrooms.map((c: any) => {
+              {(bulkYearId ? classrooms.filter(c => c.academicYearId === Number(bulkYearId)) : classrooms).map((c: any) => {
                 const isSelected = bulkClassIds.includes(c.id);
                 return (
                   <button 
