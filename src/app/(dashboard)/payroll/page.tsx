@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function PayrollPage() {
   const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, atur-gaji, komponen
@@ -19,6 +20,9 @@ export default function PayrollPage() {
   const [compType, setCompType] = useState("earning");
 
   const [loading, setLoading] = useState(false);
+  const [payPage, setPayPage] = useState(1);
+  const [payTotalPages, setPayTotalPages] = useState(1);
+  const [payTotal, setPayTotal] = useState(0);
 
   // --- Load Data ---
   useEffect(() => {
@@ -28,12 +32,20 @@ export default function PayrollPage() {
   }, [activeTab]);
 
   // RIWAYAT
-  const loadPayrolls = async () => {
+  const loadPayrolls = async (p = payPage) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/payroll");
-      const data = await res.json();
-      setPayrolls(data || []);
+      const res = await fetch(`/api/payroll?page=${p}&limit=20`);
+      const json = await res.json();
+      if (json.success) {
+        setPayrolls(json.data || []);
+        if (json.pagination) {
+          setPayTotalPages(json.pagination.totalPages);
+          setPayTotal(json.pagination.total);
+        }
+      } else {
+        setPayrolls(json || []);
+      }
     } catch (error) {
     } finally {
       setLoading(false);
@@ -397,6 +409,7 @@ export default function PayrollPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={payPage} totalPages={payTotalPages} total={payTotal} onPageChange={(p) => { setPayPage(p); loadPayrolls(p); }} />
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Pagination from "@/components/Pagination";
 
 export default function TabunganPage() {
   const [data, setData] = useState<any[]>([]);
@@ -7,6 +8,9 @@ export default function TabunganPage() {
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [classFilter, setClassFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Modal setor/tarik
   const [showTransaction, setShowTransaction] = useState(false);
@@ -31,15 +35,21 @@ export default function TabunganPage() {
 
   const fmtRp = (n: number) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
-  const loadData = useCallback(async (filter = classFilter) => {
+  const loadData = useCallback(async (filter = classFilter, p = page) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/tabungan?classId=${filter}`);
+      const res = await fetch(`/api/tabungan?classId=${filter}&page=${p}&limit=20`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success) {
+        setData(json.data);
+        if (json.pagination) {
+          setTotalPages(json.pagination.totalPages);
+          setTotal(json.pagination.total);
+        }
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [classFilter]);
+  }, [classFilter, page]);
 
   async function loadClassrooms() {
     try {
@@ -50,6 +60,7 @@ export default function TabunganPage() {
   }
 
   useEffect(() => { loadClassrooms(); loadData(); }, []);
+  useEffect(() => { loadData(classFilter, page); }, [page]);
 
   // === Setor / Tarik ===
   async function handleTransaction() {
@@ -137,7 +148,7 @@ export default function TabunganPage() {
                 <p style={{ fontSize: "0.625rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Saldo</p>
                 <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 800, color: "#fff", margin: 0 }}>{fmtRp(totalSaldo)}</p>
               </div>
-              <select value={classFilter} onChange={e => { setClassFilter(e.target.value); loadData(e.target.value); }} style={{ padding: "0.5rem 2rem 0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer", outline: "none" }}>
+              <select value={classFilter} onChange={e => { setClassFilter(e.target.value); setPage(1); loadData(e.target.value, 1); }} style={{ padding: "0.5rem 2rem 0.5rem 0.75rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "0.625rem", fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer", outline: "none" }}>
                 <option value="" style={{ color: "#1e293b" }}>Semua Kelas</option>
                 {classrooms.map((c: any) => <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>{c.name}</option>)}
               </select>
@@ -153,7 +164,7 @@ export default function TabunganPage() {
             <div style={{ width: 8, height: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", borderRadius: "50%" }} />
             <h4 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>Daftar Siswa & Saldo</h4>
           </div>
-          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{data.length} Siswa</span>
+          <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", padding: "0.25rem 0.75rem", borderRadius: 999 }}>{total} Siswa</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -184,7 +195,7 @@ export default function TabunganPage() {
 
                 return (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ padding: "1rem 1.5rem", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(page - 1) * 20 + i + 1}</td>
                     <td style={{ padding: "1rem 1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         <div style={{ width: 36, height: 36, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.8125rem", color: "#6366f1" }}>{initial}</div>
@@ -211,6 +222,7 @@ export default function TabunganPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
       </div>
 
       {/* Modal Setor/Tarik */}

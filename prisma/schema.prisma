@@ -146,6 +146,10 @@ model Student {
   enrollments  StudentEnrollment[]
   reRegistrations ReRegistration[]
 
+  @@index([classroomId])
+  @@index([deletedAt])
+  @@index([status])
+  @@index([nisn])
   @@map("students")
 }
 
@@ -218,6 +222,8 @@ model PpdbRegistration {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
 
+  @@index([status, deletedAt])
+  @@index([deletedAt])
   @@map("ppdb_registrations")
 }
 
@@ -254,6 +260,8 @@ model RegistrationPayment {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
+  @@index([payableType, payableId])
+  @@index([deletedAt])
   @@map("registration_payments")
 }
 
@@ -293,6 +301,9 @@ model InfaqBill {
   academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
   payments      InfaqPayment[]
 
+  @@index([studentId])
+  @@index([month])
+  @@index([status, deletedAt])
   @@map("infaq_bills")
 }
 
@@ -337,6 +348,9 @@ model StudentSaving {
 
   student  Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
+  @@index([studentId])
+  @@index([status, deletedAt])
+  @@index([type])
   @@map("student_savings")
 }
 
@@ -369,6 +383,10 @@ model GeneralTransaction {
   wakafDonor   WakafDonor?          @relation(fields: [wakafDonorId], references: [id], onDelete: SetNull)
   wakafPurpose WakafPurpose?        @relation(fields: [wakafPurposeId], references: [id], onDelete: SetNull)
 
+  @@index([type, deletedAt])
+  @@index([date])
+  @@index([transactionCategoryId])
+  @@index([deletedAt])
   @@map("general_transactions")
 }
 
@@ -411,6 +429,8 @@ model Employee {
   payrolls       Payroll[]
   waliKelasOf    Classroom[]
 
+  @@index([type, deletedAt])
+  @@index([status])
   @@map("employees")
 }
 
@@ -464,6 +484,9 @@ model Payroll {
   employee  Employee?       @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   details   PayrollDetail[]
 
+  @@index([employeeId])
+  @@index([month, year])
+  @@index([deletedAt])
   @@map("payrolls")
 }
 

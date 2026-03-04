@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import Link from "next/link";
+import Pagination from "@/components/Pagination";
 
 export default function PpdbPage() {
   const [data, setData] = useState<any[]>([]);
@@ -10,6 +11,9 @@ export default function PpdbPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Settings biaya PPDB
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -62,18 +66,22 @@ export default function PpdbPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const loadData = useCallback(async (q = search) => {
+  const loadData = useCallback(async (q = search, p = page) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/ppdb?q=${encodeURIComponent(q)}&page=${p}&limit=20`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
         setStats(json.stats);
+        if (json.pagination) {
+          setTotalPages(json.pagination.totalPages);
+          setTotal(json.pagination.total);
+        }
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [search]);
+  }, [search, page]);
 
   async function loadClassrooms() {
     try {
@@ -100,13 +108,15 @@ export default function PpdbPage() {
   }
 
   useEffect(() => { loadData(); loadClassrooms(); loadCashAccounts(); loadPaymentStats(); }, []);
+  useEffect(() => { loadData(search, page); }, [page]);
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value;
     setSearch(q);
+    setPage(1);
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => loadData(q), 400);
+    debounceTimer = setTimeout(() => loadData(q, 1), 400);
   }
 
   // === Terima  ===
@@ -552,6 +562,7 @@ export default function PpdbPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
       </div>
 
       {/* Modal Konversi ke Siswa */}

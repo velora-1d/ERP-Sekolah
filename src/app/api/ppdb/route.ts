@@ -4,24 +4,31 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("q") || "";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
 
   try {
-    const list = await prisma.ppdbRegistration.findMany({
-      where: {
-        deletedAt: null,
-        OR: search
-          ? [
-              { name: { contains: search, mode: "insensitive" } },
-              { fatherName: { contains: search, mode: "insensitive" } },
-              { motherName: { contains: search, mode: "insensitive" } },
-              { formNo: { contains: search } },
-            ]
-          : undefined,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const where: any = { deletedAt: null };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { fatherName: { contains: search, mode: "insensitive" } },
+        { motherName: { contains: search, mode: "insensitive" } },
+        { formNo: { contains: search } },
+      ];
+    }
 
-    // Ambil payments terkait (relasi polymorphic)
+    const [list, total] = await Promise.all([
+      prisma.ppdbRegistration.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.ppdbRegistration.count({ where }),
+    ]);
+
+    // Ambil payments terkait (relasi polymorphic) — hanya untuk halaman ini
     const regIds = list.map(r => r.id);
     const payments = regIds.length > 0
       ? await prisma.registrationPayment.findMany({
@@ -39,18 +46,22 @@ export async function GET(request: Request) {
       payments: payments.filter(p => p.payableId === r.id),
     }));
 
-    const pending = list.filter((r) => r.status === "menunggu" || r.status === "pending").length;
-    const diterima = list.filter((r) => r.status === "diterima").length;
-    const ditolak = list.filter((r) => r.status === "ditolak").length;
+    // Stats: hitung dari seluruh data (bukan hanya page ini) — tapi pakai count yang efisien
+    const [pending, diterima, ditolak, totalAll] = await Promise.all([
+      prisma.ppdbRegistration.count({ where: { deletedAt: null, status: { in: ["menunggu", "pending"] } } }),
+      prisma.ppdbRegistration.count({ where: { deletedAt: null, status: "diterima" } }),
+      prisma.ppdbRegistration.count({ where: { deletedAt: null, status: "ditolak" } }),
+      prisma.ppdbRegistration.count({ where: { deletedAt: null } }),
+    ]);
 
-    const stats = {
-      total: list.length,
-      pending,
-      diterima,
-      ditolak,
-    };
+    const stats = { total: totalAll, pending, diterima, ditolak };
 
-    return NextResponse.json({ success: true, data: dataWithPayments, stats });
+    return NextResponse.json({
+      success: true,
+      data: dataWithPayments,
+      stats,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error("PPDB GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });

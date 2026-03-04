@@ -1,41 +1,46 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
+import Pagination from "@/components/Pagination";
 
 export default function InventoryPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async (q = search, cond = conditionFilter, p = page) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/inventory");
+      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      if (q) params.set("q", q);
+      if (cond) params.set("condition", cond);
+      const res = await fetch(`/api/inventory?${params}`);
       const json = await res.json();
-      setData(json || []);
+      if (json.success) {
+        setData(json.data || []);
+        if (json.pagination) {
+          setTotalPages(json.pagination.totalPages);
+          setTotal(json.pagination.total);
+        }
+      } else {
+        setData(json || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, conditionFilter, page]);
 
   useEffect(() => {
     loadInventory();
-  }, []);
+  }, [page]);
 
-  const filteredData = data.filter((item) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      (item.name || "").toLowerCase().includes(q) ||
-      (item.category || "").toLowerCase().includes(q) ||
-      (item.location || "").toLowerCase().includes(q);
-    const matchCondition = conditionFilter ? item.condition === conditionFilter : true;
-    return matchSearch && matchCondition;
-  });
-
-  const totalValue = filteredData.reduce(
+  const totalValue = data.reduce(
     (acc, val) => acc + (val.quantity || 0) * (val.acquisitionCost || 0),
     0
   );
@@ -247,8 +252,8 @@ export default function InventoryPage() {
 
         {/* Filter */}
         <div style={{ padding: "1rem 1.5rem", background: "#f8fafc", borderBottom: "1px solid #f1f5f9", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
-          <input type="text" placeholder="Cari nama, kategori, lokasi..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200, padding: "0.625rem 1rem", border: "1px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "0.8125rem", outline: "none" }} className="focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
-          <select value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} style={{ padding: "0.625rem 1rem", border: "1px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "0.8125rem", outline: "none", background: "#fff" }} className="focus:border-blue-500 transition-all min-w-[150px]">
+          <input type="text" placeholder="Cari nama, kategori, lokasi..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); clearTimeout((window as any).__invSearchTimer); (window as any).__invSearchTimer = setTimeout(() => loadInventory(e.target.value, conditionFilter, 1), 400); }} style={{ flex: 1, minWidth: 200, padding: "0.625rem 1rem", border: "1px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "0.8125rem", outline: "none" }} className="focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+          <select value={conditionFilter} onChange={(e) => { setConditionFilter(e.target.value); setPage(1); loadInventory(search, e.target.value, 1); }} style={{ padding: "0.625rem 1rem", border: "1px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "0.8125rem", outline: "none", background: "#fff" }} className="focus:border-blue-500 transition-all min-w-[150px]">
             <option value="">Semua Kondisi</option>
             <option value="Baik">Baik</option>
             <option value="Rusak Ringan">Rusak Ringan</option>
@@ -271,10 +276,10 @@ export default function InventoryPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ padding: "4rem 1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.875rem" }}>Memuat data...</td></tr>
-              ) : filteredData.length === 0 ? (
+              ) : data.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: "4rem 1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.875rem" }}>Aset Inventaris Kosong.</td></tr>
               ) : (
-                filteredData.map((item, i) => {
+                data.map((item, i) => {
                   let badge = "";
                   if (item.condition === "Baik") {
                     badge = '<span class="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-full border border-emerald-100">Baik</span>';
@@ -286,7 +291,7 @@ export default function InventoryPage() {
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{i + 1}</td>
+                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600, verticalAlign: "middle" }}>{(page - 1) * 20 + i + 1}</td>
                       <td style={{ padding: "1.25rem 1.5rem", verticalAlign: "middle" }}>
                         <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "#1e293b", margin: 0 }}>{item.name}</p>
                         {item.location && <p style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "0.25rem" }}>📍 {item.location}</p>}
@@ -309,6 +314,7 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
       </div>
     </div>
   );

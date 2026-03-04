@@ -7,16 +7,23 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
     const year = searchParams.get("year");
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
 
     const whereClause: any = { deletedAt: null };
     if (month) whereClause.month = month;
     if (year) whereClause.year = year;
 
-    const payrolls = await prisma.payroll.findMany({
-      where: whereClause,
-      include: { employee: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const [payrolls, total] = await Promise.all([
+      prisma.payroll.findMany({
+        where: whereClause,
+        include: { employee: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.payroll.count({ where: whereClause }),
+    ]);
 
     const result = payrolls.map((p) => ({
       id: p.id,
@@ -29,10 +36,15 @@ export async function GET(request: Request) {
       created_at: p.createdAt,
     }));
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      data: result,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
+    console.error("Payroll GET error:", error);
     return NextResponse.json(
-      { error: "Gagal mengambil data histori penggajian" },
+      { success: false, message: "Gagal mengambil data histori penggajian" },
       { status: 500 }
     );
   }
@@ -52,7 +64,7 @@ export async function POST(request: Request) {
 
     if (employees.length === 0) {
       return NextResponse.json(
-        { error: "Tidak ada pegawai aktif untuk digenerate" },
+        { success: false, message: "Tidak ada pegawai aktif untuk digenerate" },
         { status: 400 }
       );
     }
@@ -152,7 +164,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Gagal men-generate penggajian" },
+      { success: false, message: "Gagal men-generate penggajian" },
       { status: 500 }
     );
   }

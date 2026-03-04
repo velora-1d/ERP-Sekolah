@@ -11,7 +11,11 @@ export async function GET(request: Request) {
     const where: any = { deletedAt: null };
     if (typeFilter) where.type = typeFilter;
 
-    const [transactions, totalCount] = await Promise.all([
+    // KPI: hitung menggunakan aggregate (100x lebih cepat dari findMany + loop)
+    const now = new Date();
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const [transactions, totalCount, categories, totalInAgg, totalOutAgg, thisMonthInAgg, thisMonthOutAgg] = await Promise.all([
       prisma.generalTransaction.findMany({
         where,
         include: {
@@ -22,32 +26,35 @@ export async function GET(request: Request) {
         take: limit,
       }),
       prisma.generalTransaction.count({ where }),
+      prisma.transactionCategory.findMany({
+        where: { deletedAt: null },
+      }),
+      // KPI aggregate: total pemasukan
+      prisma.generalTransaction.aggregate({
+        where: { deletedAt: null, type: "in" },
+        _sum: { amount: true },
+      }),
+      // KPI aggregate: total pengeluaran
+      prisma.generalTransaction.aggregate({
+        where: { deletedAt: null, type: "out" },
+        _sum: { amount: true },
+      }),
+      // KPI aggregate: pemasukan bulan ini
+      prisma.generalTransaction.aggregate({
+        where: { deletedAt: null, type: "in", date: { startsWith: currentMonthPrefix } },
+        _sum: { amount: true },
+      }),
+      // KPI aggregate: pengeluaran bulan ini
+      prisma.generalTransaction.aggregate({
+        where: { deletedAt: null, type: "out", date: { startsWith: currentMonthPrefix } },
+        _sum: { amount: true },
+      }),
     ]);
 
-    const categories = await prisma.transactionCategory.findMany({
-      where: { deletedAt: null },
-    });
-
-    // KPI: hitung dari SELURUH data (bukan cuma page ini)
-    const now = new Date();
-    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
-    const allTx = await prisma.generalTransaction.findMany({
-      where: { deletedAt: null },
-      select: { type: true, amount: true, date: true },
-    });
-
-    let totalIn = 0, totalOut = 0, thisMonthIn = 0, thisMonthOut = 0;
-    allTx.forEach(tx => {
-      const isThisMonth = tx.date?.startsWith(currentMonthPrefix);
-      if (tx.type === "in") {
-        totalIn += tx.amount;
-        if (isThisMonth) thisMonthIn += tx.amount;
-      } else {
-        totalOut += tx.amount;
-        if (isThisMonth) thisMonthOut += tx.amount;
-      }
-    });
+    const totalIn = totalInAgg._sum.amount || 0;
+    const totalOut = totalOutAgg._sum.amount || 0;
+    const thisMonthIn = thisMonthInAgg._sum.amount || 0;
+    const thisMonthOut = thisMonthOutAgg._sum.amount || 0;
 
     const entries = transactions.map(tx => ({
       id: tx.id,
@@ -69,6 +76,7 @@ export async function GET(request: Request) {
       pagination: { page, limit, total: totalCount, totalPages: Math.ceil(totalCount / limit) },
     });
   } catch (error) {
+    console.error("Journal GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
