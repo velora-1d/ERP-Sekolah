@@ -81,6 +81,27 @@ export default function InfaqBillsPage() {
   // === Generate Tagihan ===
   async function handleGenerate() {
     if (genMonths.length === 0) { showToast("Pilih minimal 1 bulan", "error"); return; }
+    
+    // Validasi: Cek apakah ada kelas yang tarifnya 0
+    const zeroInfaqClasses = classrooms.filter(c => !c.infaqNominal || c.infaqNominal <= 0);
+    if (zeroInfaqClasses.length > 0) {
+      const result = await Swal.fire({
+        title: "Peringatan Tarif Rp 0",
+        text: `Terdapat ${zeroInfaqClasses.length} kelas yang belum memiliki tarif SPP (Rp 0). Apakah Anda yakin ingin melanjutkan generate tagihan gratis untuk kelas tersebut?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#f59e0b",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Ya, Lanjutkan",
+        cancelButtonText: "Atur Biaya Dulu"
+      });
+      if (!result.isConfirmed) {
+        setShowGenerate(false);
+        setShowBulkUpdate(true);
+        return;
+      }
+    }
+
     setGenLoading(true);
     try {
       const res = await fetch("/api/infaq-bills/generate", {
