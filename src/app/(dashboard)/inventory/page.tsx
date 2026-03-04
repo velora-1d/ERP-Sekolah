@@ -13,6 +13,18 @@ export default function InventoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const loadInventory = useCallback(async (q = search, cond = conditionFilter, p = page) => {
     setLoading(true);
     try {
@@ -302,11 +314,33 @@ export default function InventoryPage() {
                       </td>
                       <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", fontWeight: 700, fontSize: "1rem", color: "#334155", verticalAlign: "middle" }}>{item.quantity || 0}</td>
                       <td style={{ padding: "1.25rem 1.5rem", textAlign: "center", verticalAlign: "middle" }} dangerouslySetInnerHTML={{ __html: badge }}></td>
-                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "right", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.375rem" }}>
-                          <button onClick={() => handleEdit(item.id)} style={{ padding: "0.4rem 0.875rem", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "0.5rem", color: "#3b82f6", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }} className="hover:bg-blue-100 transition-colors">Edit</button>
-                          <button onClick={() => handleDelete(item.id)} style={{ padding: "0.4rem 0.875rem", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", color: "#e11d48", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }} className="hover:bg-red-100 transition-colors">Write-off</button>
-                        </div>
+                      <td style={{ padding: "1.25rem 1.5rem", textAlign: "right", verticalAlign: "middle", position: "relative" }}>
+                        <button 
+                          onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === item.id ? null : item.id); }}
+                          style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                          className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                        >
+                          <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+
+                        {openActionId === item.id && (
+                          <div 
+                            style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                            onClick={(ev) => ev.stopPropagation()}
+                          >
+                            <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                              Aksi Barang
+                            </div>
+                            <button onClick={() => { setOpenActionId(null); handleEdit(item.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#3b82f6", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-blue-50">
+                              Edit Barang
+                            </button>
+                            <button onClick={() => { setOpenActionId(null); handleDelete(item.id); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#ef4444", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
+                              Write-off
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )

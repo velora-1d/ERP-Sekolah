@@ -14,6 +14,18 @@ export default function StaffPage() {
   const [limit, setLimit] = useState(20);
   const router = useRouter();
 
+  // Row Action Dropdown state
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside() {
+      setOpenActionId(null);
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   const loadStaff = async () => {
     setLoading(true);
     try {
@@ -163,12 +175,35 @@ export default function StaffPage() {
                         <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#0284c7", background: "#f0f9ff", padding: "0.25rem 0.625rem", borderRadius: 999 }}>{s.position || "-"}</span>
                       </td>
                       <td style={{ padding: "1rem 1.5rem", textAlign: "center" }}>{statusBadge}</td>
-                      <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.375rem" }}>
-                          <button onClick={() => handleEdit(s)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, background: "#eef2ff", color: "#6366f1", border: "1px solid #c7d2fe", borderRadius: "0.375rem", cursor: "pointer" }} title="Edit" className="hover:bg-indigo-100"><svg style={{ width: "0.875rem", height: "0.875rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
-                          <button onClick={() => handleDelete(s)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "0.375rem", cursor: "pointer" }} title="Hapus" className="hover:bg-red-50 hover:text-red-500 hover:border-red-200"><svg style={{ width: "0.875rem", height: "0.875rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </div>
+                      <td style={{ padding: "1rem 1.5rem", textAlign: "right", position: "relative" }}>
+                        <button 
+                          onClick={(ev) => { ev.stopPropagation(); setOpenActionId(openActionId === s.id ? null : s.id); }}
+                          style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                          className="hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                        >
+                          <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+
+                        {openActionId === s.id && (
+                          <div 
+                            style={{ position: "absolute", top: "100%", right: "1.5rem", zIndex: 50, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "0.75rem", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: "140px", overflow: "hidden", display: "flex", flexDirection: "column", padding: "0.375rem" }}
+                            onClick={(ev) => ev.stopPropagation()}
+                          >
+                            <div style={{ padding: "0.375rem 0.75rem", fontSize: "0.625rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #f1f5f9", marginBottom: "0.25rem" }}>
+                              Aksi Staf
+                            </div>
+                            <button onClick={() => { setOpenActionId(null); handleEdit(s); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#6366f1", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-indigo-50">
+                              Edit Data
+                            </button>
+                            <button onClick={() => { setOpenActionId(null); handleDelete(s); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
+                              Hapus Staf
+                            </button>
+                          </div>
+                        )}
                       </td>
+
                     </tr>
                   )
                 })
