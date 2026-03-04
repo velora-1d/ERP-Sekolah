@@ -103,21 +103,30 @@ export default function InfaqBillsPage() {
     // Validasi: Cek apakah ada kelas yang tarifnya 0
     const zeroInfaqClasses = classrooms.filter(c => !c.infaqNominal || c.infaqNominal <= 0);
     if (zeroInfaqClasses.length > 0) {
+      const classNames = zeroInfaqClasses.map(c => c.name).join(", ");
       const result = await Swal.fire({
-        title: "Peringatan Tarif Rp 0",
-        text: `Terdapat ${zeroInfaqClasses.length} kelas yang belum memiliki tarif SPP (Rp 0). Apakah Anda yakin ingin melanjutkan generate tagihan gratis untuk kelas tersebut?`,
-        icon: "warning",
+        title: "Tarif Belum Diatur!",
+        html: `
+          <div style="text-align: left; font-size: 0.875rem;">
+            <p>Terdapat <strong>${zeroInfaqClasses.length} kelas</strong> yang masih memiliki tarif <strong>Rp 0</strong>:</p>
+            <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 0.5rem; margin: 0.5rem 0; color: #475569; font-family: monospace; max-height: 80px; overflow-y: auto;">
+              ${classNames}
+            </div>
+            <p style="color: #ef4444; font-weight: 700; margin-top: 0.5rem;">Tagihan tidak bisa dibuat jika tarif masih kosong.</p>
+          </div>
+        `,
+        icon: "error",
         showCancelButton: true,
-        confirmButtonColor: "#f59e0b",
+        confirmButtonColor: "#6366f1",
         cancelButtonColor: "#64748b",
-        confirmButtonText: "Ya, Lanjutkan",
-        cancelButtonText: "Atur Biaya Dulu"
+        confirmButtonText: "Atur Biaya Sekarang",
+        cancelButtonText: "Batal"
       });
-      if (!result.isConfirmed) {
+      if (result.isConfirmed) {
         setShowGenerate(false);
         setShowBulkUpdate(true);
-        return;
       }
+      return;
     }
 
     setGenLoading(true);
@@ -281,7 +290,12 @@ export default function InfaqBillsPage() {
       });
       const json = await res.json();
       if (json.success) {
-        showToast(json.message);
+        Swal.fire({
+          title: "Berhasil Diperbarui!",
+          text: `Biaya SPP untuk ${bulkClassIds.length} kelas telah diset menjadi Rp ${Number(bulkNominal).toLocaleString("id-ID")}.`,
+          icon: "success",
+          confirmButtonColor: "#059669",
+        });
         setShowBulkUpdate(false);
         setBulkClassIds([]);
         setBulkNominal("");
@@ -782,15 +796,33 @@ export default function InfaqBillsPage() {
 
             {/* Nominal */}
             <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal Biaya Baru (Rp)</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "0.5rem" }}>
+                <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Nominal Biaya Baru (Rp)</label>
+                {bulkClassIds.length > 0 && (
+                  <span style={{ fontSize: "0.65rem", color: "#6366f1", fontWeight: 700, background: "#eef2ff", padding: "0.15rem 0.5rem", borderRadius: "0.25rem" }}>
+                    Tarif Lama: {(() => {
+                      const selected = classrooms.filter(c => bulkClassIds.includes(c.id));
+                      const nominals = selected.map(c => c.infaqNominal || 0);
+                      const min = Math.min(...nominals);
+                      const max = Math.max(...nominals);
+                      return min === max ? `Rp ${min.toLocaleString("id-ID")}` : `Rp ${min.toLocaleString("id-ID")} - Rp ${max.toLocaleString("id-ID")}`;
+                    })()}
+                  </span>
+                )}
+              </div>
               <input 
                 type="number" 
                 value={bulkNominal} 
                 onChange={e => setBulkNominal(e.target.value)} 
-                placeholder="Contoh: 150000"
+                placeholder="Masukkan nominal baru..."
                 style={{ width: "100%", padding: "0.75rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.75rem", fontSize: "1rem", fontWeight: 700, outline: "none" }}
                 className="focus:border-indigo-500"
               />
+              {bulkNominal && bulkClassIds.length > 0 && (
+                <p style={{ fontSize: "0.7rem", color: "#059669", fontWeight: 600, marginTop: "0.5rem" }}>
+                  ✨ Semua kelas terpilih akan diseragamkan menjadi <strong>Rp {Number(bulkNominal).toLocaleString("id-ID")}</strong>
+                </p>
+              )}
             </div>
 
             {/* Warning Info */}
