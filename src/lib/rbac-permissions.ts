@@ -57,6 +57,7 @@ export const PUBLIC_API_PATHS = [
   "/api/auth/logout",
   "/api/debug-env",
   "/api/debug-db",
+  "/api/debug-users",
   "/api/seed",
 ];
 
