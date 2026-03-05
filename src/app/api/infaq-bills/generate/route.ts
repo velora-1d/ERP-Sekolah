@@ -13,18 +13,28 @@ import { requireAuth, AuthError } from "@/lib/rbac";
  *   - semester: 1 | 2          → wajib jika period = "semester"
  *   - year: string             → wajib
  *   - classroomId?: number     → opsional (filter kelas)
- *   - academicYearId?: number  → opsional (filter tahun ajaran)
+ *   - academicYearId?: number  → opsional (fallback ke tahun aktif)
  * 
  * Logic:
  *   1. Resolve bulan berdasarkan period + semester/months
- *   2. Query siswa aktif sesuai filter
- *   3. Validasi nominal sudah diatur (>0) untuk siswa wajib bayar
- *   4. Cek duplikasi tagihan
- *   5. Buat InfaqBill per siswa per bulan (atomik via $transaction)
+ *   2. Resolve tahun ajaran (wajib, fallback ke aktif)
+ *   3. Query siswa via StudentEnrollment (sumber kebenaran per tahun ajaran)
+ *   4. Validasi nominal sudah diatur (>0) untuk siswa wajib bayar
+ *   5. Cek duplikasi tagihan
+ *   6. Buat InfaqBill per siswa per bulan (atomik via $transaction)
+ * 
+ * Kepatuhan ACID:
+ *   - Atomicity: Semua tagihan dibuat dalam 1 transaction
+ *   - Consistency: Unique constraint [studentId, month, year, academicYearId] mencegah duplikat
+ *   - Isolation: Prisma transaction mencegah race condition
+ *   - Durability: Data dipersist ke PostgreSQL setelah commit
  */
 
 const SEMESTER_1_MONTHS = ["Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const SEMESTER_2_MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
+
+// Status tagihan yang valid dan transisinya
+const VALID_STATUSES = ["belum_lunas", "sebagian", "lunas", "void"] as const;
 
 export async function POST(request: Request) {
   try {
@@ -40,7 +50,6 @@ export async function POST(request: Request) {
     let resolvedMonths: string[] = [];
 
     if (resolvedPeriod === "semester") {
-      // Mode semester → resolve otomatis dari parameter "semester"
       const sem = Number(semester);
       if (sem === 1) {
         resolvedMonths = [...SEMESTER_1_MONTHS];
@@ -53,7 +62,6 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      // Mode bulanan → pakai array months dari input
       if (!months || !Array.isArray(months) || months.length === 0) {
         return NextResponse.json(
           { success: false, message: "Bulan wajib diisi (array, minimal 1)" },
@@ -71,43 +79,86 @@ export async function POST(request: Request) {
     }
 
     // ================================================
-    // 2. Query siswa aktif (filter kelas / tahun ajaran)
+    // 2. Resolve tahun ajaran — WAJIB ada
+    //    Jika tidak disediakan, fallback ke tahun aktif
     // ================================================
-    const studentWhere: any = {
-      deletedAt: null,
-      status: "aktif",
-    };
-    if (classroomId) {
-      studentWhere.classroomId = Number(classroomId);
-    }
-    if (academicYearId) {
-      studentWhere.classroom = {
-        academicYearId: Number(academicYearId)
-      };
+    let resolvedAcademicYearId: number | null = academicYearId ? Number(academicYearId) : null;
+
+    if (!resolvedAcademicYearId) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { isActive: true, deletedAt: null },
+      });
+      resolvedAcademicYearId = activeYear?.id || null;
     }
 
-    const students = await prisma.student.findMany({
-      where: studentWhere,
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        infaqNominal: true,
-        infaqStatus: true,
-        classroomId: true,
-        classroom: { select: { infaqNominal: true, name: true } },
-      },
-    });
-
-    if (students.length === 0) {
+    if (!resolvedAcademicYearId) {
       return NextResponse.json(
-        { success: false, message: "Tidak ada siswa aktif yang ditemukan" },
+        { success: false, message: "Tahun ajaran wajib dipilih atau harus ada tahun ajaran aktif" },
         { status: 400 }
       );
     }
 
     // ================================================
-    // 3. Validasi STRICT — Nominal harus sudah diatur
+    // 3. Query siswa via StudentEnrollment
+    //    (sumber kebenaran per tahun ajaran)
+    // ================================================
+    const enrollmentWhere: any = {
+      deletedAt: null,
+      academicYearId: resolvedAcademicYearId,
+      student: {
+        deletedAt: null,
+        status: "aktif",
+      },
+    };
+
+    if (classroomId) {
+      enrollmentWhere.classroomId = Number(classroomId);
+    }
+
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: enrollmentWhere,
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            infaqNominal: true,
+            infaqStatus: true,
+          },
+        },
+        classroom: {
+          select: {
+            id: true,
+            name: true,
+            infaqNominal: true,
+          },
+        },
+      },
+    });
+
+    if (enrollments.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Tidak ada siswa aktif yang ditemukan di enrollment untuk tahun ajaran dan kelas yang dipilih. Pastikan siswa sudah di-enroll." },
+        { status: 400 }
+      );
+    }
+
+    // Transformasi: enrollment → data siswa + kelas
+    const students = enrollments
+      .filter(e => e.student !== null)
+      .map(e => ({
+        id: e.student!.id,
+        name: e.student!.name,
+        category: e.student!.category,
+        infaqNominal: e.student!.infaqNominal,
+        infaqStatus: e.student!.infaqStatus,
+        classroomId: e.classroomId,
+        classroom: e.classroom,
+      }));
+
+    // ================================================
+    // 4. Validasi STRICT — Nominal harus sudah diatur
     //    Tagihan TIDAK BOLEH dibuat jika nominal belum ditentukan.
     // ================================================
     const invalidStudents = students.filter(s => {
@@ -127,7 +178,6 @@ export async function POST(request: Request) {
     });
 
     if (invalidStudents.length > 0) {
-      // Kumpulkan nama kelas yang bermasalah
       const kelasSet = new Set<string>();
       invalidStudents.forEach(s => {
         if (s.classroom?.name) kelasSet.add(s.classroom.name);
@@ -142,7 +192,8 @@ export async function POST(request: Request) {
     }
 
     // ================================================
-    // 4. Cek duplikasi — tagihan yang sudah ada
+    // 5. Cek duplikasi — tagihan yang sudah ada
+    //    Proteksi ganda: di kode + unique constraint di DB
     // ================================================
     const existingBills = await prisma.infaqBill.findMany({
       where: {
@@ -150,6 +201,7 @@ export async function POST(request: Request) {
         month: { in: resolvedMonths },
         deletedAt: null,
         studentId: { in: students.map(s => s.id) },
+        academicYearId: resolvedAcademicYearId,
       },
       select: { studentId: true, month: true },
     });
@@ -159,7 +211,7 @@ export async function POST(request: Request) {
     );
 
     // ================================================
-    // 5. Siapkan data tagihan baru (skip duplikasi)
+    // 6. Siapkan data tagihan baru (skip duplikasi)
     // ================================================
     const billsToCreate: {
       studentId: number;
@@ -168,7 +220,7 @@ export async function POST(request: Request) {
       nominal: number;
       status: string;
       unitId: string;
-      academicYearId: number | null;
+      academicYearId: number;
     }[] = [];
 
     for (const student of students) {
@@ -208,7 +260,7 @@ export async function POST(request: Request) {
           nominal,
           status: billStatus,
           unitId: user.unitId || "",
-          academicYearId: academicYearId ? Number(academicYearId) : null,
+          academicYearId: resolvedAcademicYearId,
         });
       }
     }
@@ -221,11 +273,13 @@ export async function POST(request: Request) {
     }
 
     // ================================================
-    // 6. Buat tagihan dalam transaction (atomik)
+    // 7. Buat tagihan dalam transaction (atomik)
+    //    Unique constraint di DB juga menjaga duplikasi
     // ================================================
     const result = await prisma.$transaction(async (tx) => {
       return tx.infaqBill.createMany({
         data: billsToCreate,
+        skipDuplicates: true, // Fallback proteksi duplikat di level Prisma
       });
     });
 

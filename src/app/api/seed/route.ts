@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 
-export async function POST() {
+export async function GET() {
   try {
     // 1. Admin user
     const existing = await prisma.user.findFirst({ where: { email: "admin@assaodah.sch.id" } });
@@ -86,7 +86,7 @@ export async function POST() {
           : `${namaPI[j % 5]} ${kelas.name.replace("Kelas ", "")}${String.fromCharCode(65 + j)}`;
         const exists = await prisma.student.findFirst({ where: { name: nama, deletedAt: null } });
         if (!exists) {
-          await prisma.student.create({
+          const student = await prisma.student.create({
             data: {
               name: nama,
               nisn: `00${1000 + siswaCount}`,
@@ -99,6 +99,17 @@ export async function POST() {
               infaqStatus: "reguler",
               infaqNominal: 150000,
             },
+          });
+
+          // BUAT ENROLLMENT (Penting agar siswa muncul di dashboard!)
+          await prisma.studentEnrollment.create({
+            data: {
+              studentId: student.id,
+              classroomId: kelas.id,
+              academicYearId: ayId!,
+              enrollmentType: 'new',
+              notes: 'Generated from Seed',
+            }
           });
         }
         siswaCount++;
