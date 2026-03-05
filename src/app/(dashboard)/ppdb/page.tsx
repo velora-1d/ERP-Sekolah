@@ -531,7 +531,7 @@ export default function PpdbPage() {
                     <td style={{ padding: "1rem", textAlign: "center" }}>{genderBadge}</td>
                     <td style={{ padding: "1rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center", flexWrap: "wrap" }}>
-                        {(reg.payments && reg.payments.length > 0) ? reg.payments.map((p: any) => (
+                        {(reg.payments && reg.payments.length > 0) ? Array.from(new Map(reg.payments.map((p: any) => [p.paymentType, p])).values()).map((p: any) => (
                           <button key={p.id} onClick={() => openPayModal(p)}
                             title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString('id-ID')} — klik untuk ${p.isPaid ? 'revert' : 'bayar'}`}
                             style={{ padding: "0.2rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: 999, border: "none", cursor: "pointer",
@@ -682,7 +682,7 @@ export default function PpdbPage() {
 
             <div style={{ marginTop: "1.25rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal (Rp)</label>
-              <input type="number" readOnly value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", fontWeight: 600, outline: "none", backgroundColor: "#f8fafc", color: "#64748b", cursor: "not-allowed" }} min="0" />
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", fontWeight: 600, outline: "none", backgroundColor: "#fff", color: "#1e293b" }} min="0" />
             </div>
 
             <div style={{ marginTop: "0.75rem" }}>

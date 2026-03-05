@@ -98,3 +98,57 @@ export async function DELETE(
     return NextResponse.json({ success: false, message: "Gagal menghapus pendaftar" }, { status: 500 });
   }
 }
+
+/**
+ * PUT /api/ppdb/[id] — Update data pendaftar PPDB
+ */
+export async function PUT(
+  request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const params = await props.params;
+    const regId = Number(params.id);
+
+    if (isNaN(regId)) {
+      return NextResponse.json({ success: false, message: "ID tidak valid" }, { status: 400 });
+    }
+
+    const reg = await prisma.ppdbRegistration.findUnique({ where: { id: regId } });
+    if (!reg || reg.deletedAt) {
+      return NextResponse.json({ success: false, message: "Pendaftar tidak ditemukan" }, { status: 404 });
+    }
+
+    const body = await request.json();
+    
+    // Parse angka fields
+    const height = body.height ? Number(body.height) : null;
+    const weight = body.weight ? Number(body.weight) : null;
+    const siblingCount = body.siblingCount ? Number(body.siblingCount) : null;
+    const childPosition = body.childPosition ? Number(body.childPosition) : null;
+    const travelTime = body.travelTime ? Number(body.travelTime) : null;
+
+    const data = { ...body, height, weight, siblingCount, childPosition, travelTime };
+    // Remove id, createdAt, updatedAt if any
+    delete data.id; delete data.createdAt; delete data.updatedAt; delete data.deletedAt; delete data.payments;
+
+    const updated = await prisma.ppdbRegistration.update({
+      where: { id: regId },
+      data,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Data pendaftar ${updated.name} berhasil diperbarui`,
+      data: updated
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
+    }
+    console.error("PUT /api/ppdb/[id] Error:", error);
+    return NextResponse.json({ success: false, message: "Gagal menyimpan perubahan" }, { status: 500 });
+  }
+}
+

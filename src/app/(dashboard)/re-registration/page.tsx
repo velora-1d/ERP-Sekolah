@@ -539,7 +539,7 @@ export default function ReRegistrationPage() {
 
             <div className="mt-5">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nominal (Rp)</label>
-              <input type="number" readOnly value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-full px-4 py-2.5 border-2 border-slate-200 bg-slate-50 text-slate-500 rounded-xl text-sm font-semibold outline-none cursor-not-allowed transition-colors" min="0" />
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-full px-4 py-2.5 border-2 border-slate-200 bg-white text-slate-800 rounded-xl text-sm font-semibold outline-none focus:border-violet-400 transition-colors" min="0" />
             </div>
 
             <div className="mt-3">
