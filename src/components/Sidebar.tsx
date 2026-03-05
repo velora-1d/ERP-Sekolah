@@ -46,6 +46,14 @@ function hasMenuAccess(href: string, role: string): boolean {
 export default function Sidebar({ user, collapsed, onToggle }: { user: { name: string; role: string }; collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; logo: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/profile")
+      .then(res => res.json())
+      .then(data => setProfile({ name: data.name, logo: data.logo }))
+      .catch(console.error);
+  }, []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -58,12 +66,20 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
     <>
       {/* Logo */}
       <div className={`flex items-center flex-shrink-0 ${collapsed ? "px-3 py-5 justify-center" : "px-5 py-5"}`} style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
-        <div className="shrink-0" style={{ padding: 7, background: "linear-gradient(135deg, #f59e0b, #f97316)", borderRadius: 10, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>
-          <span className="w-7 h-7 flex items-center justify-center font-extrabold text-sm" style={{ color: "#1e1b4b" }}>MI</span>
-        </div>
+        {profile?.logo ? (
+          <div className="shrink-0 w-10 h-10 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center p-0.5" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+            <img src={profile.logo} alt="Logo" className="w-full h-full object-contain rounded-lg" />
+          </div>
+        ) : (
+          <div className="shrink-0" style={{ padding: 7, background: "linear-gradient(135deg, #f59e0b, #f97316)", borderRadius: 10, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>
+            <span className="w-7 h-7 flex items-center justify-center font-extrabold text-sm" style={{ color: "#1e1b4b" }}>
+              {profile?.name ? profile.name.charAt(0).toUpperCase() : "M"}
+            </span>
+          </div>
+        )}
         {!collapsed && (
           <div className="ml-3 overflow-hidden">
-            <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">MI As-Saodah</span>
+            <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">{profile?.name || "Nama Madrasah"}</span>
             <p className="text-[10px] font-semibold text-indigo-400/60 tracking-wider uppercase">ERP Sekolah</p>
           </div>
         )}

@@ -6,6 +6,7 @@ const PROFILE_KEYS = [
   "school_name",
   "school_phone",
   "school_email",
+  "school_logo",
   "school_address",
   "headmaster_name",
   "headmaster_nip"
@@ -21,6 +22,7 @@ export async function GET() {
       name: "",
       phone: "",
       email: "",
+      logo: "",
       address: "",
       headmaster_name: "",
       headmaster_nip: ""
@@ -30,6 +32,7 @@ export async function GET() {
       if (s.key === "school_name") profile.name = s.value;
       if (s.key === "school_phone") profile.phone = s.value;
       if (s.key === "school_email") profile.email = s.value;
+      if (s.key === "school_logo") profile.logo = s.value;
       if (s.key === "school_address") profile.address = s.value;
       if (s.key === "headmaster_name") profile.headmaster_name = s.value;
       if (s.key === "headmaster_nip") profile.headmaster_nip = s.value;
@@ -51,6 +54,7 @@ export async function POST(request: Request) {
       name: "school_name",
       phone: "school_phone",
       email: "school_email",
+      logo: "school_logo",
       address: "school_address",
       headmaster_name: "headmaster_name",
       headmaster_nip: "headmaster_nip"

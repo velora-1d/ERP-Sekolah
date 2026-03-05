@@ -11,6 +11,7 @@ export default function SettingsPage() {
     name: "",
     phone: "",
     email: "",
+    logo: "",
     address: "",
     headmaster_name: "",
     headmaster_nip: ""
@@ -25,6 +26,7 @@ export default function SettingsPage() {
           name: data.name || "",
           phone: data.phone || "",
           email: data.email || "",
+          logo: data.logo || "",
           address: data.address || "",
           headmaster_name: data.headmaster_name || "",
           headmaster_nip: data.headmaster_nip || ""
@@ -33,6 +35,22 @@ export default function SettingsPage() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire("Gagal", "Ukuran file logo maksimal 2MB", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfile(prev => ({ ...prev, logo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const loadUsers = async () => {
@@ -446,6 +464,36 @@ export default function SettingsPage() {
             <h4 className="font-heading font-bold text-sm text-slate-800 m-0">Identitas Utama Madrasah</h4>
           </div>
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 flex items-start gap-6 border border-slate-200 p-5 rounded-2xl bg-slate-50/50">
+              <div className="shrink-0 flex flex-col items-center gap-2">
+                <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden relative">
+                  {profile.logo ? (
+                    <img src={profile.logo} alt="Logo Madrasah" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-slate-400 text-xs font-bold text-center px-2">Belum ada logo</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Logo Madrasah (Sidebar)</label>
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer shadow-sm transition-colors text-sm font-semibold text-slate-700">
+                    <svg className="w-4 h-4 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Pilih Gambar
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                  {profile.logo && (
+                    <button onClick={() => setProfile({...profile, logo: ""})} className="px-3 py-2 text-rose-500 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors text-sm font-semibold border border-rose-100">
+                      Hapus
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-slate-400 font-medium">Format JPG/PNG transparan max 2MB. Logo akan ditampilkan di navigasi sidebar.</p>
+              </div>
+            </div>
+
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Lengkap Madrasah <span className="text-rose-500">*</span></label>
               <input type="text" value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 ring-indigo-500 ring-offset-2 transition-all shadow-sm" />
