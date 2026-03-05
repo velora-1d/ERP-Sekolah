@@ -7,24 +7,36 @@ import { useEffect, useState, type ReactNode } from "react";
  * 
  * Memberikan efek fade-in + slide-up setiap kali pathname berubah (pindah menu).
  * Juga menampilkan progress bar di atas halaman selama transisi.
+ * 
+ * PENTING: Tidak menggunakan CSS `transform` atau `will-change` secara persisten
+ * karena itu akan membuat containing block baru dan merusak `position: fixed`
+ * pada modal di dalam children.
  */
 export default function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayChildren, setDisplayChildren] = useState(children);
   const [key, setKey] = useState(pathname);
+  const [animClass, setAnimClass] = useState("");
 
   useEffect(() => {
     if (pathname !== key) {
       // Mulai transisi: fade-out cepat
       setIsTransitioning(true);
-      
+      setAnimClass("page-fade-out");
+
       // Setelah fade-out selesai, ganti konten dan fade-in
       const timer = setTimeout(() => {
         setDisplayChildren(children);
         setKey(pathname);
         setIsTransitioning(false);
-      }, 150); // 150ms fade-out
+        setAnimClass("page-fade-in");
+
+        // Hapus class animasi setelah selesai agar tidak ada
+        // transform/will-change yang merusak position:fixed di modal
+        const cleanup = setTimeout(() => setAnimClass(""), 350);
+        return () => clearTimeout(cleanup);
+      }, 150);
 
       return () => clearTimeout(timer);
     } else {
@@ -48,16 +60,8 @@ export default function PageTransition({ children }: { children: ReactNode }) {
         }} />
       )}
 
-      {/* Content dengan animasi */}
-      <div
-        key={key}
-        style={{
-          opacity: isTransitioning ? 0 : 1,
-          transform: isTransitioning ? "translateY(12px)" : "translateY(0)",
-          transition: "opacity 0.25s ease-out, transform 0.3s ease-out",
-          willChange: "opacity, transform",
-        }}
-      >
+      {/* Content — TANPA inline transform/will-change agar position:fixed modal tetap benar */}
+      <div key={key} className={animClass}>
         {displayChildren}
       </div>
     </>
