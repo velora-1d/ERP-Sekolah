@@ -138,32 +138,6 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
         </nav>
       </div>
 
-      {/* Button Menu Bantuan & Laporan */}
-      <div className={`px-3 ${collapsed ? "pb-3" : "pb-4"}`}>
-        <button
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              const evt = new CustomEvent('open-help-drawer');
-              window.dispatchEvent(evt);
-            }
-          }}
-          title={collapsed ? "Bantuan & Laporan" : undefined}
-          className={[
-            "w-full group flex items-center rounded-xl transition-all duration-200",
-            collapsed ? "justify-center p-3" : "px-3 py-2.5 gap-3",
-            "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 hover:border-emerald-500/20",
-          ].join(" ")}
-        >
-          <svg className={`shrink-0 transition-colors duration-200 ${collapsed ? "w-5 h-5" : "w-[18px] h-[18px]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {!collapsed && (
-            <span className="text-[13px] font-semibold truncate group-hover:text-emerald-300">
-              Bantuan & Laporan
-            </span>
-          )}
-        </button>
-      </div>
 
       {/* User Footer */}
       <div className={`flex-shrink-0 ${collapsed ? "p-3" : "p-4"}`} style={{ borderTop: "1px solid rgba(99,102,241,0.2)", background: "rgba(15,12,60,0.5)" }}>

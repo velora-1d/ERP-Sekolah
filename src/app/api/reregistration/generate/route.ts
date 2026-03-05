@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/rbac";
 
 export async function POST() {
   try {
+    const user = await requireAuth();
+
     // Cari siswa aktif
     const activeStudents = await prisma.student.findMany({
       where: { status: "aktif", deletedAt: null },
@@ -36,17 +39,43 @@ export async function POST() {
     const existingStudentIds = new Set(existing.map((e) => e.studentId));
     let count = 0;
 
+    // Ambil settings biaya daftar ulang dan buku
+    const feeKeys = ["re_registration_fee", "books_fee"];
+    const settings = await prisma.schoolSetting.findMany({
+      where: { key: { in: feeKeys } },
+    });
+    const feeMap: Record<string, number> = {};
+    settings.forEach((s: any) => { feeMap[s.key] = Number(s.value) || 0; });
+
     // Generate dalam transaction
     await prisma.$transaction(async (tx) => {
       for (const student of activeStudents) {
         if (!existingStudentIds.has(student.id)) {
-          await tx.reRegistration.create({
+          const newReg = await tx.reRegistration.create({
             data: {
               studentId: student.id,
               academicYearId: academicYearId,
               status: "pending",
             },
           });
+
+          // Buat otomatis tagihan Daftar Ulang fee & books_fee
+          const paymentTypes = [
+            { type: "fee", nominal: feeMap["re_registration_fee"] || 0 },
+            { type: "books", nominal: feeMap["books_fee"] || 0 },
+          ];
+
+          await tx.registrationPayment.createMany({
+            data: paymentTypes.map(pt => ({
+              payableType: "reregistration",
+              payableId: newReg.id,
+              paymentType: pt.type,
+              nominal: pt.nominal,
+              isPaid: false,
+              unitId: user.unitId || "",
+            })),
+          });
+
           count++;
         }
       }

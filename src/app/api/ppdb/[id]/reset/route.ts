@@ -29,9 +29,23 @@ export async function POST(
       return NextResponse.json({ success: false, message: "Tidak bisa reset pendaftar yang sudah dikonversi ke siswa" }, { status: 400 });
     }
 
-    await prisma.ppdbRegistration.update({
-      where: { id: regId },
-      data: { status: "menunggu" },
+    await prisma.$transaction(async (tx) => {
+      const paidItems = await tx.registrationPayment.findMany({
+        where: { payableType: "ppdb", payableId: regId, isPaid: true, deletedAt: null }
+      });
+
+      if (paidItems.length > 0) {
+        throw new Error("Penerimaan tak bisa dibatalkan karena ada tagihan biaya yang sudah lunas. Harap batalkan pembayaran tersebut terlebih dahulu.");
+      }
+
+      await tx.registrationPayment.deleteMany({
+        where: { payableType: "ppdb", payableId: regId, isPaid: false }
+      });
+
+      await tx.ppdbRegistration.update({
+        where: { id: regId },
+        data: { status: "menunggu" },
+      });
     });
 
     return NextResponse.json({
@@ -42,6 +56,7 @@ export async function POST(
     if (error instanceof AuthError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
     }
-    return NextResponse.json({ success: false, message: "Gagal reset pendaftar" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Gagal reset pendaftar";
+    return NextResponse.json({ success: false, message: msg }, { status: 400 });
   }
 }
