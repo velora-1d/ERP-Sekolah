@@ -11,6 +11,7 @@ interface DashboardShellProps {
 
 import { HelpProvider } from "@/components/HelpContext";
 import HelpDrawer from "@/components/HelpDrawer";
+import HelpFAB from "@/components/HelpFAB";
 
 export default function DashboardShell({ user, children }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -45,6 +46,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
         </main>
       </div>
       <HelpDrawer />
+      <HelpFAB />
     </HelpProvider>
   );
 }
