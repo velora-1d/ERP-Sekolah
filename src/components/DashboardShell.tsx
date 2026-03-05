@@ -2,6 +2,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import PageTransition from "@/components/PageTransition";
 
 interface DashboardShellProps {
   user: { name: string; role: string };
@@ -32,7 +33,9 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
         <Header user={user} />
         <div className="flex-1 overflow-auto">
           <div className="p-6 space-y-6">
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </div>
         </div>
       </main>
