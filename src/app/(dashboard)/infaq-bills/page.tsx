@@ -359,7 +359,37 @@ function InfaqBillsContent() {
               <button onClick={() => setShowBulkUpdate(true)} style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(99,102,241,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(99,102,241,0.3)", cursor: "pointer" }} className="hover:bg-indigo-500/30">
                 <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>Setting Biaya
               </button>
-              <button onClick={() => setShowGenerate(true)}
+              <button onClick={async () => {
+                // Cek nominal kelas sebelum buka form generate
+                const zeroClasses = classrooms.filter((c: any) => !c.infaqNominal || c.infaqNominal <= 0);
+                if (zeroClasses.length > 0) {
+                  const classNames = zeroClasses.map((c: any) => c.name).join(", ");
+                  const result = await Swal.fire({
+                    title: "⚠️ Nominal Belum Diatur!",
+                    html: `
+                      <div style="text-align: left; font-size: 0.875rem; color: #334155;">
+                        <p>Sebelum generate tagihan, nominal SPP/Infaq <strong>wajib</strong> diatur terlebih dahulu.</p>
+                        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 0.75rem 1rem; border-radius: 0.75rem; margin: 0.75rem 0;">
+                          <p style="font-weight: 600; color: #dc2626; margin: 0 0 0.375rem 0; font-size: 0.8125rem">Kelas yang belum ada nominal:</p>
+                          <p style="color: #991b1b; margin: 0; font-family: monospace; font-size: 0.8125rem;">${classNames}</p>
+                        </div>
+                        <p style="color: #64748b; font-size: 0.8125rem; margin-top: 0.5rem;">Klik <strong>"Atur Biaya Sekarang"</strong> untuk mengisi nominal per kelas.</p>
+                      </div>
+                    `,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#6366f1",
+                    cancelButtonColor: "#94a3b8",
+                    confirmButtonText: "Atur Biaya Sekarang",
+                    cancelButtonText: "Batal",
+                  });
+                  if (result.isConfirmed) {
+                    setShowBulkUpdate(true);
+                  }
+                  return;
+                }
+                setShowGenerate(true);
+              }}
  style={{ display: "inline-flex", alignItems: "center", padding: "0.75rem 1.5rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.75rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer" }} className="hover:bg-white/30">
                 <svg style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>Generate Tagihan
               </button>
