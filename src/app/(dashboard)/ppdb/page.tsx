@@ -626,7 +626,7 @@ export default function PpdbPage() {
 
       {/* Modal Konversi ke Siswa */}
       {showConvert && convertReg && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowConvert(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 440, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Konversi ke Siswa</h3>
@@ -665,7 +665,7 @@ export default function PpdbPage() {
 
       {/* Modal Konfirmasi Bayar */}
       {showPayModal && payTarget && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayModal(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 400, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Konfirmasi Pembayaran</h3>

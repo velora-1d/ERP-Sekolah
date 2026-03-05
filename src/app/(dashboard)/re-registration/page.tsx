@@ -529,7 +529,7 @@ export default function ReRegistrationPage() {
       </div>
       {/* Modal Konfirmasi Bayar */}
       {showPayModal && payTarget && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayModal(false)} />
           <div className="relative bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl">
             <h3 className="font-heading font-bold text-lg text-slate-800 m-0">Konfirmasi Pembayaran Daftar Ulang</h3>

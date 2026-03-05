@@ -546,7 +546,7 @@ function InfaqBillsContent() {
 
       {/* Modal Generate Tagihan */}
       {showGenerate && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowGenerate(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 520, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Generate Tagihan Baru</h3>
@@ -632,7 +632,7 @@ function InfaqBillsContent() {
 
       {/* Modal Bayar Tagihan */}
       {showPayment && selectedBill && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setShowPayment(false)} />
           <div style={{ position: "relative", background: "#fff", borderRadius: "1rem", width: "100%", maxWidth: 440, padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "1.125rem", color: "#1e293b", margin: 0 }}>Bayar Tagihan</h3>
