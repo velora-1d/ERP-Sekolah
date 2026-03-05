@@ -226,8 +226,13 @@ export default function PpdbPage() {
       doTogglePayment(payment.id, 0, 0);
       return;
     }
+    let nominalFromSettings = Number(payment.nominal || 0);
+    if (payment.paymentType === 'daftar' && ppdbSettings.daftar > 0) nominalFromSettings = ppdbSettings.daftar;
+    else if (payment.paymentType === 'buku' && ppdbSettings.buku > 0) nominalFromSettings = ppdbSettings.buku;
+    else if (payment.paymentType === 'seragam' && ppdbSettings.seragam > 0) nominalFromSettings = ppdbSettings.seragam;
+
     setPayTarget(payment);
-    setPayAmount(String(payment.nominal || 0));
+    setPayAmount(String(nominalFromSettings));
     setPayCashId("");
     setShowPayModal(true);
   }
@@ -304,29 +309,31 @@ export default function PpdbPage() {
                 <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", margin: "0.125rem 0 0" }}>Kelola pendaftaran, penerimaan, dan konversi ke siswa.</p>
               </div>
             </div>
-            <Link href="/ppdb/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", textDecoration: "none" }} className="hover:bg-white/35 transition-all">
-              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Pendaftar
-            </Link>
-            <button onClick={async () => {
-              const result = await Swal.fire({
-                title: "Perbaiki Data?",
-                text: "Perbaiki data pembayaran untuk pendaftar yang sudah diterima tapi belum punya record pembayaran?",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonColor: "#0284c7",
-                cancelButtonColor: "#64748b",
-                confirmButtonText: "Ya, Perbaiki"
-              });
-              if (!result.isConfirmed) return;
-              try {
-                const res = await fetch("/api/ppdb/fix-payments", { method: "POST" });
-                const json = await res.json();
-                if (json.success) { showToast(json.message); loadData(); }
-                else showToast(json.message, "error");
-              } catch { showToast("Gagal memperbaiki data", "error"); }
-            }} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-all">
-              <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Perbaiki Data
-            </button>
+            <div className="flex items-center gap-3">
+              <Link href="/ppdb/new" style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.3)", cursor: "pointer", textDecoration: "none" }} className="hover:bg-white/35 transition-all">
+                <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>Tambah Pendaftar
+              </Link>
+              <button onClick={async () => {
+                const result = await Swal.fire({
+                  title: "Perbaiki Data?",
+                  text: "Perbaiki data pembayaran untuk pendaftar yang sudah diterima tapi belum punya record pembayaran?",
+                  icon: "question",
+                  showCancelButton: true,
+                  confirmButtonColor: "#0284c7",
+                  cancelButtonColor: "#64748b",
+                  confirmButtonText: "Ya, Perbaiki"
+                });
+                if (!result.isConfirmed) return;
+                try {
+                  const res = await fetch("/api/ppdb/fix-payments", { method: "POST" });
+                  const json = await res.json();
+                  if (json.success) { showToast(json.message); loadData(); }
+                  else showToast(json.message, "error");
+                } catch { showToast("Gagal memperbaiki data", "error"); }
+              }} style={{ display: "inline-flex", alignItems: "center", padding: "0.625rem 1.25rem", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", color: "#fff", borderRadius: "0.625rem", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", border: "1.5px solid rgba(255,255,255,0.2)", cursor: "pointer" }} className="hover:bg-white/25 transition-all">
+                <svg style={{ width: "0.875rem", height: "0.875rem", marginRight: "0.375rem" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>Perbaiki Data
+              </button>
+            </div>
           </div>
 
           {/* KPI Stats */}
@@ -675,7 +682,7 @@ export default function PpdbPage() {
 
             <div style={{ marginTop: "1.25rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Nominal (Rp)</label>
-              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", fontWeight: 600, outline: "none" }} min="0" />
+              <input type="number" readOnly value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", fontWeight: 600, outline: "none", backgroundColor: "#f8fafc", color: "#64748b", cursor: "not-allowed" }} min="0" />
             </div>
 
             <div style={{ marginTop: "0.75rem" }}>
