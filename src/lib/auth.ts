@@ -2,7 +2,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+if (!process.env.JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable wajib di-set. Aplikasi tidak boleh berjalan tanpa secret yang aman.");
+}
+const JWT_SECRET: string = process.env.JWT_SECRET;
 const TOKEN_NAME = "erp_token";
 const TOKEN_EXPIRY = "7d";
 
@@ -36,6 +39,14 @@ export function verifyPassword(password: string, hash: string): boolean {
     return legacyHash === hash;
   }
   return bcrypt.compareSync(password, hash);
+}
+
+/**
+ * Cek apakah hash masih menggunakan format legasi (SHA256).
+ * Jika iya, return true → caller harus re-hash ke bcrypt.
+ */
+export function isLegacyHash(hash: string): boolean {
+  return !!(hash && !hash.startsWith("$2"));
 }
 
 /**

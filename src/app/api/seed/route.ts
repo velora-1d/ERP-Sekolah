@@ -4,11 +4,19 @@ import { hashPassword } from "@/lib/auth";
 
 export async function GET() {
   try {
+    // SECURITY: Blokir seed di production
+    if (process.env.NODE_ENV === "production" && !process.env.ALLOW_SEED) {
+      return NextResponse.json(
+        { success: false, message: "Seed endpoint dinonaktifkan di production." },
+        { status: 403 }
+      );
+    }
+
     // 1. Admin user
     const existing = await prisma.user.findFirst({ where: { email: "admin@assaodah.sch.id" } });
     if (!existing) {
       await prisma.user.create({
-        data: { name: "Administrator", email: "admin@assaodah.sch.id", password: hashPassword("admin123"), role: "superadmin", status: "aktif" },
+        data: { name: "Administrator", email: "admin@assaodah.sch.id", password: hashPassword("As$@0dah#2025!Adm"), role: "superadmin", status: "aktif" },
       });
     }
 
