@@ -55,10 +55,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
 export const PUBLIC_API_PATHS = [
   "/api/auth/login",
   "/api/auth/logout",
-  "/api/debug-env",
-  "/api/debug-db",
-  "/api/debug-users",
-  "/api/seed",
 ];
 
 /**
