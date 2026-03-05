@@ -9,6 +9,9 @@ interface DashboardShellProps {
   children: ReactNode;
 }
 
+import { HelpProvider } from "@/components/HelpContext";
+import HelpDrawer from "@/components/HelpDrawer";
+
 export default function DashboardShell({ user, children }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -27,18 +30,21 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar user={user} collapsed={collapsed} onToggle={handleToggle} />
-      <main className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "#f8fafc" }}>
-        <Header user={user} />
-        <div className="flex-1 overflow-auto">
-          <div className="p-6 space-y-6">
-            <PageTransition>
-              {children}
-            </PageTransition>
+    <HelpProvider>
+      <div className="flex h-screen w-full overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <Sidebar user={user} collapsed={collapsed} onToggle={handleToggle} />
+        <main className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: "#f8fafc" }}>
+          <Header user={user} />
+          <div className="flex-1 overflow-auto">
+            <div className="p-6 space-y-6">
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+      <HelpDrawer />
+    </HelpProvider>
   );
 }
