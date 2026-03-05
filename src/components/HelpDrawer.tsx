@@ -3,29 +3,31 @@
 import { useHelp } from "./HelpContext";
 import { getHelpContentByPath } from "@/lib/help-content";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function HelpDrawer() {
   const { isOpen, closeHelp, openHelp } = useHelp();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const prevPathRef = useRef(pathname);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Tutup drawer kalau pindah halaman
+  // Tutup drawer HANYA kalau user berpindah halaman (bukan saat mount pertama)
   useEffect(() => {
-    closeHelp();
+    if (prevPathRef.current !== pathname) {
+      closeHelp();
+      prevPathRef.current = pathname;
+    }
   }, [pathname, closeHelp]);
 
-  // Global event listener untuk membuka drawer dari komponen mana pun
+  // Global event listener untuk membuka drawer dari Sidebar & Header
   useEffect(() => {
     const handleOpen = () => openHelp();
-    if (typeof window !== "undefined") {
-      window.addEventListener("open-help-drawer", handleOpen);
-      return () => window.removeEventListener("open-help-drawer", handleOpen);
-    }
+    window.addEventListener("open-help-drawer", handleOpen);
+    return () => window.removeEventListener("open-help-drawer", handleOpen);
   }, [openHelp]);
 
   // Escape key handler
@@ -74,7 +76,7 @@ export default function HelpDrawer() {
           </div>
           <button 
             onClick={closeHelp}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
