@@ -33,17 +33,18 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/api/transaction-categories": ["superadmin", "admin", "bendahara"],
   "/api/reports": ["superadmin", "admin", "bendahara"],
 
-  // === DATA MASTER (superadmin + admin + operator) ===
-  "/api/students": ["superadmin", "admin", "operator"],
-  "/api/classrooms": ["superadmin", "admin", "operator"],
-  "/api/academic-years": ["superadmin", "admin"],
-  "/api/teachers": ["superadmin", "admin", "operator"],
+  // === DATA MASTER ===
+  // (Guru perlu akses read-only ke data ini untuk dropdown nilai & absen)
+  "/api/students": ["superadmin", "admin", "operator", "guru"],
+  "/api/classrooms": ["superadmin", "admin", "operator", "guru"],
+  "/api/academic-years": ["superadmin", "admin", "operator", "guru"],
+  "/api/teachers": ["superadmin", "admin", "operator", "guru"],
   "/api/staff": ["superadmin", "admin", "operator"],
   "/api/inventory": ["superadmin", "admin", "operator"],
 
   // === AKADEMIK (superadmin + admin + operator + guru) ===
-  "/api/subjects": ["superadmin", "admin", "operator"],
-  "/api/teaching-assignments": ["superadmin", "admin", "operator"],
+  "/api/subjects": ["superadmin", "admin", "operator", "guru"],
+  "/api/teaching-assignments": ["superadmin", "admin", "operator", "guru"],
   "/api/schedules": ["superadmin", "admin", "operator", "siswa", "guru"],
   "/api/attendance": ["superadmin", "admin", "operator", "guru"],
   "/api/grades": ["superadmin", "admin", "guru"],
