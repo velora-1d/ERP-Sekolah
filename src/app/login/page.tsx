@@ -107,7 +107,7 @@ export default function LoginPage() {
 
   const initials = schoolName
     ? schoolName.split(" ").filter(w => w.length > 1).map(w => w[0]).join("").toUpperCase().slice(0, 3)
-    : "ERP";
+    : "MD";
 
   const features = [
     {
@@ -285,7 +285,7 @@ export default function LoginPage() {
               fontFamily: "var(--font-heading)", fontSize: "1.625rem", fontWeight: 800,
               color: "#fff", margin: "0 0 0.375rem", letterSpacing: "-0.03em", lineHeight: 1.15,
             }}>
-              {schoolName || "ERP Sekolah"}
+              {schoolName || "Management Digital"}
             </h1>
             <div style={{ width: 36, height: 3, background: "linear-gradient(90deg, #818cf8, #3b82f6)", borderRadius: 999, margin: "0 auto 0.625rem" }} />
             <p style={{ color: "rgba(165,180,252,0.8)", fontSize: "0.8125rem", lineHeight: 1.6, margin: 0 }}>
@@ -365,7 +365,7 @@ export default function LoginPage() {
           {/* Mobile header */}
           <div className="flex flex-col items-center mb-6 lg:hidden">
             <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "#0f172a", textAlign: "center" }}>
-              {schoolName || "ERP Sekolah"}
+              {schoolName || "Management Digital"}
             </h2>
           </div>
 
@@ -600,7 +600,7 @@ export default function LoginPage() {
 
           {/* Footer copyright */}
           <p style={{ textAlign: "center", fontSize: "0.625rem", color: "#94a3b8", marginTop: "1rem", fontWeight: 500 }}>
-            © {new Date().getFullYear()} {schoolName || "ERP Sekolah"} — Seluruh hak cipta dilindungi.
+            © {new Date().getFullYear()} {schoolName || "Management Digital"} — Seluruh hak cipta dilindungi.
           </p>
         </div>
       </div>
