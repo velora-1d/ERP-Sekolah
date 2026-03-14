@@ -8,11 +8,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
 
 export const metadata: Metadata = {
-  title: "Miftahul Huda As-Saodah",
-  description: "Sistem Informasi Manajemen Madrasah Ibtidaiyah Miftahul Huda As-Saodah",
+  title: "Management Digital | Velora",
+  description: "Sistem Informasi Terintegrasi Velora",
   icons: {
-    icon: "/favicon.png",
-    apple: "/favicon.png",
+    icon: "/images/logo.png",
   },
 };
 
