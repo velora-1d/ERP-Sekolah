@@ -20,6 +20,7 @@ interface ExtraData {
 
 interface StudentReportData {
   student: {
+    id?: number;
     name: string;
     nisn: string;
     nis: string;
@@ -38,6 +39,11 @@ interface ReportConfig {
   school: Record<string, string>;
   curriculum: { type: string; semester: string; academicYear: string };
   classroom: { name: string; waliKelas: string };
+  signatures?: {
+    headmaster?: string;
+    homeroom?: string;
+  };
+  isDraft?: boolean;
 }
 
 export function generateReportCardPDF(
@@ -46,15 +52,51 @@ export function generateReportCardPDF(
 ): jsPDF {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
   const contentWidth = pageWidth - margin * 2;
   let y = margin;
+
+  // Watermark "DRAFT"
+  if (config.isDraft) {
+    doc.saveGraphicsState();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(80);
+    doc.setTextColor(255, 0, 0); // Red color for visibility
+    doc.text("DRAFT", pageWidth / 2, pageHeight / 2, {
+      align: "center",
+      angle: 45
+    });
+    doc.restoreGraphicsState();
+    doc.setTextColor(0, 0, 0); // Reset text color
+  }
 
   const schoolName = config.school["school_name"] || config.school["nama_sekolah"] || "Sekolah";
   const schoolAddress = config.school["school_address"] || config.school["alamat_sekolah"] || "";
   const schoolNpsn = config.school["npsn"] || "";
 
+  const reportLogo = config.school["report_logo"] || config.school["school_logo"] || "";
+  const logoPosition = config.school["report_logo_position"] || "left";
+  const logoSizeStr = config.school["report_logo_size"] || "medium";
+  
+  let logoSize = 20;
+  if (logoSizeStr === "small") logoSize = 15;
+  if (logoSizeStr === "large") logoSize = 25;
+
   // === HEADER / KOP ===
+  if (reportLogo && logoPosition === "center") {
+    if (reportLogo.startsWith("data:image/")) {
+      try {
+        doc.addImage(reportLogo, "JPEG", pageWidth / 2 - (logoSize / 2), y, logoSize, logoSize);
+        y += logoSize + 5;
+      } catch (e) {
+        console.error("Error adding center logo", e);
+      }
+    }
+  }
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("LAPORAN HASIL BELAJAR PESERTA DIDIK", pageWidth / 2, y, { align: "center" });
@@ -71,6 +113,17 @@ export function generateReportCardPDF(
   if (schoolNpsn) {
     doc.text(`NPSN: ${schoolNpsn}`, pageWidth / 2, y, { align: "center" });
     y += 4;
+  }
+
+  if (reportLogo && logoPosition === "left") {
+    if (reportLogo.startsWith("data:image/")) {
+      try {
+        // Position it nicely aligned with the text block
+        doc.addImage(reportLogo, "JPEG", margin + 5, margin, logoSize, logoSize);
+      } catch (e) {
+        console.error("Error adding left logo", e);
+      }
+    }
   }
 
   // Garis
@@ -267,12 +320,28 @@ export function generateReportCardPDF(
   // Kolom kiri: mengetahui
   doc.text("Mengetahui,", margin, y);
   doc.text("Kepala Sekolah", margin, y + 5);
+  const headmasterSignature = config.signatures?.headmaster || config.school["headmaster_signature"] || "";
+  if (headmasterSignature.startsWith("data:image/")) {
+    try {
+      doc.addImage(headmasterSignature, margin, y + 8, 35, 14);
+    } catch {
+      // Fallback ke placeholder garis jika format image tidak didukung
+    }
+  }
   doc.text("_______________________", margin, y + 25);
   doc.text(`NIP. ......................`, margin, y + 30);
 
   // Kolom kanan: wali kelas
   const rightX = margin + colWidth + 10;
   doc.text(`Wali Kelas ${config.classroom.name}`, rightX, y + 5);
+  const homeroomSignature = config.signatures?.homeroom || config.school["homeroom_signature"] || "";
+  if (homeroomSignature.startsWith("data:image/")) {
+    try {
+      doc.addImage(homeroomSignature, rightX, y + 8, 35, 14);
+    } catch {
+      // Fallback ke placeholder garis jika format image tidak didukung
+    }
+  }
   doc.text("_______________________", rightX, y + 25);
   doc.text(config.classroom.waliKelas || "Nama Wali Kelas", rightX, y + 30);
 

@@ -14,7 +14,9 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
-  Info
+  Info,
+  Upload,
+  Eye
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 
@@ -24,6 +26,13 @@ interface Student { id: number; name: string; nisn: string; nis: string; }
 interface FinalGradeCheck { subjectName: string; isLocked: boolean; }
 interface ReportCard { id: number; studentId: number; status: string; student: Student; }
 interface NoteItem { studentId: number; studentName: string; note: string; }
+interface SignatureSettings {
+  headmasterSignature: string;
+  homeroomSignature: string;
+  reportLogo: string;
+  reportLogoPosition: string;
+  reportLogoSize: string;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ReportGenerateResult = any;
@@ -60,11 +69,32 @@ export default function ReportCardsPage() {
   // Step 3 state
   const [generatedData, setGeneratedData] = useState<ReportGenerateResult | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [signatureSettings, setSignatureSettings] = useState<SignatureSettings>({
+    headmasterSignature: "",
+    homeroomSignature: "",
+    reportLogo: "",
+    reportLogoPosition: "left",
+    reportLogoSize: "medium",
+  });
+  const [savingSignatures, setSavingSignatures] = useState(false);
+  const [previewStudentIndex, setPreviewStudentIndex] = useState(0);
 
   // Fetch metadata
   useEffect(() => {
     fetch("/api/classrooms").then(r => r.json()).then(d => setClassrooms(Array.isArray(d) ? d : []));
     fetch("/api/curriculum").then(r => r.json()).then(d => setCurriculums(Array.isArray(d) ? d : []));
+    fetch("/api/settings/profile")
+      .then(r => r.json())
+      .then((d) => setSignatureSettings({
+        headmasterSignature: d?.headmaster_signature || "",
+        homeroomSignature: d?.homeroom_signature || "",
+        reportLogo: d?.report_logo || "",
+        reportLogoPosition: d?.report_logo_position || "left",
+        reportLogoSize: d?.report_logo_size || "medium",
+      }))
+      .catch(() => {
+        // ignore profile fetch errors
+      });
   }, []);
 
   // Fetch students & report cards ketika filter berubah
@@ -212,7 +242,17 @@ export default function ReportCardsPage() {
       school: generatedData.school,
       curriculum: generatedData.curriculum,
       classroom: generatedData.classroom,
+      signatures: {
+        headmaster: signatureSettings.headmasterSignature,
+        homeroom: signatureSettings.homeroomSignature,
+      },
+      isDraft: getStudentStatus(studentData.student.id) !== "PUBLISHED",
     };
+    // Include logo settings directly into school config
+    config.school["report_logo"] = signatureSettings.reportLogo || config.school["report_logo"] || "";
+    config.school["report_logo_position"] = signatureSettings.reportLogoPosition || "left";
+    config.school["report_logo_size"] = signatureSettings.reportLogoSize || "medium";
+
     const doc = generateReportCardPDF(studentData, config);
     doc.save(`Rapor_${studentData.student.name.replace(/\s+/g, "_")}.pdf`);
   };
@@ -235,6 +275,58 @@ export default function ReportCardsPage() {
     const locked = checks.filter(c => c.isLocked).length;
     return Math.round((locked / checks.length) * 100);
   };
+
+  const handleSignatureUpload = (target: "headmasterSignature" | "homeroomSignature" | "reportLogo", file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      Swal.fire("Format tidak valid", "File tanda tangan harus berupa gambar", "warning");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire("Terlalu besar", "Ukuran gambar maksimal 2MB", "warning");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSignatureSettings((prev) => ({ ...prev, [target]: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveSignatures = async () => {
+    setSavingSignatures(true);
+    try {
+      const res = await fetch("/api/settings/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headmaster_signature: signatureSettings.headmasterSignature,
+          homeroom_signature: signatureSettings.homeroomSignature,
+          report_logo: signatureSettings.reportLogo,
+          report_logo_position: signatureSettings.reportLogoPosition,
+          report_logo_size: signatureSettings.reportLogoSize,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json?.error) {
+        throw new Error(json?.error || "Gagal menyimpan tanda tangan");
+      }
+      Swal.fire("Berhasil", "Tanda tangan disimpan", "success");
+    } catch (e: unknown) {
+      Swal.fire("Error", e instanceof Error ? e.message : "Gagal menyimpan tanda tangan", "error");
+    } finally {
+      setSavingSignatures(false);
+    }
+  };
+
+  const previewGeneratedStudent = generatedData?.students?.[previewStudentIndex];
+  const fallbackStudent = students[previewStudentIndex];
+  const previewName = previewGeneratedStudent?.student?.name || fallbackStudent?.name || "Nama Siswa";
+  const previewNisn = previewGeneratedStudent?.student?.nisn || fallbackStudent?.nisn || "-";
+  const previewNis = previewGeneratedStudent?.student?.nis || fallbackStudent?.nis || "-";
+  const previewGrades = Array.isArray(previewGeneratedStudent?.finalGrades) ? previewGeneratedStudent.finalGrades : [];
+  const previewAttendance = previewGeneratedStudent?.attendanceSummary || { sakit: 0, izin: 0, alpha: 0 };
+  const previewTeacherNote = previewGeneratedStudent?.teacherNote || "Catatan wali kelas akan tampil di sini meskipun data nilai belum tersedia.";
 
   return (
     <div className="space-y-6">
@@ -462,6 +554,174 @@ export default function ReportCardsPage() {
 
         {currentStep === 3 && (
           <div className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="border border-slate-200 rounded-2xl p-4 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-indigo-600" />
+                    Upload Tanda Tangan
+                  </h3>
+                  <button
+                    onClick={handleSaveSignatures}
+                    disabled={savingSignatures}
+                    className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {savingSignatures ? "Menyimpan..." : "Simpan"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="border border-slate-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">Kepala Sekolah</p>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      Pilih Gambar
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleSignatureUpload("headmasterSignature", e.target.files?.[0])}
+                      />
+                    </label>
+                    {signatureSettings.headmasterSignature && (
+                      <img src={signatureSettings.headmasterSignature} alt="Tanda tangan kepala sekolah" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                    )}
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">Wali Kelas</p>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      Pilih Gambar
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleSignatureUpload("homeroomSignature", e.target.files?.[0])}
+                      />
+                    </label>
+                    {signatureSettings.homeroomSignature && (
+                      <img src={signatureSettings.homeroomSignature} alt="Tanda tangan wali kelas" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl p-4 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-indigo-600" />
+                    Pengaturan Kop Rapor
+                  </h3>
+                   <button
+                    onClick={handleSaveSignatures}
+                    disabled={savingSignatures}
+                    className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50"
+                  >
+                    {savingSignatures ? "Menyimpan..." : "Simpan"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="border border-slate-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">Logo Rapor (Kop)</p>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      Pilih Gambar
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleSignatureUpload("reportLogo", e.target.files?.[0])}
+                      />
+                    </label>
+                    {signatureSettings.reportLogo && (
+                      <img src={signatureSettings.reportLogo} alt="Logo Rapor" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="border border-slate-200 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-slate-600 mb-2">Posisi Logo</p>
+                      <select
+                        value={signatureSettings.reportLogoPosition}
+                        onChange={(e) => setSignatureSettings({ ...signatureSettings, reportLogoPosition: e.target.value })}
+                        className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      >
+                        <option value="left">Kiri (Samping Teks)</option>
+                        <option value="center">Tengah (Atas Teks)</option>
+                      </select>
+                    </div>
+                    <div className="border border-slate-200 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-slate-600 mb-2">Ukuran Logo</p>
+                      <select
+                        value={signatureSettings.reportLogoSize}
+                        onChange={(e) => setSignatureSettings({ ...signatureSettings, reportLogoSize: e.target.value })}
+                        className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      >
+                        <option value="small">Kecil (15mm)</option>
+                        <option value="medium">Sedang (20mm)</option>
+                        <option value="large">Besar (25mm)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>              <div className="border border-slate-200 rounded-2xl p-4 bg-gradient-to-br from-slate-50 to-white">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-indigo-600" />
+                    Preview E-Rapor Digital
+                  </h3>
+                  <select
+                    value={previewStudentIndex}
+                    onChange={(e) => setPreviewStudentIndex(Number(e.target.value))}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5"
+                  >
+                    {(generatedData?.students || students).map((s: ReportGenerateResult, idx: number) => (
+                      <option key={idx} value={idx}>
+                        {s?.student?.name || s?.name || `Siswa ${idx + 1}`}
+                      </option>
+                    ))}
+                    {(generatedData?.students?.length || students.length) === 0 && <option value={0}>Belum ada siswa</option>}
+                  </select>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3 text-xs">
+                  <div>
+                    <p className="font-bold text-slate-800">{previewName}</p>
+                    <p className="text-slate-500">NISN: {previewNisn} | NIS: {previewNis}</p>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="text-left px-2 py-1">Mapel</th>
+                          <th className="text-center px-2 py-1 w-16">Nilai</th>
+                          <th className="text-center px-2 py-1 w-16">Predikat</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewGrades.length > 0 ? previewGrades.slice(0, 4).map((g: ReportGenerateResult, i: number) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-2 py-1.5">{g.subjectName}</td>
+                            <td className="px-2 py-1.5 text-center">{g.nilaiAkhir ?? "-"}</td>
+                            <td className="px-2 py-1.5 text-center">{g.predikat || "-"}</td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={3} className="px-2 py-3 text-center text-slate-500">Belum ada nilai. Preview tetap aktif.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-md bg-slate-100 px-2 py-1 text-center">Sakit: {previewAttendance.sakit}</div>
+                    <div className="rounded-md bg-slate-100 px-2 py-1 text-center">Izin: {previewAttendance.izin}</div>
+                    <div className="rounded-md bg-slate-100 px-2 py-1 text-center">Alpha: {previewAttendance.alpha}</div>
+                  </div>
+                  <p className="text-slate-600 italic">&quot;{previewTeacherNote}&quot;</p>
+                </div>
+              </div>
+            </div>
+
             {!generatedData ? (
               <div className="text-center py-16 bg-slate-50/50 rounded-2xl border border-slate-200 border-dashed">
                 <FileText className="mx-auto h-12 w-12 text-slate-300 mb-2" />

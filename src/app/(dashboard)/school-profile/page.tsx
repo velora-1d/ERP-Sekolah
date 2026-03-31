@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
-import { School, Save } from "lucide-react";
+import { School, Save, Upload } from "lucide-react";
 
 const profileKeys = [
+  { key: "school_logo", label: "Logo Sekolah", type: "image" },
   { key: "nama_sekolah", label: "Nama Sekolah", type: "text" },
   { key: "npsn", label: "NPSN", type: "text" },
   { key: "nss", label: "NSS", type: "text" },
@@ -94,6 +95,20 @@ export default function SchoolProfilePage() {
                       <option value="">— Pilih —</option>
                       {pk.options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
+                  ) : pk.type === "image" ? (
+                    <div>
+                      <label className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" /> Pilih Gambar
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) return Swal.fire("Terlalu besar", "Ukuran maksimal 2MB", "warning");
+                            const r = new FileReader(); r.onloadend = () => updateField(pk.key, String(r.result || "")); r.readAsDataURL(file);
+                          }
+                        }} />
+                      </label>
+                      {profile[pk.key] && <img src={profile[pk.key]} alt={pk.label} className="mt-2 h-16 w-auto object-contain border border-slate-200 rounded-md bg-white p-1" />}
+                    </div>
                   ) : (
                     <input value={profile[pk.key] || ""} onChange={e => updateField(pk.key, e.target.value)}
                       className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -110,9 +125,13 @@ export default function SchoolProfilePage() {
               <h2 className="font-heading font-bold text-sm text-slate-800">Preview Kop Surat</h2>
             </div>
             <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-2 text-center">
-              <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-              </div>
+              {profile["school_logo"] ? (
+                <img src={profile["school_logo"]} alt="Logo Sekolah" className="w-16 h-16 mx-auto object-contain mb-2 bg-transparent" />
+              ) : (
+                <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-2">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                </div>
+              )}
               <p className="font-bold text-sm text-slate-800">{profile["nama_sekolah"] || "Nama Sekolah"}</p>
               {profile["npsn"] && <p className="text-[11px] text-slate-500">NPSN: {profile["npsn"]}</p>}
               <p className="text-[11px] text-slate-500">{profile["alamat_sekolah"] || "Alamat Sekolah"}</p>
