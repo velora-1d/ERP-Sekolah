@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
 interface GradeData {
   subjectName: string;
@@ -44,13 +45,15 @@ interface ReportConfig {
     homeroom?: string;
   };
   isDraft?: boolean;
+  verificationUrl?: string;
 }
 
-export function generateReportCardPDF(
+export async function generateReportCardPDF(
   studentData: StudentReportData,
   config: ReportConfig
-): jsPDF {
+): Promise<jsPDF> {
   const doc = new jsPDF("p", "mm", "a4");
+
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
@@ -345,5 +348,22 @@ export function generateReportCardPDF(
   doc.text("_______________________", rightX, y + 25);
   doc.text(config.classroom.waliKelas || "Nama Wali Kelas", rightX, y + 30);
 
+  // === QR CODE & VERIFIKASI (Phase 1) ===
+  const bottomY = pageHeight - 30;
+  if (config.verificationUrl) {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(config.verificationUrl, { margin: 1, width: 100 });
+      doc.addImage(qrDataUrl, "PNG", margin, bottomY, 15, 15);
+      doc.setFontSize(6);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Dokumen ini diterbitkan secara elektronik dan diverifikasi secara digital.", margin + 17, bottomY + 6);
+      doc.text(`Scan QR Code untuk memverifikasi keaslian dokumen. ID: ${studentData.student.id || "N/A"}-${Date.now()}`, margin + 17, bottomY + 9);
+      doc.setTextColor(0, 0, 0);
+    } catch (e) {
+      console.error("Error generating QR code", e);
+    }
+  }
+
   return doc;
 }
+

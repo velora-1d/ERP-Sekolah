@@ -67,45 +67,34 @@ export default function CurriculumPage() {
   const [compLimit] = useState(5);
   const [compPagination, setCompPagination] = useState({ total: 0, totalPages: 1 });
 
-  const loadSubjects = useCallback(async () => {
+  const loadKkm = useCallback(async (curriculumId: number) => {
     try {
-      const res = await fetch(`/api/subjects?page=${subPage}&limit=${subLimit}`);
+      const res = await fetch(`/api/grades/kkm?curriculumId=${curriculumId}&limit=1000`); // Fetch all for lookup mapping
       const json = await res.json();
-      if (json.success) {
-        setSubjects(json.data);
-        setSubPagination({ total: json.pagination.total, totalPages: json.pagination.totalPages });
+      if (json.success && Array.isArray(json.data)) {
+        const mapped: Record<number, { nilai: number; deskripsi: string }> = {};
+        json.data.forEach((k: { subjectId: number; nilaiKKM: number; deskripsiKKTP: string }) => {
+          mapped[k.subjectId] = { nilai: k.nilaiKKM, deskripsi: k.deskripsiKKTP };
+        });
+        setKkmData(mapped);
       }
-    } catch (e) { console.error(e); }
-  }, [subPage, subLimit]);
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
 
-  useEffect(() => {
-    fetch("/api/academic-years")
-      .then((res) => res.json())
-      .then((data: AcademicYear[]) => {
-        setAcademicYears(data);
-        const active = data.find((y) => y.isActive);
-        if (active) setSelectedYearId(String(active.id));
-      })
-      .catch(console.error);
-
-    loadSubjects();
-  }, [loadSubjects]);
-
-  useEffect(() => {
-    if (!selectedYearId) return;
-    loadCurriculum(selectedYearId, semester);
-  }, [selectedYearId, semester]);
-
-  const loadCurriculum = async (yearId: string, sem: string) => {
+  const loadCurriculum = useCallback(async (yearId: string, sem: string) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/curriculum?academicYearId=${yearId}&semester=${sem}`);
       const data = await res.json();
-      if (data && data.length > 0) {
-        setCurriculum(data[0]);
-        setFormType(data[0].type);
-        setComponents(data[0].gradeComponents || []);
-        loadKkm(data[0].id);
+      const curriculumList = res.ok && Array.isArray(data) ? data : [];
+      if (curriculumList.length > 0) {
+        const first = curriculumList[0];
+        setCurriculum(first);
+        setFormType(first.type);
+        setComponents(first.gradeComponents || []);
+        loadKkm(first.id);
       } else {
         setCurriculum(null);
         setComponents([]);
@@ -116,32 +105,53 @@ export default function CurriculumPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadKkm]);
 
-  const loadKkm = async (curriculumId: number) => {
+  const loadSubjects = useCallback(async () => {
     try {
-      const res = await fetch(`/api/grades/kkm?curriculumId=${curriculumId}&limit=1000`); // Fetch all for lookup mapping
+      const res = await fetch(`/api/subjects?page=${subPage}&limit=${subLimit}`);
       const json = await res.json();
-      if (json.success) {
-        const mapped: any = {};
-        json.data.forEach((k: any) => {
-          mapped[k.subjectId] = { nilai: k.nilaiKKM, deskripsi: k.deskripsiKKTP };
-        });
-        setKkmData(mapped);
+      if (json.success && Array.isArray(json.data)) {
+        setSubjects(json.data);
+        if (json.pagination) {
+          setSubPagination({
+            total: json.pagination.total || 0,
+            totalPages: json.pagination.totalPages || 1
+          });
+        }
+      } else {
+        setSubjects([]);
       }
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    } catch (e) { console.error(e); }
+  }, [subPage, subLimit]);
+
+  useEffect(() => {
+    fetch("/api/academic-years")
+      .then((res) => res.json())
+      .then((res) => {
+        const data = res.success ? res.data : (Array.isArray(res) ? res : []);
+        setAcademicYears(data);
+        const active = data.find((y: AcademicYear) => y.isActive);
+        if (active) setSelectedYearId(String(active.id));
+      })
+      .catch(console.error);
+
+    loadSubjects();
+  }, [loadSubjects]);
+
+  useEffect(() => {
+    if (!selectedYearId) return;
+    loadCurriculum(selectedYearId, semester);
+  }, [selectedYearId, semester, loadCurriculum]);
 
   const loadComponents = useCallback(async () => {
     if (!curriculum) return;
     try {
       const res = await fetch(`/api/grades/components?curriculumId=${curriculum.id}&page=${compPage}&limit=${compLimit}`);
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setComponents(json.data);
-        setCompPagination({ total: json.total, totalPages: json.totalPages });
+        setCompPagination({ total: json.total || 0, totalPages: json.totalPages || 1 });
       }
     } catch (e) { console.error(e); }
   }, [curriculum, compPage, compLimit]);
@@ -193,7 +203,8 @@ export default function CurriculumPage() {
         }),
       });
       if (res.ok) {
-        const newComp = await res.json();
+        const json = await res.json();
+        const newComp = json.success ? json.data : json;
         setComponents([...components, newComp]);
         setNewComponentName("");
         setNewComponentCode("");
@@ -246,7 +257,7 @@ export default function CurriculumPage() {
               onChange={(e) => setSelectedYearId(e.target.value)}
             >
               <option value="">-- Pilih Tahun --</option>
-              {academicYears.map((y) => (
+              {academicYears?.map((y) => (
                 <option key={y.id} value={y.id}>
                   {y.year} {y.isActive && "(Aktif)"}
                 </option>
@@ -296,7 +307,7 @@ export default function CurriculumPage() {
               </div>
               <div className="space-y-2">
                 {components.length === 0 && <p className="text-xs text-slate-500 italic">Belum ada komponen.</p>}
-                {components.map((c) => (
+                {components?.map((c) => (
                   <div key={c.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-100 text-sm">
                     <span className="font-semibold text-slate-700">{c.name} ({c.code})</span>
                     <span className="font-bold text-indigo-600">{c.bobot}%</span>
@@ -362,7 +373,7 @@ export default function CurriculumPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {subjects.map((sub) => {
+                  {subjects?.map((sub) => {
                     const d = kkmData[sub.id] || { nilai: 75, deskripsi: "" };
                     return (
                       <tr key={sub.id} className="hover:bg-slate-50/50">
@@ -401,7 +412,7 @@ export default function CurriculumPage() {
                           </button>
                         </td>
                       </tr>
-                     );
+                    );
                   })}
                 </tbody>
               </table>

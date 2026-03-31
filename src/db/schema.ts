@@ -543,9 +543,11 @@ export const attendances = pgTable('attendances', {
   id: serial('id').primaryKey(),
   studentId: integer('student_id'),
   classroomId: integer('classroom_id'),
+  academicYearId: integer('academic_year_id'),
   date: text('date').notNull().default(''),
   status: text('status').notNull().default('hadir'),
   note: text('note').notNull().default(''),
+  isNotified: boolean('is_notified').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [
@@ -712,8 +714,11 @@ export const reportCards = pgTable('report_cards', {
   totalSiswa: integer('total_siswa'),
   catatanWali: text('catatan_wali'),
   attendanceAtititude: jsonb('attendance_atititude'),
+  snapshotData: jsonb('snapshot_data'), // For Phase 4 snapshot locking
+  publishedAt: timestamp('published_at'), // For Phase 4 marking
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+
 }, (t) => [
   uniqueIndex('unique_report_card').on(t.studentId, t.curriculumId, t.semester),
 ]);

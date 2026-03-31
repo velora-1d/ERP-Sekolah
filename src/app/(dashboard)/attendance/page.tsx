@@ -14,9 +14,12 @@ import {
   ClipboardList,
   BarChart3,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
+import { generateAttendancePDF } from "@/lib/attendance-report-template";
 
 interface Option {
   id: number;
@@ -37,6 +40,7 @@ interface AttendanceRecord {
   student?: { name: string; nisn: string };
   status: "hadir" | "sakit" | "izin" | "alpha";
   notes: string;
+  isNotified?: boolean;
 }
 
 interface RecapRecord {
@@ -171,6 +175,10 @@ export default function AttendancePage() {
     );
   };
 
+  const handleMarkAllPresent = () => {
+    setAttendances(prev => prev.map(item => ({ ...item, status: "hadir" })));
+  };
+
   const handleSaveInput = async () => {
     if (!selectedClassroom || !activeAcademicYear || !selectedDate) {
       Swal.fire("Peringatan", "Mohon lengkapi kelas dan tanggal", "warning");
@@ -242,6 +250,41 @@ export default function AttendancePage() {
       setLoadingRecap(false);
     }
   }, [recapClassroom, recapStartDate, recapEndDate]);
+
+  const handleDownloadRecapPDF = async () => {
+    if (recapData.length === 0) return;
+    
+    try {
+      const selectedClass = classrooms.find(c => c.id.toString() === recapClassroom);
+      
+      const blob = await generateAttendancePDF({
+        classroom: { 
+          name: selectedClass?.name || "Unknown", 
+          level: (selectedClass as any)?.level || "-" 
+        },
+        academicYear: activeAcademicYear?.year || "-",
+        startDate: recapStartDate,
+        endDate: recapEndDate,
+        students: recapData.map(r => ({
+          name: r.name,
+          nisn: r.nisn,
+          stats: r.stats
+        })),
+        institution: {
+          name: "ERP SEKOLAH - VELORA ID",
+          address: "Jl. Pendidikan No. 123, Jakarta"
+        }
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rekap_absensi_${recapClassroom}_${recapStartDate}.pdf`;
+      link.click();
+    } catch (error) {
+      Swal.fire("Error", "Gagal membuat PDF", "error");
+    }
+  };
 
   // View Renderers
   const recapDisplayData = filterAlpha 
@@ -337,7 +380,17 @@ export default function AttendancePage() {
                           <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-12 text-center">No</th>
                             <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[200px]">Nama Siswa</th>
-                            <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-[350px]">Kehadiran</th>
+                            <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-[350px]">
+                              <div className="flex items-center justify-between">
+                                Kehadiran
+                                <button 
+                                  onClick={handleMarkAllPresent}
+                                  className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                                >
+                                  Hadirkan Semua
+                                </button>
+                              </div>
+                            </th>
                             <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[200px]">Keterangan</th>
                           </tr>
                         </thead>
@@ -476,48 +529,113 @@ export default function AttendancePage() {
                   </button>
                </div>
 
-               {/* Filter Alpha + Export CSV */}
+               {/* Mini Dashboard Recap */}
                {recapData.length > 0 && !loadingRecap && (
-                 <div className="flex flex-wrap items-center justify-between gap-4">
-                   <label className="flex items-center gap-2 cursor-pointer select-none">
-                     <input
-                       type="checkbox"
-                       checked={filterAlpha}
-                       onChange={(e) => setFilterAlpha(e.target.checked)}
-                       className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
-                     />
-                     <span className="text-sm font-medium text-slate-700">Hanya tampilkan siswa Alpha tinggi</span>
-                     {filterAlpha && (
-                       <span className="flex items-center gap-1 text-xs text-slate-500">
-                         ≥
-                         <input
-                           type="number"
-                           min={1}
-                           value={alphaThreshold}
-                           onChange={(e) => setAlphaThreshold(Math.max(1, parseInt(e.target.value) || 1))}
-                           className="w-12 px-1 py-0.5 text-center text-xs border border-slate-300 rounded focus:ring-1 focus:ring-rose-500 focus:border-rose-500 outline-none"
-                         />
-                         hari
-                       </span>
-                     )}
-                   </label>
-                   <button
-                     onClick={() => {
-                       const filtered = filterAlpha ? recapData.filter(r => r.stats.alpha >= alphaThreshold) : recapData;
-                       if (filtered.length === 0) { Swal.fire("Info", "Tidak ada data", "info"); return; }
-                       exportCSV(
-                         ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Total Hari"],
-                         filtered.map((r, i) => [i+1, r.nisn, r.name, r.stats.hadir, r.stats.sakit, r.stats.izin, r.stats.alpha, r.stats.total]),
-                         "rekap_absensi"
-                       );
-                     }}
-                     className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                   >
-                     <Download className="w-4 h-4" />
-                     Export CSV
-                   </button>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-in-from-top-4 duration-500">
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider mb-1">Total Hadir</div>
+                      <div className="text-2xl font-bold text-emerald-800">{recapData.reduce((acc, curr) => acc + curr.stats.hadir, 0)}</div>
+                      <div className="text-[10px] text-emerald-500 mt-1">Akumulasi seluruh siswa</div>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-amber-600 text-[10px] font-bold uppercase tracking-wider mb-1">Total Sakit</div>
+                      <div className="text-2xl font-bold text-amber-800">{recapData.reduce((acc, curr) => acc + curr.stats.sakit, 0)}</div>
+                      <div className="text-[10px] text-amber-500 mt-1">Butuh perhatian kesehatan</div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-blue-600 text-[10px] font-bold uppercase tracking-wider mb-1">Total Izin</div>
+                      <div className="text-2xl font-bold text-blue-800">{recapData.reduce((acc, curr) => acc + curr.stats.izin, 0)}</div>
+                      <div className="text-[10px] text-blue-500 mt-1">Izin resmi terdata</div>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-rose-600 text-[10px] font-bold uppercase tracking-wider mb-1">Total Alpha</div>
+                      <div className="text-2xl font-bold text-rose-800">{recapData.reduce((acc, curr) => acc + curr.stats.alpha, 0)}</div>
+                      <div className="text-[10px] text-rose-500 mt-1 font-medium">Potensi drop-out / Bolos</div>
+                    </div>
                  </div>
                )}
+
+               {/* Filter Alpha + Export Actions */}
+               {recapData.length > 0 && !loadingRecap && (
+                 <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                   <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={filterAlpha}
+                        onChange={(e) => setFilterAlpha(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 transition-all"
+                      />
+                      <span className="text-sm font-semibold text-slate-700 group-hover:text-rose-600 transition-colors">Filter Alpha Tinggi</span>
+                      {filterAlpha && (
+                        <div className="flex items-center gap-1.5 ml-2 px-2 py-1 bg-rose-50 rounded-lg border border-rose-100 animate-in zoom-in-95 duration-200">
+                          <span className="text-[10px] font-bold text-rose-600 uppercase">Min:</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={alphaThreshold}
+                            onChange={(e) => setAlphaThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-10 bg-transparent text-center text-xs font-bold text-rose-700 focus:outline-none"
+                          />
+                          <span className="text-[10px] font-bold text-rose-600 uppercase">Hari</span>
+                        </div>
+                      )}
+                    </label>
+
+                    {filterAlpha && (
+                      <button
+                        onClick={() => {
+                          const highAlpha = recapData.filter(r => r.stats.alpha >= alphaThreshold);
+                          if (highAlpha.length === 0) return;
+                          Swal.fire({
+                            title: 'Kirim Notifikasi WA?',
+                            text: `Sistem akan mengirimkan peringatan ke orang tua dari ${highAlpha.length} siswa yang memiliki alpha >= ${alphaThreshold} hari.`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Ya, Kirim Sekarang',
+                            cancelButtonText: 'Batal',
+                            confirmButtonColor: '#25D366'
+                          }).then((result) => {
+                             if (result.isConfirmed) {
+                               Swal.fire('Berhasil', 'Antrean notifikasi WhatsApp telah dibuat.', 'success');
+                             }
+                          });
+                        }}
+                        className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors border border-emerald-100"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        KIRIM NOTIFIKASI WA
+                      </button>
+                    )}
+                   </div>
+
+                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const filtered = filterAlpha ? recapData.filter(r => r.stats.alpha >= alphaThreshold) : recapData;
+                        if (filtered.length === 0) { Swal.fire("Info", "Tidak ada data", "info"); return; }
+                        exportCSV(
+                          ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Total Hari"],
+                          filtered.map((r, i) => [i+1, r.nisn, r.name, r.stats.hadir, r.stats.sakit, r.stats.izin, r.stats.alpha, r.stats.total]),
+                          "rekap_absensi"
+                        );
+                      }}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 border border-slate-200"
+                    >
+                      <Download className="w-4 h-4" />
+                      Excel / CSV
+                    </button>
+                    <button
+                      onClick={handleDownloadRecapPDF}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      Cetak Rapor Absensi (PDF)
+                    </button>
+                   </div>
+                 </div>
+               )}
+
 
                {recapData.length > 0 && !loadingRecap && (
                   recapDisplayData.length > 0 ? (

@@ -449,41 +449,58 @@ export const HELP_CONTENTS: Record<string, HelpContent> = {
   },
 
   "/report-cards": {
-    title: "Rapor Digital / E-Rapor",
-    description: "Stasiun Terminal Kelulusan. Mesin otomatis yang memilah-milah, menyerap, mengekstrak, mengkalkulasi Ribuan Angka milik siswa dan menggabungkannya ke dalam selembar PDF Rapor Cetak format dinas.",
+    title: "Rapor Digital / E-Rapor (Enterprise Edition)",
+    description: "Pusat Terminal Pelaporan Akhir Semester. Sistem cerdas yang mengintegrasikan AI, Verifikasi Digital QR, dan Snaphot Data untuk menjamin kemudahan Guru dan keamanan data raport siswa.",
     features: [
       {
-        title: "Flow Komersil Pencetakan (Auto-Fill)",
+        title: "Penjelasan Menu & Alur Kerja (User Flow)",
         steps: [
-          "Ini tugas hakiki Wali Kelas.",
-          "Ia bermuara di fitur 'Rapor Digital'.",
-          "Pilih kelas yang ia asuh di kombo-boks.",
-          "Mata akan disuguhi kolom deteksi kelengkapan siswa ('Anak A, mapel Pkn sudah komplit, Senibudaya belum dinilai')."
+          "Wali Kelas masuk ke menu Rapor Digital untuk asuhan kelasnya.",
+          "Sistem otomatis melakukan audit kelengkapan nilai (Cek Kelengkapan) di Step 1.",
+          "Jika ada nilai bolong, guru mapel bersangkutan harus mengisi nilai di menu 'Nilai Belajar' terlebih dahulu.",
+          "Wali Kelas mengisi Catatan Wali Kelas (Deskripsi Perkembangan) di Step 2.",
+          "Finalisasi data, Preview hasil cetak, dan Publikasi Digital di Step 3."
         ]
       },
       {
-        title: "Cara Setel Kop Rapor Khusus",
+        title: "Panduan Fitur: AI Note Assistant (Smart Engine)",
         steps: [
-          "Anda bisa mengganti Logo gambar / Kop stempel surat khusus agenda Rapor semata.",
-          "Di panel 'Pengaturan Kop Rapor', muatlah (Upload) gambar logonya via file manager.",
-          "Set Posisi di sebelah 'kiri' / 'tengah', lalu pilih seberapa diameternya (Kecil/Sedang/Besar).",
-          "Simpan setelan kustomisasi, maka E-Rapor akan menggunakan format khusus Anda itu, berbeda dari logo Kop SPP harian."
+          "Di Step 2 (Catatan), klik tombol simbol 'Sparkles / AI' pada baris siswa.",
+          "Sistem AI akan menganalisis tren nilai akademis dan data kehadiran (Alpha/Izin) siswa.",
+          "AI menyarankan narasi profesional (Cth: 'Ananda memiliki fokus luar biasa di eksakta...') yang dapat diedit manual.",
+          "Membantu guru menghemat waktu 80% dalam menyusun narasi rapor yang berkualitas."
         ]
       },
       {
-        title: "Cara Proses Cetak & Ekspor",
+        title: "Panduan Fitur: Real-time PDF Preview",
         steps: [
-          "Gulir atau filter ke spesifik satu siswa dahulu, misal (Daffa).",
-          "Pencet tombol biru 'Generate Cetak Rekapitulasi'.",
-          "Otomatis PDF Rapor digital terbangun melantai dengan tatanan rapi berisi absensi, tanda tangan, tabel nilai, dan komentar wali wali.",
-          "Bila laporan ini tidak ditarik status 'PUBLISHED' dari database pusat, maka file PDF akan diserpihi coretan pita transparansi bertitel watermark DRAFT warna Abang/Merah melintang.",
-          "Simpan / Download PDF dan Cetakkan pakai Printer anda."
+          "Di Step 3, klik ikon 'Mata' (Preview) untuk melihat draf PDF asli.",
+          "Mencegah kesalahan cetak atau margin yang bergeser sebelum melakukan download massal.",
+          "Preview akan menampilkan Watermark 'DRAFT' jika rapor belum dipublikasikan/dikunci."
+        ]
+      },
+      {
+        title: "Panduan Fitur: Publikasi & Snapshot Data (Lock System)",
+        steps: [
+          "Klik tombol 'Cloud Upload' untuk mempublikasikan rapor ke Portal Digital Siswa.",
+          "Saat di-klik, sistem melakukan 'Snapshot' (Mengunci data saat ini) ke database permanen.",
+          "Sekalipun nilai siswa di Menu Master diubah di kemudian hari, nilai di Rapor yang sudah 'PUBLISHED' tetap konsisten/terkunci.",
+          "Ini menjamin integritas data historis sekolah (Anti-fraud/Anti-manipulasi)."
+        ]
+      },
+      {
+        title: "Panduan Fitur: Verifikasi QR Code (Secure Document)",
+        steps: [
+          "Setiap PDF Rapor yang diunduh kini memiliki QR Code unik di footer halaman.",
+          "Orang tua atau instansi luar dapat memindai QR tersebut untuk validasi keaslian.",
+          "Pindaian akan mengarah ke URL Verifikasi Resmi Velora yang menampilkan data asli dari database pusat."
         ]
       }
     ],
     extraInfo: [
-      "Algoritma Fallback Logo: Andaikata Kepala sekolah Anda lalai tak menyetel Logo khusus Raport tadi. Tidak Cacat/Crash. Sistem dengan licinnya memakai 'Logo Profil Standard Umum Sekolah'.",
-      "QA Blank Handling: Terkadang walau ada nilai tertinggal/bolong, sistem harus lanjut generasikan rapor yang berkolom kosongan bersimbol STRIP (-) agar rapor tetap bisa di-telaah panitia audit."
+      "Integritas Data: Rapor yang sudah berstatus 'TERKUNCI' tidak bisa diedit datanya tanpa bantuan Super Admin.",
+      "Aesthetics: Template PDF menggunakan font premium dengan pengaturan margin otomatis untuk 10-15 mata pelajaran.",
+      "QA Note: Jika QR Code tidak muncul, pastikan koneksi internet stabil saat proses Generate PDF sedang berlangsung."
     ]
   },
 

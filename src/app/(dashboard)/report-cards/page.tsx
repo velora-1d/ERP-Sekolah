@@ -16,15 +16,22 @@ import {
   ChevronRight,
   Info,
   Upload,
-  Eye
+  Eye,
+  Sparkles,
+  Lock,
+  Unlock,
+  CloudUpload
 } from "lucide-react";
+
 import Pagination from "@/components/Pagination";
+import Modal from "@/components/ui/Modal";
 
 interface Classroom { id: number; name: string; }
 interface Curriculum { id: number; type: string; semester: string; academicYear?: { year: string }; }
 interface Student { id: number; name: string; nisn: string; nis: string; }
 interface FinalGradeCheck { subjectName: string; isLocked: boolean; }
-interface ReportCard { id: number; studentId: number; status: string; student: Student; }
+interface ReportCard { id: number; studentId: number; status: string; student: Student; snapshotData?: any; }
+
 interface NoteItem { studentId: number; studentName: string; note: string; }
 interface SignatureSettings {
   headmasterSignature: string;
@@ -65,6 +72,8 @@ export default function ReportCardsPage() {
   // Step 2 state
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [savingNotes, setSavingNotes] = useState(false);
+  const [generatingAINoteId, setGeneratingAINoteId] = useState<number | null>(null);
+
 
   // Step 3 state
   const [generatedData, setGeneratedData] = useState<ReportGenerateResult | null>(null);
@@ -77,6 +86,8 @@ export default function ReportCardsPage() {
     reportLogoSize: "medium",
   });
   const [savingSignatures, setSavingSignatures] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [previewStudentIndex, setPreviewStudentIndex] = useState(0);
 
   // Fetch metadata
@@ -235,9 +246,18 @@ export default function ReportCardsPage() {
     setGenerating(false);
   };
 
-  const handleDownloadPDF = (studentIndex: number) => {
+  const handlePreviewPDF = async (studentIndex: number) => {
     if (!generatedData?.students?.[studentIndex]) return;
     const studentData = generatedData.students[studentIndex];
+    
+    const existingReport = reportCards.find(rc => rc.studentId === studentData.student.id);
+    const isPublished = existingReport?.status === "PUBLISHED";
+    
+    // If published, use snapshot data for consistency
+    const dataToUse = (isPublished && existingReport?.snapshotData) 
+      ? existingReport.snapshotData 
+      : studentData;
+
     const config = {
       school: generatedData.school,
       curriculum: generatedData.curriculum,
@@ -246,22 +266,147 @@ export default function ReportCardsPage() {
         headmaster: signatureSettings.headmasterSignature,
         homeroom: signatureSettings.homeroomSignature,
       },
-      isDraft: getStudentStatus(studentData.student.id) !== "PUBLISHED",
+      isDraft: !isPublished,
+      verificationUrl: `${window.location.host}/verify/report/${studentData.student.id}`,
     };
-    // Include logo settings directly into school config
     config.school["report_logo"] = signatureSettings.reportLogo || config.school["report_logo"] || "";
     config.school["report_logo_position"] = signatureSettings.reportLogoPosition || "left";
     config.school["report_logo_size"] = signatureSettings.reportLogoSize || "medium";
 
-    const doc = generateReportCardPDF(studentData, config);
+    try {
+      const doc = await generateReportCardPDF(dataToUse, config);
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewStudentIndex(studentIndex);
+      setIsPreviewOpen(true);
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Error", "Gagal me-render preview PDF", "error");
+    }
+  };
+
+  const handlePublishPDF = async (studentIndex: number) => {
+    if (!generatedData?.students?.[studentIndex]) return;
+    const studentData = generatedData.students[studentIndex];
+    
+    const result = await Swal.fire({
+      title: "Publikasi Rapor Digital?",
+      text: "Data akan dikunci (snapshot) untuk menjamin integritas data historis. Orang tua akan dapat mengakses rapor ini secara digital.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Publikasikan",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#4f46e5",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        Swal.fire({ title: "Memproses...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        const response = await fetch("/api/report-cards/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: studentData.student.id,
+            curriculumId: selectedCurriculum,
+            semester: selectedSemester,
+            snapshotData: studentData
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          fetchStudentsAndCards();
+          Swal.fire("Berhasil", "Rapor telah dipublikasikan dan dikunci.", "success");
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (error: any) {
+        Swal.fire("Gagal", error.message || "Gagal mempublikasikan rapor", "error");
+      }
+    }
+  };
+
+  const handleDownloadPDF = async (studentIndex: number) => {
+    if (!generatedData?.students?.[studentIndex]) return;
+    const studentData = generatedData.students[studentIndex];
+    
+    const existingReport = reportCards.find(rc => rc.studentId === studentData.student.id);
+    const isPublished = existingReport?.status === "PUBLISHED";
+    
+    const dataToUse = (isPublished && existingReport?.snapshotData) 
+      ? existingReport.snapshotData 
+      : studentData;
+
+    const config = {
+      school: generatedData.school,
+      curriculum: generatedData.curriculum,
+      classroom: generatedData.classroom,
+      signatures: {
+        headmaster: signatureSettings.headmasterSignature,
+        homeroom: signatureSettings.homeroomSignature,
+      },
+      isDraft: !isPublished,
+      verificationUrl: `${window.location.host}/verify/report/${studentData.student.id}`,
+    };
+    config.school["report_logo"] = signatureSettings.reportLogo || config.school["report_logo"] || "";
+    config.school["report_logo_position"] = signatureSettings.reportLogoPosition || "left";
+    config.school["report_logo_size"] = signatureSettings.reportLogoSize || "medium";
+
+    const doc = await generateReportCardPDF(dataToUse, config);
     doc.save(`Rapor_${studentData.student.name.replace(/\s+/g, "_")}.pdf`);
   };
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
     if (!generatedData?.students?.length) return;
-    generatedData.students.forEach((_: ReportGenerateResult, i: number) => {
-      setTimeout(() => handleDownloadPDF(i), i * 500);
-    });
+    for (let i = 0; i < generatedData.students.length; i++) {
+      await handleDownloadPDF(i);
+      // Kecilkan delay karena sekarang kita sequential await
+      await new Promise(r => setTimeout(r, 300));
+    }
+  };
+
+
+  const handleGenerateAINote = async (studentId: number, studentName: string, index: number) => {
+    try {
+      setGeneratingAINoteId(studentId);
+      
+      // Ambil data nilai siswa (untuk context AI)
+      // Karena kita butuh nilai aslinya, kita coba fetch dari API grades
+      const resGrades = await fetch(`/api/grades?classroom_id=${selectedClassroom}&student_id=${studentId}&curriculum_id=${selectedCurriculum}`);
+      const gradeData = await resGrades.json();
+      
+      const response = await fetch("/api/ai/report-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentName,
+          grades: gradeData.data || [],
+          attendance: { sakit: 0, izin: 0, alpha: 0 } // Placeholder if not loaded yet
+        })
+      });
+
+      const data = await response.json();
+      if (data.note) {
+        const updated = [...notes];
+        updated[index] = { ...updated[index], note: data.note };
+        setNotes(updated);
+        Swal.fire({
+          icon: "success",
+          title: "Catatan Generate Berhasil",
+          timer: 1000,
+          showConfirmButton: false,
+          toast: true,
+          position: "top-end"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Error", "Gagal generate catatan AI", "error");
+    } finally {
+      setGeneratingAINoteId(null);
+    }
   };
 
   const getStudentStatus = (studentId: number) => {
@@ -515,11 +660,26 @@ export default function ReportCardsPage() {
                   ) : (
                     notes.map((item, idx) => (
                       <div key={item.studentId} className="border border-slate-100 rounded-xl p-4 hover:border-indigo-100 hover:bg-slate-50/50 transition-all group">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-700">{(page-1)*limit + idx + 1}</div>
-                          <div>
-                            <p className="font-bold text-sm text-slate-800">{item.studentName}</p>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-700">{(page-1)*limit + idx + 1}</div>
+                            <div>
+                              <p className="font-bold text-sm text-slate-800">{item.studentName}</p>
+                            </div>
                           </div>
+                          
+                          <button
+                            onClick={() => handleGenerateAINote(item.studentId, item.studentName, idx)}
+                            disabled={generatingAINoteId === item.studentId}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-bold transition-all border border-indigo-100 shadow-sm"
+                          >
+                            {generatingAINoteId === item.studentId ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-3 h-3" />
+                            )}
+                            Bantu Tulis (AI)
+                          </button>
                         </div>
                         <textarea
                           value={item.note}
@@ -534,6 +694,7 @@ export default function ReportCardsPage() {
                         />
                       </div>
                     ))
+
                   )}
                 </div>
 
@@ -759,13 +920,36 @@ export default function ReportCardsPage() {
                             <p className="text-[11px] text-slate-400 font-medium">{sd.finalGrades?.length || 0} Mata Pelajaran · {sd.attendanceSummary?.alpha || 0} Alpha</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDownloadPDF(idx)}
-                          className="p-2.5 bg-white hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-100 shadow-sm group/btn"
-                          title="Download PDF"
-                        >
-                          <Download className="w-5 h-5 transition-transform group-hover/btn:scale-110" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {getStudentStatus(sd.student.id) === "PUBLISHED" ? (
+                             <div className="px-2.5 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-indigo-100">
+                               <Lock className="w-3 h-3" />
+                               TERKUNCI
+                             </div>
+                          ) : (
+                            <button
+                              onClick={() => handlePublishPDF(idx)}
+                              className="p-2.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-100 shadow-sm group/btn"
+                              title="Publikasikan & Kunci Data"
+                            >
+                              <CloudUpload className="w-5 h-5 transition-transform group-hover/btn:scale-110" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handlePreviewPDF(idx)}
+                            className="p-2.5 bg-slate-50 hover:bg-slate-600 text-slate-600 hover:text-white rounded-xl transition-all border border-slate-100 shadow-sm group/btn"
+                            title="Preview PDF"
+                          >
+                            <Eye className="w-5 h-5 transition-transform group-hover/btn:scale-110" />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPDF(idx)}
+                            className="p-2.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-100 shadow-sm group/btn"
+                            title="Download PDF"
+                          >
+                            <Download className="w-5 h-5 transition-transform group-hover/btn:scale-110" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -800,6 +984,58 @@ export default function ReportCardsPage() {
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* PDF PREVIEW MODAL (Phase 3) */}
+      <Modal
+        open={isPreviewOpen}
+        onClose={() => {
+          setIsPreviewOpen(false);
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl("");
+          }
+        }}
+        title={`Preview Rapor: ${generatedData?.students?.[previewStudentIndex]?.student?.name}`}
+        size="xl"
+      >
+        <div className="w-full h-[75vh] min-h-[500px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
+          {previewUrl ? (
+            <iframe 
+              src={`${previewUrl}#toolbar=0&navpanes=0`} 
+              className="w-full h-full border-none" 
+              title="PDF Preview"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-white">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                <Sparkles className="w-6 h-6 text-indigo-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-800">Menyiapkan Preview...</p>
+                <p className="text-xs text-slate-500 mt-1">Sistem sedang merender dokumen Rapor Digital</p>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="mt-4 flex items-center justify-between bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-indigo-600" />
+            <p className="text-[11px] text-indigo-700 leading-tight">
+               <span className="font-bold">Informasi:</span> Gunakan tombol download di bawah jika ingin menyimpan file secara permanen.
+            </p>
+          </div>
+          <button
+            onClick={() => handleDownloadPDF(previewStudentIndex)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Download PDF
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
+

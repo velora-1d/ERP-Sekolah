@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         note: attendances.note,
         createdAt: attendances.createdAt,
         updatedAt: attendances.updatedAt,
+        isNotified: attendances.isNotified,
         student: { name: students.name, nisn: students.nisn },
       })
       .from(attendances)
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { classroomId, date, attendances: attendanceList } = body;
+    const { classroomId, academicYearId, date, attendances: attendanceList } = body;
 
     if (!classroomId || !date || !Array.isArray(attendanceList)) {
       return NextResponse.json({
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
         attendanceList.map((att: { studentId: number; status: string; notes?: string }) => ({
           studentId: att.studentId,
           classroomId: parseInt(classroomId),
+          academicYearId: academicYearId ? parseInt(academicYearId) : null,
           date: dateStr,
           status: att.status,
           note: att.notes || "",
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
           status: sql`excluded.status`,
           note: sql`excluded.note`,
           classroomId: sql`excluded.classroom_id`,
+          academicYearId: sql`excluded.academic_year_id`,
           updatedAt: new Date(),
         },
       })
