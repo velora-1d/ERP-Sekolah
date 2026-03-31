@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { generateAttendancePDF } from "@/lib/attendance-report-template";
+import { getWhatsAppUrl } from "@/lib/whatsapp";
 
 interface Option {
   id: number;
@@ -596,9 +597,31 @@ export default function AttendancePage() {
                             cancelButtonText: 'Batal',
                             confirmButtonColor: '#25D366'
                           }).then((result) => {
-                             if (result.isConfirmed) {
-                               Swal.fire('Berhasil', 'Antrean notifikasi WhatsApp telah dibuat.', 'success');
-                             }
+                            if (result.isConfirmed) {
+                              const links = highAlpha.map(r => {
+                                const msg = `Assalamu'alaikum Ayah/Bunda dari ${r.name}, kami menginformasikan bahwa ananda telah tidak hadir (Alpha) selama ${r.stats.alpha} hari di semester ini. Dimohon perhatiannya. Terima kasih.`;
+                                return {
+                                  name: r.name,
+                                  url: getWhatsAppUrl({ target: "08123456789", message: msg }) // Dummy target for now, real data should have parent phone
+                                };
+                              });
+
+                              Swal.fire({
+                                title: 'Link Notifikasi Siap',
+                                html: `
+                                  <div class="text-left space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                    ${links.map((link, idx) => `
+                                      <div class="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-100 mb-2">
+                                        <div class="text-xs font-semibold text-slate-700">${idx+1}. ${link.name}</div>
+                                        <a href="${link.url}" target="_blank" class="px-2 py-1 bg-emerald-500 text-white text-[10px] rounded font-bold hover:bg-emerald-600 transition-colors">BUKA WA</a>
+                                      </div>
+                                    `).join('')}
+                                  </div>
+                                `,
+                                icon: 'info',
+                                footer: '<p class="text-[10px] text-slate-400">Klik "BUKA WA" untuk setiap siswa di atas.</p>'
+                              });
+                            }
                           });
                         }}
                         className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors border border-emerald-100"
