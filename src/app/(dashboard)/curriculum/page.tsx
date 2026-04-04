@@ -410,12 +410,23 @@ export default function CurriculumPage() {
           </div>
         </div>
       ) : (
-        <Card className="flex flex-col items-center justify-center py-20 px-6 border-none shadow-2xl shadow-indigo-500/10 bg-linear-to-br from-white to-indigo-50/50 rounded-4xl">
-          <div className="w-24 h-24 bg-indigo-100 rounded-4xl flex items-center justify-center text-indigo-600 mb-8 rotate-3 shadow-inner">
-            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18 18.246 18.477 16.5 18c-1.746 0-3.332.477-4.5 1.253" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" /></svg>
+        <Card className="flex flex-col items-center justify-center py-24 px-6 border-slate-100 shadow-2xl shadow-indigo-500/10 bg-linear-to-b from-white to-slate-50/50 rounded-5xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-blue-500 to-violet-500 opacity-20"></div>
+          
+          <div className="relative mb-10">
+            <div className="absolute inset-0 bg-indigo-500/15 blur-3xl rounded-full"></div>
+            <div className="relative w-28 h-28 bg-indigo-50 rounded-4xl flex items-center justify-center text-indigo-600 shadow-inner border border-indigo-100">
+               <BookOpenIcon className="w-12 h-12" />
+            </div>
           </div>
-          <h3 className="text-3xl font-black text-slate-800 tracking-tight text-center">Setup Kurikulum</h3>
-          <p className="mt-2 text-slate-500 font-medium text-center max-w-sm">Tahun ajaran ini belum memiliki konfigurasi kurikulum. Pilih standar kurikulum untuk memulai.</p>
+
+          <div className="text-center space-y-4 max-w-xl">
+            <h3 className="text-4xl font-black text-slate-800 tracking-tight">Setup Kurikulum</h3>
+            <p className="text-slate-500 font-bold text-sm leading-relaxed mx-auto max-w-md">
+              Tahun ajaran ini belum memiliki konfigurasi kurikulum. <br />
+              Pilih standar kurikulum di bawah ini untuk memulai.
+            </p>
+          </div>
           
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl">
             <button 
