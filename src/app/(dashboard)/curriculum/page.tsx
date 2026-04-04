@@ -220,46 +220,46 @@ export default function CurriculumPage() {
           <p className="mt-4 text-sm font-medium text-slate-500 animate-pulse">Memuat data kurikulum...</p>
         </Card>
       ) : curriculum ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="overflow-hidden border-none shadow-xl shadow-indigo-500/5 bg-linear-to-br from-white to-indigo-50/30">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[70vh]">
+          <div className="lg:col-span-4 space-y-8">
+            <Card className="overflow-hidden border-none shadow-xl shadow-indigo-500/5 bg-linear-to-br from-white to-indigo-50/30 h-fit">
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
                   <h3 className="font-bold text-slate-800 tracking-tight">Info Kurikulum</h3>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${curriculum.isLocked ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
+                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${curriculum.isLocked ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
                     {curriculum.isLocked ? "Locked" : "Active"}
                   </span>
                 </div>
                 
-                <div className="space-y-4">
-                  <div className="flex items-center bg-white/60 p-3 rounded-2xl border border-white">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 mr-3">
-                      <span className="text-white font-bold text-xs">{curriculum.type.slice(0, 3)}</span>
+                <div className="space-y-6">
+                  <div className="flex items-center bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 mr-4">
+                      <span className="text-white font-bold text-sm tracking-tighter">{curriculum.type.slice(0, 3)}</span>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Standardisasi</p>
-                      <p className="font-bold text-slate-800">{curriculum.type === "KURMER" ? "Kurikulum Merdeka" : curriculum.type === "K13" ? "Kurikulum 2013" : "Kurikulum Kustom"}</p>
+                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1.5">Standardisasi</p>
+                      <p className="font-black text-slate-800">{curriculum.type === "KURMER" ? "Kurikulum Merdeka" : curriculum.type === "K13" ? "Kurikulum 2013" : "Kurikulum Kustom"}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 label-spacing">Semester</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/60 p-5 rounded-3xl border border-white shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 label-spacing">Semester</p>
                       <p className="font-black text-slate-800 capitalize text-sm">{curriculum.semester}</p>
                     </div>
-                    <div className="bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 label-spacing">Tahun</p>
+                    <div className="bg-white/60 p-5 rounded-3xl border border-white shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 label-spacing">Tahun</p>
                       <p className="font-black text-slate-800 italic text-sm">2025/2026</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col gap-3">
+                <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col gap-4">
                    <button 
                     onClick={handleReset}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-white text-rose-600 font-black text-[11px] uppercase tracking-widest border border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-rose-600 font-black text-[11px] uppercase tracking-widest border border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all flex items-center justify-center gap-3 shadow-sm"
                    >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
+                    <Trash className="w-4 h-4" />
                     Reset Kurikulum
                    </button>
                    <p className="text-[10px] text-slate-400 text-center font-bold italic px-6 leading-relaxed opacity-60">Mengatur ulang kurikulum akan menghapus semua konfigurasi pada periode ini secara permanen.</p>
@@ -267,11 +267,11 @@ export default function CurriculumPage() {
               </div>
             </Card>
 
-            <Card className="overflow-hidden border-none shadow-xl shadow-slate-500/5">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
+            <Card className="overflow-hidden border-none shadow-xl shadow-slate-500/5 h-fit" noPadding>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
                   <h3 className="font-bold text-slate-800 tracking-tight">Komponen Nilai</h3>
-                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${totalBobot === 100 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                  <div className={`px-4 py-1.5 rounded-full text-xs font-bold ${totalBobot === 100 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
                     Total: {totalBobot}%
                   </div>
                 </div>
@@ -280,13 +280,13 @@ export default function CurriculumPage() {
                   {components.map((c) => (
                     <div key={c.id} className="group flex items-center justify-between p-4 rounded-3xl bg-slate-50/50 border border-slate-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-indigo-100">
                       <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-black text-[11px] text-indigo-600 shadow-inner group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-black text-[11px] text-indigo-600 shadow-inner group-hover:scale-110 transition-transform">
                           {c.code}
                         </div>
                         <div>
-                          <p className="font-black text-slate-800 text-sm leading-tight mb-0.5">{c.name}</p>
-                          <div className="flex items-center gap-2">
-                             <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <p className="font-black text-slate-800 text-sm leading-tight mb-1.5">{c.name}</p>
+                          <div className="flex items-center gap-3">
+                             <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${c.bobot}%` }}></div>
                              </div>
                              <p className="text-[11px] text-slate-400 font-black tracking-tight">{c.bobot}%</p>
@@ -295,39 +295,39 @@ export default function CurriculumPage() {
                       </div>
                       <button 
                         onClick={() => handleDeleteComponent(c.id)}
-                        className="p-2.5 text-slate-300 hover:text-rose-500 bg-transparent hover:bg-rose-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-3 text-slate-300 hover:text-rose-500 bg-transparent hover:bg-rose-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Trash className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
                   
-                  <div className="py-2 border-t border-slate-100 flex justify-center">
+                  <div className="py-4 border-t border-slate-100 flex justify-center mt-2">
                     <Pagination page={compPage} totalPages={compPagination.totalPages} total={compPagination.total} onPageChange={setCompPage} />
                   </div>
 
                   {!curriculum.isLocked && (
-                    <div className="mt-4 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100/50 space-y-3">
+                    <div className="mt-6 p-6 rounded-3xl bg-indigo-50/50 border border-indigo-100/50 space-y-4">
                       <input 
                         type="text" placeholder="Nama Komponen (E.g. Sumatif Akhir)" 
-                        className="w-full bg-white border-none rounded-xl px-4 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                        className="w-full bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all"
                         value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})}
                       />
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <input 
                           type="text" placeholder="Kode" 
-                          className="flex-1 bg-white border-none rounded-xl px-4 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                          className="flex-1 bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all uppercase"
                           value={newComp.code} onChange={e => setNewComp({...newComp, code: e.target.value})}
                         />
                         <input 
                           type="number" placeholder="%" 
-                          className="w-20 bg-white border-none rounded-xl px-4 py-2.5 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                          className="w-24 bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all text-center"
                           value={newComp.bobot || ""} onChange={e => setNewComp({...newComp, bobot: Number(e.target.value)})}
                         />
                       </div>
                       <button 
                         onClick={handleAddComponent}
-                        className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
                       >
                         + Tambah Komponen
                       </button>
@@ -338,23 +338,23 @@ export default function CurriculumPage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-8">
-            <Card className="border-none shadow-xl shadow-slate-500/5 overflow-hidden" noPadding>
-              <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between">
+          <div className="lg:col-span-8 flex flex-col">
+            <Card className="border-none shadow-xl shadow-slate-500/5 overflow-hidden flex-1 flex flex-col" noPadding>
+              <div className="p-8 border-b border-slate-100 bg-white flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-slate-800 tracking-tight">Kriteria Ketuntasan (KKM/KKTP)</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Atur standar nilai minimal per mata pelajaran</p>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wide mt-1">Atur standar nilai minimal per mata pelajaran</p>
                 </div>
               </div>
               
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left text-sm border-collapse min-h-[400px]">
                   <thead>
                     <tr className="bg-slate-50/50 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] border-b border-slate-100">
-                      <th className="px-8 py-5">Mata Pelajaran</th>
-                      <th className="px-8 py-5 w-40 text-center">Nilai Minimal</th>
-                      <th className="px-8 py-5">Deskripsi KKTP / Target Capaian</th>
-                      <th className="px-8 py-5 w-32 text-center text-indigo-500">Aksi</th>
+                      <th className="px-10 py-6">Mata Pelajaran</th>
+                      <th className="px-10 py-6 w-44 text-center">Nilai Minimal</th>
+                      <th className="px-10 py-6">Deskripsi KKTP / Target Capaian</th>
+                      <th className="px-10 py-6 w-36 text-center text-indigo-500">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -362,37 +362,37 @@ export default function CurriculumPage() {
                       const d = kkmData[sub.id] || { nilai: 75, deskripsi: "", saving: false };
                       return (
                         <tr key={sub.id} className="group hover:bg-indigo-50/20 transition-all">
-                          <td className="px-6 py-4">
-                            <p className="font-bold text-slate-700">{sub.name}</p>
-                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{sub.code}</p>
+                          <td className="px-10 py-6">
+                            <p className="font-black text-slate-800 text-[15px] mb-1">{sub.name}</p>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{sub.code}</p>
                           </td>
-                          <td className="px-8 py-5 text-center">
+                          <td className="px-10 py-6 text-center uppercase">
                             <input 
-                              type="number" className="w-24 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-2.5 text-sm font-black text-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-center shadow-inner"
+                              type="number" className="w-28 bg-slate-50/80 border border-slate-100 rounded-2xl px-4 py-3.5 text-base font-black text-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 transition-all outline-none text-center shadow-inner"
                               value={d.nilai} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, nilai: Number(e.target.value)}})}
                               disabled={curriculum.isLocked}
                             />
                           </td>
-                          <td className="px-8 py-5">
+                          <td className="px-10 py-6">
                             <textarea 
                               rows={1} placeholder="Input capaian target..."
-                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none resize-none shadow-inner"
+                              className="w-full bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 transition-all outline-none resize-none shadow-inner min-h-[54px] flex items-center"
                               value={d.deskripsi} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, deskripsi: e.target.value}})}
                               disabled={curriculum.isLocked}
                             />
                           </td>
-                          <td className="px-8 py-5 text-center">
+                          <td className="px-10 py-6 text-center">
                             <button 
                               onClick={() => handleSaveKkm(sub.id)}
                               disabled={curriculum.isLocked || d.saving}
-                              className={`group relative flex items-center justify-center mx-auto w-12 h-12 rounded-2xl transition-all ${
-                                d.saving ? "bg-slate-100 text-slate-400" : "bg-white text-indigo-600 border border-slate-100 hover:bg-indigo-600 hover:text-white hover:shadow-xl hover:shadow-indigo-200"
+                              className={`group relative flex items-center justify-center mx-auto w-14 h-14 rounded-2xl transition-all shadow-sm ${
+                                d.saving ? "bg-slate-100 text-slate-400" : "bg-white text-indigo-600 border border-slate-100 hover:bg-indigo-600 hover:text-white hover:shadow-2xl hover:shadow-indigo-200 hover:-translate-y-1"
                               }`}
                             >
                               {d.saving ? (
-                                <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
+                                <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
                               ) : (
-                                <Save className="w-5 h-5" />
+                                <Save className="w-6 h-6" />
                               )}
                             </button>
                           </td>
@@ -403,84 +403,86 @@ export default function CurriculumPage() {
                 </table>
               </div>
               
-              <div className="p-6 bg-slate-50/30 border-t border-slate-100">
+              <div className="p-8 bg-slate-50/30 border-t border-slate-100 mt-auto">
                 <Pagination page={subPage} totalPages={subPagination.totalPages} total={subPagination.total} onPageChange={setSubPage} />
               </div>
             </Card>
           </div>
         </div>
       ) : (
-        <Card className="flex flex-col items-center justify-center py-24 px-6 border-slate-100 shadow-2xl shadow-indigo-500/10 bg-linear-to-b from-white to-slate-50/50 rounded-5xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-blue-500 to-violet-500 opacity-20"></div>
-          
-          <div className="relative mb-10">
-            <div className="absolute inset-0 bg-indigo-500/15 blur-3xl rounded-full"></div>
-            <div className="relative w-28 h-28 bg-indigo-50 rounded-4xl flex items-center justify-center text-indigo-600 shadow-inner border border-indigo-100">
-               <BookOpenIcon className="w-12 h-12" />
+        <div className="min-h-[70vh] flex flex-col items-center justify-center">
+          <Card className="flex flex-col items-center justify-center py-24 px-10 border-none shadow-2xl shadow-indigo-500/10 bg-linear-to-b from-white to-indigo-50/50 rounded-5xl relative overflow-hidden max-w-5xl w-full">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-indigo-500 via-blue-500 to-violet-500"></div>
+            
+            <div className="relative mb-12">
+              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full"></div>
+              <div className="relative w-32 h-32 bg-indigo-50 rounded-4xl flex items-center justify-center text-indigo-600 shadow-inner border border-indigo-100 group">
+                 <BookOpenIcon className="w-14 h-14 group-hover:scale-110 transition-transform duration-500" />
+              </div>
             </div>
-          </div>
 
-          <div className="text-center space-y-4 max-w-xl">
-            <h3 className="text-4xl font-black text-slate-800 tracking-tight">Setup Kurikulum</h3>
-            <p className="text-slate-500 font-bold text-sm leading-relaxed mx-auto max-w-md">
-              Tahun ajaran ini belum memiliki konfigurasi kurikulum. <br />
-              Pilih standar kurikulum di bawah ini untuk memulai.
-            </p>
-          </div>
-          
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl">
-            <button 
-              onClick={() => handleCreate("KURMER")}
-              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-indigo-500/5 hover:border-indigo-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-            >
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-50 rounded-full group-hover:bg-indigo-600/10 transition-colors"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
-                  <span className="font-black text-sm">KM</span>
+            <div className="text-center space-y-5 max-w-2xl px-6">
+              <h3 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight">Setup Kurikulum</h3>
+              <p className="text-slate-500 font-bold text-base leading-relaxed max-w-lg mx-auto">
+                Tahun ajaran ini belum memiliki konfigurasi kurikulum aktif. <br />
+                <span className="text-slate-400 text-sm">Pilih standar kurikulum di bawah ini untuk memulai digitalisasi rapor.</span>
+              </p>
+            </div>
+            
+            <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8 w-full">
+              <button 
+                onClick={() => handleCreate("KURMER")}
+                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-indigo-500/5 hover:border-indigo-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
+              >
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-50 rounded-full group-hover:bg-indigo-600/10 transition-colors"></div>
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
+                    <span className="font-black text-base tracking-tighter">KM</span>
+                  </div>
+                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum Merdeka</p>
+                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Standardisasi 2022/2024</p>
+                  <div className="mt-8 flex items-center text-indigo-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
+                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
+                  </div>
                 </div>
-                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum Merdeka</p>
-                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Standardisasi 2022/2024</p>
-                <div className="mt-6 flex items-center text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
-                  Pilih <Plus className="ml-1 w-3 h-3" />
-                </div>
-              </div>
-            </button>
+              </button>
 
-            <button 
-              onClick={() => handleCreate("K13")}
-              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-blue-500/5 hover:border-blue-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-            >
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full group-hover:bg-blue-600/10 transition-colors"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
-                  <span className="font-black text-sm">K13</span>
+              <button 
+                onClick={() => handleCreate("K13")}
+                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-blue-500/5 hover:border-blue-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
+              >
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full group-hover:bg-blue-600/10 transition-colors"></div>
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
+                    <span className="font-black text-base tracking-tighter">K13</span>
+                  </div>
+                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum 2013</p>
+                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Revisi Terakhir</p>
+                  <div className="mt-8 flex items-center text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
+                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
+                  </div>
                 </div>
-                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum 2013</p>
-                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Revisi Terakhir</p>
-                <div className="mt-6 flex items-center text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
-                  Pilih <Plus className="ml-1 w-3 h-3" />
-                </div>
-              </div>
-            </button>
+              </button>
 
-            <button 
-              onClick={() => handleCreate("CUSTOM")}
-              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-violet-500/5 hover:border-violet-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-            >
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-50 rounded-full group-hover:bg-violet-600/10 transition-colors"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-violet-50 group-hover:bg-violet-600 text-violet-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
-                  <span className="font-black text-sm">CP</span>
+              <button 
+                onClick={() => handleCreate("CUSTOM")}
+                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-violet-500/5 hover:border-violet-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
+              >
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-50 rounded-full group-hover:bg-violet-600/10 transition-colors"></div>
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-50 group-hover:bg-violet-600 text-violet-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
+                    <span className="font-black text-base tracking-tighter">CP</span>
+                  </div>
+                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum Kustom</p>
+                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Fleksibel & Mandiri</p>
+                  <div className="mt-8 flex items-center text-violet-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
+                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
+                  </div>
                 </div>
-                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum Kustom</p>
-                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Fleksibel & Mandiri</p>
-                <div className="mt-6 flex items-center text-violet-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
-                  Pilih <Plus className="ml-1 w-3 h-3" />
-                </div>
-              </div>
-            </button>
-          </div>
-        </Card>
+              </button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

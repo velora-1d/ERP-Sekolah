@@ -1,7 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
-import { exportCSV } from "@/lib/csv-export";
 import { ExportButtons } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -10,7 +9,6 @@ import FilterBar from "@/components/FilterBar";
 import { useSearchParams } from "next/navigation";
 import { 
   Plus, 
-  Download, 
   Mail, 
   Search, 
   FileText, 
@@ -23,7 +21,6 @@ import {
   Clock,
   Inbox,
   Send,
-  MoreVertical,
   Check
 } from "lucide-react";
 
@@ -93,6 +90,8 @@ export default function LettersPage() {
         limit: String(paginationMeta.limit),
         search: searchQuery,
       });
+
+      // Validasi queryParams — jika null dari searchParams jangan di-set
       if (academicYearId) queryParams.set("academicYearId", academicYearId);
       if (semesterFilter) queryParams.set("semester", semesterFilter);
       if (monthFilter) queryParams.set("month", monthFilter);
@@ -104,15 +103,15 @@ export default function LettersPage() {
         if (json.pagination) {
           setPaginationMeta(json.pagination);
         }
-      } else if (Array.isArray(json)) {
-        setData(json);
       } else {
         setData([]);
       }
     } catch (error) {
       console.error("Gagal mengambil data surat:", error);
+      setData([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [tab, paginationMeta.limit, searchQuery, academicYearId, semesterFilter, monthFilter]);
 
   useEffect(() => { 
@@ -170,7 +169,7 @@ export default function LettersPage() {
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Gagal menyimpan surat. Silakan coba lagi.", "error");
     }
   };
@@ -198,7 +197,7 @@ export default function LettersPage() {
           timer: 1500,
           showConfirmButton: false
         });
-      } catch (error) {
+      } catch {
         Swal.fire("Error", "Gagal menghapus surat", "error");
       }
     }
@@ -238,7 +237,7 @@ export default function LettersPage() {
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Gagal memperbarui status", "error");
     }
   };
@@ -352,114 +351,121 @@ export default function LettersPage() {
         </div>
       </Card>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="h-28 animate-pulse bg-slate-50"><div /></Card>
-          ))}
-        </div>
-      ) : data.length === 0 ? (
-        <Card className="py-16 flex flex-col items-center justify-center text-center border-dashed border-2 border-slate-200">
-          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-            <FileText className="w-8 h-8 text-slate-300" />
+      <div className="min-h-[60vh] flex flex-col">
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 flex-1">
+            {[1, 2, 3].map(i => (
+              <Card key={i} className="h-32 animate-pulse bg-slate-50/50 rounded-3xl border-slate-100">
+                <div />
+              </Card>
+            ))}
           </div>
-          <h3 className="text-slate-800 font-semibold mb-1">Surat tidak ditemukan</h3>
-          <p className="text-slate-500 text-sm max-w-sm px-4">
-            {searchQuery 
-              ? "Tidak ada surat yang sesuai dengan kriteria pencarian Anda." 
-              : `Belum ada data surat ${tab} yang ditambahkan.`}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <div className="space-y-4">
-            {data.map(item => (
-            <Card key={item.id} className="group hover:border-indigo-200 hover:shadow-md transition-all">
-              <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusColors[item.status as keyof typeof statusColors] || statusColors.belum_disposisi}`}>
-                      {getStatusIcon(item.status)}
-                      {statusLabels[item.status as keyof typeof statusLabels] || item.status}
-                    </span>
-                    <span className="text-xs font-medium text-slate-500 ml-1">
-                      No: {item.number || "Belum ada nomor"}
-                    </span>
-                  </div>
+        ) : data.length === 0 ? (
+          <Card className="flex-1 flex flex-col items-center justify-center text-center rounded-5xl border-dashed border-2 border-slate-100 bg-white shadow-sm">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-slate-100 blur-2xl rounded-full"></div>
+              <div className="relative w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center border border-slate-100 shadow-inner">
+                <FileText className="w-10 h-10 text-slate-300" />
+              </div>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">Surat tidak ditemukan</h3>
+            <p className="text-slate-400 font-bold text-sm max-w-sm px-8 leading-relaxed">
+              {searchQuery 
+                ? "Tidak ada surat yang sesuai dengan kriteria pencarian Anda." 
+                : `Belum ada data surat ${tab === "masuk" ? "masuk" : "keluar"} yang ditambahkan untuk filter ini.`}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-6 flex-1">
+            <div className="space-y-4">
+              {data.map(item => (
+              <Card key={item.id} className="group hover:border-indigo-200 hover:shadow-md transition-all">
+                <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   
-                  <h4 className="text-lg font-bold text-slate-800 mb-1.5 truncate group-hover:text-indigo-700 transition-colors">
-                    {item.subject}
-                  </h4>
-                  
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Calendar className="w-4 h-4 text-slate-400" />
-                      <span>{new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <User className="w-4 h-4 text-slate-400" />
-                      <span className="truncate max-w-[200px]">
-                        {tab === "masuk" ? <span>Dari: <span className="font-semibold text-slate-700">{item.sender}</span></span> : <span>Kepada: <span className="font-semibold text-slate-700">{item.receiver}</span></span>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusColors[item.status as keyof typeof statusColors] || statusColors.belum_disposisi}`}>
+                        {getStatusIcon(item.status)}
+                        {statusLabels[item.status as keyof typeof statusLabels] || item.status}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500 ml-1">
+                        No: {item.number || "Belum ada nomor"}
                       </span>
                     </div>
+                    
+                    <h4 className="text-lg font-bold text-slate-800 mb-1.5 truncate group-hover:text-indigo-700 transition-colors">
+                      {item.subject}
+                    </h4>
+                    
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span>{new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <User className="w-4 h-4 text-slate-400" />
+                        <span className="truncate max-w-[200px]">
+                          {tab === "masuk" ? <span>Dari: <span className="font-semibold text-slate-700">{item.sender}</span></span> : <span>Kepada: <span className="font-semibold text-slate-700">{item.receiver}</span></span>}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0 md:border-l md:border-slate-100 md:pl-6">
-                  {tab === "masuk" && item.status === "belum_disposisi" && (
-                    <button 
-                      onClick={() => handleUpdateStatus(item.id, "sudah_disposisi")} 
-                      className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span className="hidden sm:inline">Disposisi</span>
-                    </button>
-                  )}
-                  {item.status !== "diarsip" && (
-                    <button 
-                      onClick={() => handleUpdateStatus(item.id, "diarsip")} 
-                      className="px-3 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
-                    >
-                      <Archive className="w-4 h-4" />
-                      <span className="hidden sm:inline">Arsipkan</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0 md:border-l md:border-slate-100 md:pl-6">
+                    {tab === "masuk" && item.status === "belum_disposisi" && (
+                      <button 
+                        onClick={() => handleUpdateStatus(item.id, "sudah_disposisi")} 
+                        className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span className="hidden sm:inline">Disposisi</span>
+                      </button>
+                    )}
+                    {item.status !== "diarsip" && (
+                      <button 
+                        onClick={() => handleUpdateStatus(item.id, "diarsip")} 
+                        className="px-3 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
+                      >
+                        <Archive className="w-4 h-4" />
+                        <span className="hidden sm:inline">Arsipkan</span>
+                      </button>
+                    )}
+                    
+                    <div className="flex gap-1 ml-2">
+                      <button 
+                        onClick={() => handleEdit(item)} 
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(item.id)} 
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                   
-                  <div className="flex gap-1 ml-2">
-                    <button 
-                      onClick={() => handleEdit(item)} 
-                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item.id)} 
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Hapus"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
                 </div>
-                
-              </div>
-            </Card>
-          ))}
-          </div>
+              </Card>
+            ))}
+            </div>
 
-          <Card className="p-4">
-            <Pagination
-              page={paginationMeta.page}
-              totalPages={paginationMeta.totalPages}
-              total={paginationMeta.total}
-              limit={paginationMeta.limit}
-              onPageChange={(p: number) => fetchData(p)}
-            />
-          </Card>
-        </div>
-      )}
+            <Card className="p-4 mt-auto">
+              <Pagination
+                page={paginationMeta.page}
+                totalPages={paginationMeta.totalPages}
+                total={paginationMeta.total}
+                limit={paginationMeta.limit}
+                onPageChange={(p: number) => fetchData(p)}
+              />
+            </Card>
+          </div>
+        )}
+      </div>
 
       {/* Modal Cerdik */}
       {showModal && (
