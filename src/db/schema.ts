@@ -761,11 +761,16 @@ export const letters = pgTable('letters', {
   date: text('date').notNull().default(''),
   status: text('status').notNull().default('belum_disposisi'),
   fileUrl: text('file_url').notNull().default(''),
-  unitId: text('unit_id').notNull().default(''),
+  academicYearId: integer('academic_year_id'),
+  semester: text('semester'),
+  month: text('month'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [
   index('letters_type_idx').on(t.type),
+  index('letters_academic_year_idx').on(t.academicYearId),
+  index('letters_semester_idx').on(t.semester),
+  index('letters_month_idx').on(t.month),
 ]);
 
 // ─── ANNOUNCEMENTS ─────────────────────────────────────────────────────────

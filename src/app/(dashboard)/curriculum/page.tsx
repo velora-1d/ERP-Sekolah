@@ -13,11 +13,10 @@ import {
   deleteGradeComponent, 
   saveKkmValue 
 } from "@/app/actions/curriculum-actions";
+import { Trash, Plus, Save, BookOpen as BookOpenIcon } from "lucide-react";
 
 const BookOpen = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18 18.246 18.477 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-  </svg>
+  <BookOpenIcon className={className} />
 );
 
 interface Curriculum {
@@ -239,31 +238,31 @@ export default function CurriculumPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Standardisasi</p>
-                      <p className="font-bold text-slate-800">{curriculum.type === "KURMER" ? "Kurikulum Merdeka" : "Kurikulum 2013"}</p>
+                      <p className="font-bold text-slate-800">{curriculum.type === "KURMER" ? "Kurikulum Merdeka" : curriculum.type === "K13" ? "Kurikulum 2013" : "Kurikulum Kustom"}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/60 p-3 rounded-2xl border border-white">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Semester</p>
-                      <p className="font-bold text-slate-700 capitalize">{curriculum.semester}</p>
+                    <div className="bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 label-spacing">Semester</p>
+                      <p className="font-black text-slate-800 capitalize text-sm">{curriculum.semester}</p>
                     </div>
-                    <div className="bg-white/60 p-3 rounded-2xl border border-white">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Tahun</p>
-                      <p className="font-bold text-slate-700 italic">2025/2026</p>
+                    <div className="bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 label-spacing">Tahun</p>
+                      <p className="font-black text-slate-800 italic text-sm">2025/2026</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-indigo-100/50 flex flex-col gap-2">
+                <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col gap-3">
                    <button 
                     onClick={handleReset}
-                    className="w-full py-3 px-4 rounded-xl bg-white text-rose-600 font-bold text-xs border border-rose-100 hover:bg-rose-50 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3.5 px-4 rounded-2xl bg-white text-rose-600 font-black text-[11px] uppercase tracking-widest border border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all flex items-center justify-center gap-2 shadow-sm"
                    >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
                     Reset Kurikulum
                    </button>
-                   <p className="text-[10px] text-slate-400 text-center mt-2 italic px-4">Mengatur ulang kurikulum akan menghapus semua konfigurasi pada periode ini.</p>
+                   <p className="text-[10px] text-slate-400 text-center font-bold italic px-6 leading-relaxed opacity-60">Mengatur ulang kurikulum akan menghapus semua konfigurasi pada periode ini secara permanen.</p>
                 </div>
               </div>
             </Card>
@@ -277,23 +276,28 @@ export default function CurriculumPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {components.map((c) => (
-                    <div key={c.id} className="group flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-md">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-600 shadow-sm">
+                    <div key={c.id} className="group flex items-center justify-between p-4 rounded-3xl bg-slate-50/50 border border-slate-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-indigo-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-black text-[11px] text-indigo-600 shadow-inner group-hover:scale-110 transition-transform">
                           {c.code}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-700 text-sm">{c.name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium tracking-tight">Bobot: {c.bobot}%</p>
+                          <p className="font-black text-slate-800 text-sm leading-tight mb-0.5">{c.name}</p>
+                          <div className="flex items-center gap-2">
+                             <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${c.bobot}%` }}></div>
+                             </div>
+                             <p className="text-[11px] text-slate-400 font-black tracking-tight">{c.bobot}%</p>
+                          </div>
                         </div>
                       </div>
                       <button 
                         onClick={() => handleDeleteComponent(c.id)}
-                        className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-2.5 text-slate-300 hover:text-rose-500 bg-transparent hover:bg-rose-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
+                        <Trash className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -346,11 +350,11 @@ export default function CurriculumPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/80 text-slate-400 font-bold text-[10px] uppercase tracking-widest border-b border-slate-100">
-                      <th className="px-6 py-4">Mata Pelajaran</th>
-                      <th className="px-6 py-4 w-32">Nilai Minimal</th>
-                      <th className="px-6 py-4">Deskripsi KKTP</th>
-                      <th className="px-6 py-4 w-28 text-center text-indigo-500">Aksi</th>
+                    <tr className="bg-slate-50/50 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] border-b border-slate-100">
+                      <th className="px-8 py-5">Mata Pelajaran</th>
+                      <th className="px-8 py-5 w-40 text-center">Nilai Minimal</th>
+                      <th className="px-8 py-5">Deskripsi KKTP / Target Capaian</th>
+                      <th className="px-8 py-5 w-32 text-center text-indigo-500">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -362,34 +366,33 @@ export default function CurriculumPage() {
                             <p className="font-bold text-slate-700">{sub.name}</p>
                             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{sub.code}</p>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-8 py-5 text-center">
                             <input 
-                              type="number" className="w-20 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+                              type="number" className="w-24 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-2.5 text-sm font-black text-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-center shadow-inner"
                               value={d.nilai} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, nilai: Number(e.target.value)}})}
                               disabled={curriculum.isLocked}
                             />
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-8 py-5">
                             <textarea 
-                              rows={1} placeholder="Capaian target..."
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-600 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none resize-none"
+                              rows={1} placeholder="Input capaian target..."
+                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none resize-none shadow-inner"
                               value={d.deskripsi} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, deskripsi: e.target.value}})}
                               disabled={curriculum.isLocked}
                             />
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-8 py-5 text-center">
                             <button 
                               onClick={() => handleSaveKkm(sub.id)}
                               disabled={curriculum.isLocked || d.saving}
-                              className={`group relative overflow-hidden px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                d.saving ? "bg-slate-100 text-slate-400" : "bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white shadow-sm"
+                              className={`group relative flex items-center justify-center mx-auto w-12 h-12 rounded-2xl transition-all ${
+                                d.saving ? "bg-slate-100 text-slate-400" : "bg-white text-indigo-600 border border-slate-100 hover:bg-indigo-600 hover:text-white hover:shadow-xl hover:shadow-indigo-200"
                               }`}
                             >
-                              <span className={d.saving ? "opacity-0" : "opacity-100"}>Simpan</span>
-                              {d.saving && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-3 h-3 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
-                                </div>
+                              {d.saving ? (
+                                <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
+                              ) : (
+                                <Save className="w-5 h-5" />
                               )}
                             </button>
                           </td>
@@ -414,26 +417,56 @@ export default function CurriculumPage() {
           <h3 className="text-3xl font-black text-slate-800 tracking-tight text-center">Setup Kurikulum</h3>
           <p className="mt-2 text-slate-500 font-medium text-center max-w-sm">Tahun ajaran ini belum memiliki konfigurasi kurikulum. Pilih standar kurikulum untuk memulai.</p>
           
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl">
             <button 
               onClick={() => handleCreate("KURMER")}
-              className="group p-5 rounded-3xl bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:border-indigo-500 hover:shadow-indigo-500/20 transition-all text-left"
+              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-indigo-500/5 hover:border-indigo-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
             >
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mb-4 transition-all">
-                <span className="font-black text-xs">KM</span>
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-50 rounded-full group-hover:bg-indigo-600/10 transition-colors"></div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
+                  <span className="font-black text-sm">KM</span>
+                </div>
+                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum Merdeka</p>
+                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Standardisasi 2022/2024</p>
+                <div className="mt-6 flex items-center text-indigo-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
+                  Pilih <Plus className="ml-1 w-3 h-3" />
+                </div>
               </div>
-              <p className="font-black text-slate-800">Kurikulum Merdeka</p>
-              <p className="text-[10px] text-slate-400 font-bold tracking-tight mt-1 uppercase">Standardisasi 2022/2024</p>
             </button>
+
             <button 
               onClick={() => handleCreate("K13")}
-              className="group p-5 rounded-3xl bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:border-blue-500 hover:shadow-blue-500/20 transition-all text-left"
+              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-blue-500/5 hover:border-blue-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
             >
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-4 transition-all">
-                <span className="font-black text-xs">K13</span>
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full group-hover:bg-blue-600/10 transition-colors"></div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
+                  <span className="font-black text-sm">K13</span>
+                </div>
+                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum 2013</p>
+                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Revisi Terakhir</p>
+                <div className="mt-6 flex items-center text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
+                  Pilih <Plus className="ml-1 w-3 h-3" />
+                </div>
               </div>
-              <p className="font-black text-slate-800">Kurikulum 2013</p>
-              <p className="text-[10px] text-slate-400 font-bold tracking-tight mt-1 uppercase">Revisi Terakhir</p>
+            </button>
+
+            <button 
+              onClick={() => handleCreate("CUSTOM")}
+              className="group relative p-6 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-violet-500/5 hover:border-violet-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
+            >
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-50 rounded-full group-hover:bg-violet-600/10 transition-colors"></div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-violet-50 group-hover:bg-violet-600 text-violet-600 group-hover:text-white flex items-center justify-center mb-5 transition-all shadow-inner">
+                  <span className="font-black text-sm">CP</span>
+                </div>
+                <p className="font-black text-lg text-slate-800 leading-tight">Kurikulum Kustom</p>
+                <p className="text-[11px] text-slate-400 font-bold tracking-tight mt-2 uppercase">Fleksibel & Mandiri</p>
+                <div className="mt-6 flex items-center text-violet-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-all">
+                  Pilih <Plus className="ml-1 w-3 h-3" />
+                </div>
+              </div>
             </button>
           </div>
         </Card>

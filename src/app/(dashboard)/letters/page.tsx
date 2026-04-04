@@ -6,6 +6,8 @@ import { ExportButtons } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Pagination from "@/components/Pagination";
+import FilterBar from "@/components/FilterBar";
+import { useSearchParams } from "next/navigation";
 import { 
   Plus, 
   Download, 
@@ -35,6 +37,9 @@ interface Letter {
   date: string; 
   status: string; 
   fileUrl: string; 
+  academicYearId: number | null;
+  semester: string | null;
+  month: string | null;
 }
 
 const statusColors: Record<string, string> = { 
@@ -49,6 +54,11 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function LettersPage() {
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams.get("academicYearId");
+  const semesterFilter = searchParams.get("semester");
+  const monthFilter = searchParams.get("month");
+
   const [tab, setTab] = useState<"masuk" | "keluar">("masuk");
   const [data, setData] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +72,10 @@ export default function LettersPage() {
     receiver: "", 
     date: new Date().toISOString().split("T")[0], 
     number: "", 
-    status: "belum_disposisi" 
+    status: "belum_disposisi",
+    academicYearId: "",
+    semester: "",
+    month: ""
   });
   const [paginationMeta, setPaginationMeta] = useState({
     total: 0,
@@ -74,7 +87,17 @@ export default function LettersPage() {
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/letters?type=${tab}&page=${page}&limit=${paginationMeta.limit}&search=${searchQuery}`);
+      const queryParams = new URLSearchParams({
+        type: tab,
+        page: String(page),
+        limit: String(paginationMeta.limit),
+        search: searchQuery,
+      });
+      if (academicYearId) queryParams.set("academicYearId", academicYearId);
+      if (semesterFilter) queryParams.set("semester", semesterFilter);
+      if (monthFilter) queryParams.set("month", monthFilter);
+
+      const res = await fetch(`/api/letters?${queryParams.toString()}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -90,14 +113,14 @@ export default function LettersPage() {
       console.error("Gagal mengambil data surat:", error);
     }
     setLoading(false);
-  }, [tab, paginationMeta.limit, searchQuery]);
+  }, [tab, paginationMeta.limit, searchQuery, academicYearId, semesterFilter, monthFilter]);
 
   useEffect(() => { 
     const timer = setTimeout(() => {
       fetchData(1); 
     }, 500);
     return () => clearTimeout(timer);
-  }, [tab, searchQuery, fetchData]);
+  }, [tab, searchQuery, academicYearId, semesterFilter, monthFilter, fetchData]);
 
 
   const handleSubmit = async () => {
@@ -126,7 +149,18 @@ export default function LettersPage() {
 
       setShowModal(false); 
       setEditItem(null);
-      setForm({ type: tab, subject: "", sender: "", receiver: "", date: new Date().toISOString().split("T")[0], number: "", status: "belum_disposisi" });
+      setForm({ 
+        type: tab, 
+        subject: "", 
+        sender: "", 
+        receiver: "", 
+        date: new Date().toISOString().split("T")[0], 
+        number: "", 
+        status: "belum_disposisi",
+        academicYearId: academicYearId || "",
+        semester: semesterFilter || "",
+        month: monthFilter || ""
+      });
       fetchData();
       
       Swal.fire({
@@ -179,7 +213,10 @@ export default function LettersPage() {
       receiver: item.receiver, 
       date: item.date, 
       number: item.number, 
-      status: item.status 
+      status: item.status,
+      academicYearId: String(item.academicYearId || ""),
+      semester: item.semester || "",
+      month: item.month || ""
     });
     setShowModal(true);
   };
@@ -225,7 +262,20 @@ export default function LettersPage() {
             <button 
               onClick={() => { 
                 setEditItem(null); 
-                setForm({ type: tab, subject: "", sender: "", receiver: "", date: new Date().toISOString().split("T")[0], number: "", status: "belum_disposisi" }); 
+                const today = new Date().toISOString().split("T")[0];
+                const currentMonth = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date());
+                setForm({ 
+                  type: tab, 
+                  subject: "", 
+                  sender: "", 
+                  receiver: "", 
+                  date: today, 
+                  number: "", 
+                  status: "belum_disposisi",
+                  academicYearId: academicYearId || "",
+                  semester: semesterFilter || "",
+                  month: monthFilter || currentMonth
+                }); 
                 setShowModal(true); 
               }}
               className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm shadow-indigo-200 flex items-center gap-2"
@@ -264,6 +314,10 @@ export default function LettersPage() {
             />
           </div>
         }
+      />
+
+      <FilterBar 
+        visibleFilters={["academicYear", "semester", "month"]} 
       />
 
       <Card className="p-4 relative z-10">
@@ -409,7 +463,7 @@ export default function LettersPage() {
 
       {/* Modal Cerdik */}
       {showModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <Card className="relative w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
@@ -461,10 +515,44 @@ export default function LettersPage() {
                     <input 
                       type="date" 
                       value={form.date} 
-                      onChange={e => setForm({ ...form, date: e.target.value })} 
+                      onChange={e => {
+                        const newDate = e.target.value;
+                        const monthName = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date(newDate));
+                        setForm({ ...form, date: newDate, month: monthName });
+                      }} 
                       className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all" 
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Semester</label>
+                  <select 
+                    value={form.semester}
+                    onChange={e => setForm({ ...form, semester: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  >
+                    <option value="">Pilih Semester</option>
+                    <option value="ganjil">Ganjil</option>
+                    <option value="genap">Genap</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Bulan</label>
+                  <select 
+                    value={form.month}
+                    onChange={e => setForm({ ...form, month: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  >
+                    {[
+                      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                    ].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
