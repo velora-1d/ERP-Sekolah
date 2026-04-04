@@ -79,7 +79,7 @@ export async function getPosts() {
 export async function savePost(data: PostData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webPosts).set({ ...values, updatedAt: new Date() }).where(eq(webPosts.id, id));
+    await db.update(webPosts).set({ ...values, updatedAt: new Date() }).where(eq(webPosts.id, Number(id)));
   } else {
     await db.insert(webPosts).values({ ...values, status: values.status || 'published' });
   }
@@ -88,7 +88,7 @@ export async function savePost(data: PostData) {
 }
 
 export async function deletePost(id: number) {
-  await db.delete(webPosts).where(eq(webPosts.id, id));
+  await db.delete(webPosts).where(eq(webPosts.id, Number(id)));
   revalidatePath("/admin/cms/posts");
 }
 
@@ -102,7 +102,7 @@ export async function getTeachers() {
 export async function saveTeacher(data: TeacherData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webTeachers).set({ ...values, updatedAt: new Date() }).where(eq(webTeachers.id, id));
+    await db.update(webTeachers).set({ ...values, updatedAt: new Date() }).where(eq(webTeachers.id, Number(id)));
   } else {
     await db.insert(webTeachers).values(values);
   }
@@ -110,12 +110,13 @@ export async function saveTeacher(data: TeacherData) {
 }
 
 export async function deleteTeacher(id: number) {
-  await db.delete(webTeachers).where(eq(webTeachers.id, id));
+  await db.delete(webTeachers).where(eq(webTeachers.id, Number(id)));
   revalidatePath("/admin/cms/teachers");
 }
 
 // --- FACILITIES ---
 export async function getFacilities() {
+  console.log("Fetching facilities...");
   return await db.query.webFacilities.findMany({
     orderBy: [webFacilities.order]
   });
@@ -124,15 +125,19 @@ export async function getFacilities() {
 export async function saveFacility(data: FacilityData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webFacilities).set({ ...values, updatedAt: new Date() }).where(eq(webFacilities.id, id));
+    console.log("Updating facility ID:", id);
+    await db.update(webFacilities).set({ ...values, updatedAt: new Date() }).where(eq(webFacilities.id, Number(id)));
   } else {
+    console.log("Inserting new facility", values);
     await db.insert(webFacilities).values(values);
   }
   revalidatePath("/admin/cms/facilities");
 }
 
 export async function deleteFacility(id: number) {
-  await db.delete(webFacilities).where(eq(webFacilities.id, id));
+  console.log("Deleting facility with ID:", id);
+  const result = await db.delete(webFacilities).where(eq(webFacilities.id, Number(id))).returning();
+  console.log("Delete result:", result);
   revalidatePath("/admin/cms/facilities");
 }
 
@@ -146,7 +151,7 @@ export async function getAchievements() {
 export async function saveAchievement(data: AchievementData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webAchievements).set({ ...values, updatedAt: new Date() }).where(eq(webAchievements.id, id));
+    await db.update(webAchievements).set({ ...values, updatedAt: new Date() }).where(eq(webAchievements.id, Number(id)));
   } else {
     await db.insert(webAchievements).values(values);
   }
@@ -154,7 +159,7 @@ export async function saveAchievement(data: AchievementData) {
 }
 
 export async function deleteAchievement(id: number) {
-  await db.delete(webAchievements).where(eq(webAchievements.id, id));
+  await db.delete(webAchievements).where(eq(webAchievements.id, Number(id)));
   revalidatePath("/admin/cms/achievements");
 }
 
@@ -166,7 +171,7 @@ export async function getHeroes() {
 export async function saveHero(data: HeroData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webHeroes).set({ ...values, updatedAt: new Date() }).where(eq(webHeroes.id, id));
+    await db.update(webHeroes).set({ ...values, updatedAt: new Date() }).where(eq(webHeroes.id, Number(id)));
   } else {
     await db.insert(webHeroes).values(values);
   }
@@ -174,7 +179,7 @@ export async function saveHero(data: HeroData) {
 }
 
 export async function deleteHero(id: number) {
-  await db.delete(webHeroes).where(eq(webHeroes.id, id));
+  await db.delete(webHeroes).where(eq(webHeroes.id, Number(id)));
   revalidatePath("/admin/cms/heroes");
 }
 

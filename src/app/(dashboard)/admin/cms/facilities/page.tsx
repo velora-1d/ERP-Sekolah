@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
@@ -21,23 +22,59 @@ interface Facility {
 }
 
 export default function FacilitiesCMS() {
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Facility | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchFacilitiesData = async () => {
-      try {
-        const data = await getFacilities();
-        setFacilities(data as Facility[]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFacilitiesData();
-  }, []);
+  const { data: facilities = [], isLoading: loading } = useQuery({
+    queryKey: ['facilities'],
+    queryFn: () => getFacilities() as Promise<Facility[]>,
+  });
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+  const saveMutation = useMutation({
+    mutationFn: (payload: Facility) => saveFacility(payload),
+    onMutate: async (newFac) => {
+      await queryClient.cancelQueries({ queryKey: ['facilities'] });
+      const previous = queryClient.getQueryData<Facility[]>(['facilities']);
+      
+      queryClient.setQueryData<Facility[]>(['facilities'], (old = []) => {
+        if (newFac.id) {
+          return old.map(f => f.id === newFac.id ? { ...f, ...newFac } : f);
+        } else {
+          return [{ ...newFac, id: Math.random() }, ...old].sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+      });
+      
+      return { previous };
+    },
+    onError: (err, newFac, context) => {
+      queryClient.setQueryData(['facilities'], context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['facilities'] });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteFacility(id),
+    onMutate: async (idToDelete) => {
+      await queryClient.cancelQueries({ queryKey: ['facilities'] });
+      const previous = queryClient.getQueryData<Facility[]>(['facilities']);
+      
+      queryClient.setQueryData<Facility[]>(['facilities'], (old = []) => 
+        old.filter(f => f.id !== idToDelete)
+      );
+      
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(['facilities'], context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['facilities'] });
+    }
+  });
+
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
@@ -53,17 +90,13 @@ export default function FacilitiesCMS() {
       id: editing?.id,
     };
 
-    await saveFacility(payload);
+    saveMutation.mutate(payload);
     setEditing(null);
-    const updated = await getFacilities();
-    setFacilities(updated as Facility[]);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (confirm('Hapus fasilitas ini?')) {
-      await deleteFacility(id);
-      const updated = await getFacilities();
-      setFacilities(updated as Facility[]);
+      deleteMutation.mutate(id);
     }
   };
 
