@@ -260,15 +260,20 @@ export default function ClassroomsPage() {
                                 method: "PUT", headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ name: newName, level: Number(newLevel), infaqNominal: Number(newInfaq) }),
                               });
+                              if (!res.ok) {
+                                const err = await res.json().catch(() => ({}));
+                                throw new Error(err.message || "Gagal menghubungi server");
+                              }
                               const json = await res.json();
                               if (json.success) { 
                                 Swal.fire("Berhasil", "Kelas berhasil diupdate", "success"); 
                                 refreshData(); 
                               } else {
-                                Swal.fire("Gagal", json.message, "error");
+                                Swal.fire("Gagal", json.message || "Gagal update", "error");
                               }
-                            } catch { 
-                              Swal.fire("Error", "Gagal update", "error"); 
+                            } catch (error: unknown) { 
+                              const msg = error instanceof Error ? error.message : "Gagal update";
+                              Swal.fire("Error", msg, "error"); 
                             }
                           }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#6366f1", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-indigo-50">
                             Edit Data
@@ -287,15 +292,20 @@ export default function ClassroomsPage() {
                             if (!result.isConfirmed) return;
                             try {
                               const res = await fetch(`/api/classrooms/${c.id}`, { method: "DELETE" });
+                              if (!res.ok) {
+                                const err = await res.json().catch(() => ({}));
+                                throw new Error(err.message || "Gagal menghubungi server");
+                              }
                               const json = await res.json();
                               if (json.success) { 
                                 Swal.fire("Berhasil", "Kelas berhasil dihapus", "success"); 
                                 refreshData(); 
                               } else {
-                                Swal.fire("Gagal", json.message, "error");
+                                Swal.fire("Gagal", json.message || "Gagal hapus", "error");
                               }
-                            } catch { 
-                              Swal.fire("Error", "Gagal hapus", "error"); 
+                            } catch (error: unknown) { 
+                              const msg = error instanceof Error ? error.message : "Gagal hapus";
+                              Swal.fire("Error", msg, "error"); 
                             }
                           }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.75rem", fontWeight: 600, color: "#e11d48", background: "transparent", border: "none", cursor: "pointer", borderRadius: "0.5rem", textAlign: "left" }} className="hover:bg-rose-50">
                             Hapus Kelas
@@ -346,6 +356,10 @@ export default function ClassroomsPage() {
                     waliKelasId: formData.waliKelasId || null
                   }),
                 });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  throw new Error(err.message || "Gagal menghubungi server");
+                }
                 const json = await res.json();
                 if (json.success) {
                   setShowAddModal(false);
@@ -353,10 +367,11 @@ export default function ClassroomsPage() {
                   Swal.fire("Berhasil", "Kelas berhasil ditambahkan", "success");
                   refreshData();
                 } else {
-                  Swal.fire("Gagal", json.message, "error");
+                  Swal.fire("Gagal", json.message || "Gagal", "error");
                 }
-              } catch {
-                Swal.fire("Error", "Gagal menghubungi server", "error");
+              } catch (error: unknown) {
+                const msg = error instanceof Error ? error.message : "Gagal menghubungi server";
+                Swal.fire("Error", msg, "error");
               }
             }} className="p-6 space-y-4">
               <div>

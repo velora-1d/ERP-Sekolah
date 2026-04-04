@@ -58,6 +58,10 @@ function StudentsContent() {
       if (r.isConfirmed) {
         try {
           const res = await fetch(`/api/students/${s.id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Gagal menghubungi server");
+          }
           const json = await res.json();
           if (json.success) {
             Swal.fire("Terhapus", "Data siswa berhasil dihapus.", "success");
@@ -65,8 +69,9 @@ function StudentsContent() {
           } else {
             Swal.fire("Gagal", json.message || "Error", "error");
           }
-        } catch (error) {
-          Swal.fire("Error", "Gagal menghubungi server", "error");
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : "Gagal menghubungi server";
+          Swal.fire("Error", msg, "error");
         }
       }
     });

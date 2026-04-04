@@ -91,13 +91,27 @@ export default function CounselingPage() {
 
   const handleSubmit = async () => {
     if (!form.studentId || !form.category) { Swal.fire("Error", "Siswa dan kategori wajib", "error"); return; }
-    const method = editItem ? "PUT" : "POST";
-    const url = editItem ? `/api/counseling/${editItem.id}` : "/api/counseling";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    setShowModal(false); setEditItem(null);
-    setForm({ studentId: "", counselorId: "", date: new Date().toISOString().split("T")[0], category: "akademik", description: "", followUp: "", status: "aktif" });
-    fetchData();
-    Swal.fire("Berhasil", editItem ? "Catatan BK diperbarui" : "Catatan BK ditambahkan", "success");
+    try {
+      const method = editItem ? "PUT" : "POST";
+      const url = editItem ? `/api/counseling/${editItem.id}` : "/api/counseling";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        setShowModal(false); setEditItem(null);
+        setForm({ studentId: "", counselorId: "", date: new Date().toISOString().split("T")[0], category: "akademik", description: "", followUp: "", status: "aktif" });
+        fetchData();
+        Swal.fire("Berhasil", editItem ? "Catatan BK diperbarui" : "Catatan BK ditambahkan", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menyimpan data", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -110,9 +124,23 @@ export default function CounselingPage() {
       confirmButtonColor: "#ef4444" 
     });
     if (!r.isConfirmed) return;
-    await fetch(`/api/counseling/${id}`, { method: "DELETE" });
-    fetchData();
-    Swal.fire("Berhasil", "Catatan telah dihapus", "success");
+    try {
+      const res = await fetch(`/api/counseling/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        fetchData();
+        Swal.fire("Berhasil", "Catatan telah dihapus", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menghapus", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleEdit = (item: CounselingRecord) => {

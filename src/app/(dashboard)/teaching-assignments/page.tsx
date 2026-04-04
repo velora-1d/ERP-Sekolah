@@ -1,13 +1,16 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { exportCSV } from "@/lib/csv-export";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Pagination from "@/components/Pagination";
 
+interface TAItem { id: number; employeeId: number; subjectId: number; classroomId: number; academicYearId: number; employee?: { name: string }; subject?: { name: string; code: string }; classroom?: { name: string }; academicYear?: { year: string; isActive: boolean; semester?: string }; }
+interface DropdownItem { id: number; name: string; code?: string; type?: string; isActive?: boolean; year?: string; semester?: string; }
+
 export default function TeachingAssignmentsPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<TAItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [paginationMeta, setPaginationMeta] = useState({
     total: 0,
@@ -17,10 +20,10 @@ export default function TeachingAssignmentsPage() {
   });
 
   // States for dropdowns (employees, subjects, classrooms, academicYears)
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [classrooms, setClassrooms] = useState<any[]>([]);
-  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<DropdownItem[]>([]);
+  const [subjects, setSubjects] = useState<DropdownItem[]>([]);
+  const [classrooms, setClassrooms] = useState<DropdownItem[]>([]);
+  const [academicYears, setAcademicYears] = useState<DropdownItem[]>([]);
 
   // Filter state
   const [filterYear, setFilterYear] = useState("");
@@ -60,7 +63,7 @@ export default function TeachingAssignmentsPage() {
       
       if (yrJson.success && Array.isArray(yrJson.data)) {
         setAcademicYears(yrJson.data);
-        const activeYear = yrJson.data.find((y: any) => y.isActive);
+        const activeYear = yrJson.data.find((y: DropdownItem) => y.isActive);
         if (activeYear) setFilterYear(activeYear.id.toString());
       } else {
         setAcademicYears([]);
@@ -102,6 +105,7 @@ export default function TeachingAssignmentsPage() {
 
   useEffect(() => {
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYear, filterClass]);
 
   const getEmpOptions = (selectedId?: number) => {
@@ -117,7 +121,7 @@ export default function TeachingAssignmentsPage() {
     return academicYears.map(y => `<option value="${y.id}" ${selectedId === y.id ? 'selected' : ''}>${y.year} - ${y.isActive ? 'Aktif' : 'Tidak Aktif'}</option>`).join('');
   };
 
-  const currentActiveYear = academicYears.find(y => y.isActive)?.id || '';
+  const currentActiveYear = academicYears.find(y => y.isActive)?.id;
 
   const handleAdd = () => {
     Swal.fire({
@@ -192,7 +196,7 @@ export default function TeachingAssignmentsPage() {
     });
   };
 
-  const handleEdit = (assignment: any) => {
+  const handleEdit = (assignment: TAItem) => {
     Swal.fire({
       title: "Edit Penugasan Guru",
       html: `
@@ -295,7 +299,7 @@ export default function TeachingAssignmentsPage() {
                 if (data.length === 0) { Swal.fire("Info", "Tidak ada data untuk diekspor", "info"); return; }
                 exportCSV(
                   ["No", "Guru", "Mata Pelajaran", "Kode", "Kelas", "Tahun Ajaran"],
-                  data.map((d: any, i: number) => [i+1, d.employee?.name, d.subject?.name, d.subject?.code, d.classroom?.name, d.academicYear?.year]),
+                  data.map((d, i: number) => [i+1, d.employee?.name || "-", d.subject?.name || "-", d.subject?.code || "-", d.classroom?.name || "-", d.academicYear?.year || "-"]),
                   "data_penugasan_guru"
                 );
               }}
@@ -358,7 +362,7 @@ export default function TeachingAssignmentsPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left bg-white">
             <thead className="bg-slate-50 border-b border-slate-100">
-              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+              <tr className="bg-linear-to-b from-slate-50 to-slate-100/50">
                 <th className="py-3 px-4 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200 w-[50px]">No</th>
                 <th className="py-3 px-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Guru</th>
                 <th className="py-3 px-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Mata Pelajaran</th>
@@ -412,7 +416,7 @@ export default function TeachingAssignmentsPage() {
 
       {data.length > 0 && (() => {
         const rekap: Record<string, { nama: string; jumlahKelas: number; mapelSet: Set<string> }> = {};
-        data.forEach((d: any) => {
+        data.forEach((d) => {
           const key = d.employee?.name || "Unknown";
           if (!rekap[key]) rekap[key] = { nama: key, jumlahKelas: 0, mapelSet: new Set() };
           rekap[key].jumlahKelas++;

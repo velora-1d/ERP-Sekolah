@@ -7,9 +7,12 @@ import { ArrowRightLeft } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { ExportButtons } from "@/lib/export-utils";
 
+interface ClassroomItem { id: number; name: string; }
+interface StudentItem { id: number; name: string; nisn?: string; gender?: string; status?: string; }
+
 export default function MutationsPage() {
-  const [classrooms, setClassrooms] = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<ClassroomItem[]>([]);
+  const [students, setStudents] = useState<StudentItem[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [targetClass, setTargetClass] = useState("");
   const [action, setAction] = useState("pindah_kelas");
@@ -31,6 +34,7 @@ export default function MutationsPage() {
       setPagination({ total: 0, page: 1, limit: 20, totalPages: 0 });
     }
     setSelected([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass, page]);
 
   const loadClassrooms = async () => {
@@ -130,7 +134,7 @@ export default function MutationsPage() {
                   { header: "JK", key: "gender", width: 10, align: "center" },
                   { header: "Status", key: "status", width: 15, align: "center" },
                 ],
-                data: students.map((s: any, i: number) => ({
+                data: students.map((s, i: number) => ({
                   ...s,
                   _no: (page - 1) * limit + i + 1,
                 })),
@@ -169,7 +173,7 @@ export default function MutationsPage() {
             </div>
           )}
           <div className="flex items-end">
-            <button onClick={handleExecute} disabled={executing || selected.length === 0} className="w-full px-4 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={handleExecute} disabled={executing || selected.length === 0} className="w-full px-4 py-2.5 text-sm font-bold text-white bg-linear-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {executing ? "Memproses..." : `Eksekusi (${selected.length} siswa)`}
             </button>
           </div>
@@ -180,7 +184,7 @@ export default function MutationsPage() {
       <Card className="p-0 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-br from-red-500 to-rose-500"></div>
+            <div className="w-2 h-2 rounded-full bg-linear-to-br from-red-500 to-rose-500"></div>
             <h4 className="font-bold text-slate-800 text-sm">Daftar Siswa {selectedClass ? "" : "(Pilih Kelas Terlebih Dahulu)"}</h4>
           </div>
           {students.length > 0 && (

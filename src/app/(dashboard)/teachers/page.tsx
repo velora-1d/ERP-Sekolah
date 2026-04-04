@@ -70,10 +70,17 @@ export default function TeachersPage() {
       if (r.isConfirmed) {
         try {
           const res = await fetch(`/api/teachers/${t.id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Gagal menghubungi server");
+          }
           const json = await res.json();
           if (json.success) { Swal.fire("Terhapus", json.message, "success"); refreshTeachers(); }
-          else Swal.fire("Gagal", json.message, "error");
-        } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+          else Swal.fire("Gagal", json.message || "Gagal", "error");
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Gagal menghubungi server";
+          Swal.fire("Error", msg, "error"); 
+        }
       }
     });
   };

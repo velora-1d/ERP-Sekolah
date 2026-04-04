@@ -17,6 +17,9 @@ import {
 interface Option { id: number; name?: string; year?: string; isActive?: boolean; code?: string; type?: string; }
 interface Student { id: number; name: string; nis?: string; }
 interface GradeInput { studentId: number; nilaiAngka: number; predikat: string; }
+interface CurriculumData { id: number; type: string; gradeComponents?: Option[]; }
+interface GradeComponent extends Option { bobot?: number; }
+interface FinalGradeItem { id: number; studentId: number; nilaiAngka: number; predikat: string; nilaiPengetahuan: number; nilaiKeterampilan: number; nilaiAkhir: number; deskripsi: string; student?: Student; }
 
 // Dummy function to mimic the engine locally on the frontend
 function calcPredikatKurmer(n: number) { if (n >= 90) return "Sangat Baik"; if (n >= 80) return "Baik"; if (n >= 70) return "Cukup"; return "Kurang"; }
@@ -34,7 +37,7 @@ export default function GradesPage() {
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   
-  const [curriculum, setCurriculum] = useState<any>(null);
+  const [curriculum, setCurriculum] = useState<CurriculumData | null>(null);
   const [components, setComponents] = useState<Option[]>([]);
   const [selectedComponentId, setSelectedComponentId] = useState("");
 
@@ -42,7 +45,7 @@ export default function GradesPage() {
   const [grades, setGrades] = useState<Record<number, GradeInput>>({});
   const [kkm, setKkm] = useState(75);
 
-  const [finalGrades, setFinalGrades] = useState<any[]>([]);
+  const [finalGrades, setFinalGrades] = useState<FinalGradeItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function GradesPage() {
       setClassrooms(validClasses);
       setSubjects(validSubs);
       
-      const active = validYears.find((y: any) => y.isActive);
+      const active = validYears.find((y: Option) => y.isActive);
       if (active) setSelectedYearId(String(active.id));
     }).catch(console.error);
   }, []);
@@ -105,7 +108,7 @@ export default function GradesPage() {
         .then(r => r.json())
         .then(data => {
           const mapped: Record<number, GradeInput> = {};
-          data.forEach((d: any) => {
+          data.forEach((d: { studentId: number; nilaiAngka: number; predikat: string }) => {
             mapped[d.studentId] = { studentId: d.studentId, nilaiAngka: d.nilaiAngka, predikat: d.predikat };
           });
           setGrades(mapped);
@@ -116,6 +119,7 @@ export default function GradesPage() {
     if ((activeTab === "akhir" || activeTab === "deskripsi") && selectedClassId) {
       loadFinalGrades();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubjectId, selectedComponentId, selectedClassId, activeTab, curriculum]);
 
   const loadFinalGrades = () => {
@@ -309,7 +313,7 @@ export default function GradesPage() {
                       onChange={(e) => setSelectedComponentId(e.target.value)}
                     >
                       <option value="">-- Pilih Komponen Nilai --</option>
-                      {components.map((c: any) => <option key={c.id} value={c.id}>{c.name} ({c.bobot}%)</option>)}
+                      {components.map((c) => <option key={c.id} value={c.id}>{c.name} ({(c as GradeComponent).bobot}%)</option>)}
                     </select>
                   </div>
                   <div className="px-4 py-1.5 bg-white rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
@@ -384,7 +388,7 @@ export default function GradesPage() {
 
             {activeTab === "akhir" && (
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-indigo-600 to-violet-600 p-6 rounded-2xl shadow-lg shadow-indigo-100 text-white">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-linear-to-r from-indigo-600 to-violet-600 p-6 rounded-2xl shadow-lg shadow-indigo-100 text-white">
                   <div className="space-y-1">
                     <h3 className="text-lg font-bold">Kalkulasi Nilai Akhir</h3>
                     <p className="text-white/80 text-sm max-w-xl">
@@ -409,7 +413,7 @@ export default function GradesPage() {
                   <div className="py-20 flex flex-col items-center justify-center text-slate-300 grayscale opacity-50">
                     <Calculator className="w-16 h-16 mb-4" />
                     <p className="font-bold text-lg">Belum Ada Data Hasil Kalkulasi</p>
-                    <p className="text-sm italic">Klik tombol "Proses Sekarang" untuk memulai perhitungan.</p>
+                    <p className="text-sm italic">Klik tombol &quot;Proses Sekarang&quot; untuk memulai perhitungan.</p>
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-slate-100 shadow-sm">
@@ -425,7 +429,7 @@ export default function GradesPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {finalGrades.map((f: any) => (
+                        {finalGrades.map((f) => (
                           <tr key={f.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-4 py-4 font-bold text-slate-800">{f.student?.name}</td>
                             <td className="px-4 py-4 text-center font-medium">{f.nilaiPengetahuan}</td>
@@ -473,7 +477,7 @@ export default function GradesPage() {
                 ) : (
                   <div className="space-y-6">
                     <div className="grid gap-4">
-                      {finalGrades.map((f: any) => (
+                      {finalGrades.map((f) => (
                         <div key={f.id} className="group p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-md transition-all">
                           <div className="flex justify-between items-center mb-3">
                             <h4 className="font-bold text-slate-800 flex items-center gap-2">

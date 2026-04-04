@@ -825,7 +825,7 @@ export default function ReportCardsPage() {
                   </div>
                 </div>
               </div>
-            </div>              <div className="border border-slate-200 rounded-2xl p-4 bg-gradient-to-br from-slate-50 to-white">
+            </div>              <div className="border border-slate-200 rounded-2xl p-4 bg-linear-to-br from-slate-50 to-white">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                     <Eye className="w-4 h-4 text-indigo-600" />

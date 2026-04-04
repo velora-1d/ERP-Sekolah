@@ -284,7 +284,7 @@ export default function ReportsPage() {
           <div />
           <ExportButtons options={getTabunganExportOptions()} />
         </div>
-        <div className="bg-gradient-to-br from-sky-100 to-sky-200 rounded-xl p-5 text-center mb-6">
+        <div className="bg-linear-to-br from-sky-100 to-sky-200 rounded-xl p-5 text-center mb-6">
           <p className="text-xs text-sky-700 m-0">Total Saldo Seluruh Siswa</p>
           <p className="font-extrabold text-2xl text-sky-900 mt-1 mb-0">{fmtRp(totalSaldo)}</p>
         </div>
@@ -340,7 +340,7 @@ export default function ReportsPage() {
             <p className="text-xs text-slate-500 m-0">Total Pengeluaran</p>
             <p className="font-extrabold text-lg text-rose-600 mt-1 mb-0">{fmtRp(pengeluaran)}</p>
           </div>
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 text-center">
+          <div className="bg-linear-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 text-center">
             <p className="text-xs text-slate-500 m-0">Saldo Bersih</p>
             <p className={`font-extrabold text-lg mt-1 mb-0 ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>
               {fmtRp(saldo)}

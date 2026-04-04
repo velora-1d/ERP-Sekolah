@@ -45,8 +45,9 @@ export async function GET(request: Request) {
       },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -69,7 +70,8 @@ export async function POST(request: Request) {
     }).returning();
 
     return NextResponse.json({ success: true, data: newSubject }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

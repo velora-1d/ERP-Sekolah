@@ -76,13 +76,28 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(f),
       });
+
+      if (!res.ok) {
+         let errorMsg = `HTTP error! status: ${res.status}`;
+         try {
+           const errorData = await res.json();
+           if (errorData.message) errorMsg = errorData.message;
+         } catch (e) {
+           // ignore JSON parse error
+         }
+         throw new Error(errorMsg);
+      }
+
       const json = await res.json();
-      if (json.success) {
-        Swal.fire("Berhasil", json.message, "success").then(() => router.push("/students"));
+      if (json.success !== false) {
+        Swal.fire("Berhasil", json.message || "Data berhasil disimpan", "success").then(() => router.push("/students"));
       } else {
         Swal.fire("Gagal", json.message || "Error", "error");
       }
-    } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+    } catch (error: unknown) { 
+      const msg = error instanceof Error ? error.message : "Gagal menghubungi server";
+      Swal.fire("Error", msg, "error"); 
+    }
     finally { setLoading(false); }
   };
 

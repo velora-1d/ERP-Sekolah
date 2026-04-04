@@ -69,12 +69,26 @@ export default function ExtracurricularPage() {
 
   const handleSubmit = async () => {
     if (!form.name) { Swal.fire("Error", "Nama ekskul wajib", "error"); return; }
-    const method = editItem ? "PUT" : "POST";
-    const url = editItem ? `/api/extracurricular/${editItem.id}` : "/api/extracurricular";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    setShowModal(false); setEditItem(null); setForm({ name: "", employeeId: "", schedule: "", status: "aktif" });
-    fetchData();
-    Swal.fire("Berhasil", editItem ? "Ekskul diperbarui" : "Ekskul ditambahkan", "success");
+    try {
+      const method = editItem ? "PUT" : "POST";
+      const url = editItem ? `/api/extracurricular/${editItem.id}` : "/api/extracurricular";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        setShowModal(false); setEditItem(null); setForm({ name: "", employeeId: "", schedule: "", status: "aktif" });
+        fetchData();
+        Swal.fire("Berhasil", editItem ? "Ekskul diperbarui" : "Ekskul ditambahkan", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menyimpan data", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -88,9 +102,23 @@ export default function ExtracurricularPage() {
       confirmButtonColor: "#ef4444"
     });
     if (!r.isConfirmed) return;
-    await fetch(`/api/extracurricular/${id}`, { method: "DELETE" });
-    fetchData();
-    Swal.fire("Berhasil", "Ekskul telah dihapus", "success");
+    try {
+      const res = await fetch(`/api/extracurricular/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        fetchData();
+        Swal.fire("Berhasil", "Ekskul telah dihapus", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menghapus", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleEdit = (item: Extracurricular) => {

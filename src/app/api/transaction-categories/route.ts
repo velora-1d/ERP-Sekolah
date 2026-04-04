@@ -39,8 +39,9 @@ export async function GET(req: NextRequest) {
       },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
-  } catch (error) {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Server Error";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -60,9 +61,10 @@ export async function POST(req: Request) {
     }).returning();
 
     return NextResponse.json({ success: true, message: "Kategori berhasil ditambahkan", data: category });
-  } catch (error) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Server Error";
     console.error("Error creating category:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -79,15 +81,21 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, message: "Nama dan Tipe wajib diisi" }, { status: 400 });
     }
 
+    const updateData: Partial<typeof transactionCategories.$inferInsert> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type as any;
+    if (description !== undefined) updateData.description = description;
+
     const [category] = await db.update(transactionCategories)
-      .set({ name, type: type as any, description, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(transactionCategories.id, Number(id)))
       .returning();
 
     return NextResponse.json({ success: true, message: "Kategori berhasil diubah", data: category });
-  } catch (error) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Server Error";
     console.error("Error updating category:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -103,8 +111,9 @@ export async function DELETE(req: Request) {
       .returning();
 
     return NextResponse.json({ success: true, message: "Kategori berhasil dihapus", data: category });
-  } catch (error) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Server Error";
     console.error("Error deleting category:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }

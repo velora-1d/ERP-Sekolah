@@ -353,7 +353,7 @@ export default function PayrollPage() {
         <div className="space-y-6 animate-fade-in">
           <Card>
             <div className="p-5 border-b border-slate-100 flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-sky-500 to-blue-500"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-linear-to-br from-sky-500 to-blue-500"></div>
               <h4 className="font-heading font-bold text-[15px] text-slate-800 m-0">Terbitkan Slip Gaji Bulanan</h4>
             </div>
             <div className="p-6 flex flex-wrap gap-4 items-end">
@@ -370,7 +370,7 @@ export default function PayrollPage() {
                 <label className="block text-xs font-semibold text-slate-600 mb-2">Tahun</label>
                 <input type="number" value={genYear} onChange={(e) => setGenYear(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 w-24 bg-white text-slate-700" />
               </div>
-              <button onClick={generatePayroll} className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 rounded-xl shadow-sm hover:shadow transition-all">
+              <button onClick={generatePayroll} className="px-6 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 rounded-xl shadow-sm hover:shadow transition-all">
                 Generate Semua Slip
               </button>
             </div>
@@ -530,7 +530,7 @@ export default function PayrollPage() {
         <div className="grid md:grid-cols-3 gap-6 animate-fade-in items-start">
           <Card>
              <div className="p-5 border-b border-slate-100 flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-sky-500 to-blue-500"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-linear-to-br from-sky-500 to-blue-500"></div>
               <h4 className="font-heading font-bold text-[15px] text-slate-800 m-0">Tambah Komponen</h4>
             </div>
             <div className="p-6 space-y-4">
@@ -545,7 +545,7 @@ export default function PayrollPage() {
                   <option value="deduction">Potongan (-)</option>
                 </select>
               </div>
-              <button onClick={addComponent} className="w-full py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 rounded-xl shadow-sm transition-all mt-2">
+              <button onClick={addComponent} className="w-full py-2.5 text-sm font-semibold text-white bg-linear-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 rounded-xl shadow-sm transition-all mt-2">
                 Simpan Komponen
               </button>
             </div>

@@ -8,13 +8,32 @@ import Swal from "sweetalert2";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
+interface AcademicYear {
+  id: number;
+  year: string;
+  isActive: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: AcademicYear[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export default function AcademicYearsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [limit] = useState(10);
 
-  const { data: result, isLoading } = useQuery({
+  const { data: result, isLoading } = useQuery<ApiResponse>({
     queryKey: ["academic-years", page, search],
     queryFn: async () => {
       const res = await fetch(`/api/academic-years?page=${page}&limit=${limit}&q=${search}`);
@@ -48,7 +67,7 @@ export default function AcademicYearsPage() {
                   { header: "Tahun", key: "year", width: 25 },
                   { header: "Status", key: "isActive", width: 12, align: "center", format: (v: boolean) => v ? 'Aktif' : 'Nonaktif' },
                 ],
-                data: data.map((y: any, i: number) => ({
+                data: data.map((y: AcademicYear, i: number) => ({
                   ...y,
                   _no: (page - 1) * limit + i + 1,
                 })),
@@ -88,6 +107,10 @@ export default function AcademicYearsPage() {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ year }),
                   });
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || "Gagal menghubungi server");
+                  }
                   const json = await res.json();
                   if (json.success) { 
                     Swal.fire("Berhasil", "Tahun ajaran berhasil ditambahkan", "success"); 
@@ -95,8 +118,9 @@ export default function AcademicYearsPage() {
                   } else {
                     Swal.fire("Gagal", json.message, "error");
                   }
-                } catch { 
-                  Swal.fire("Error", "Gagal menghubungi server", "error"); 
+                } catch (error: unknown) { 
+                  const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+                  Swal.fire("Error", msg, "error"); 
                 }
               }}
               className="inline-flex items-center px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-bold border border-sky-400 shadow-lg shadow-sky-900/20 transition-all uppercase tracking-wider"
@@ -159,7 +183,7 @@ export default function AcademicYearsPage() {
                   </div>
                 </td></tr>
               ) : (
-                data.map((y: any, i: number) => {
+                data.map((y: AcademicYear, i: number) => {
                   const statusBadge = y.isActive
                     ? <span style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", padding: "0.25rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#047857", background: "#d1fae5", borderRadius: 999 }}><span style={{ width: 6, height: 6, background: "#059669", borderRadius: "50%" }} className="animate-pulse"></span>Aktif</span>
                     : <span style={{ display: "inline-flex", padding: "0.25rem 0.625rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6b7280", background: "#e5e7eb", borderRadius: 999 }}>Nonaktif</span>;
@@ -191,12 +215,25 @@ export default function AcademicYearsPage() {
                               });
                               if (!result.isConfirmed) return;
                               try {
-                                await fetch(`/api/academic-years/${y.id}`, {
+                                const res = await fetch(`/api/academic-years/${y.id}`, {
                                   method: "PUT", headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({ isActive: !y.isActive }),
                                 });
-                                refreshData();
-                              } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}));
+                                  throw new Error(err.message || "Gagal menghubungi server");
+                                }
+                                const json = await res.json();
+                                if (json.success) {
+                                  Swal.fire("Berhasil", "Status tahun ajaran berhasi diperbarui", "success");
+                                  refreshData();
+                                } else {
+                                  Swal.fire("Gagal", json.message || "Gagal memperbarui status", "error");
+                                }
+                              } catch (error: unknown) { 
+                                const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+                                Swal.fire("Error", msg, "error"); 
+                              }
                             }}
                             style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#6366f1", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "0.5rem", cursor: "pointer" }}
                           >
@@ -215,10 +252,21 @@ export default function AcademicYearsPage() {
                               if (!result.isConfirmed) return;
                               try {
                                 const res = await fetch(`/api/academic-years/${y.id}`, { method: "DELETE" });
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}));
+                                  throw new Error(err.message || "Gagal menghubungi server");
+                                }
                                 const json = await res.json();
-                                if (json.success) refreshData();
-                                else Swal.fire("Gagal", json.message, "error");
-                              } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+                                if (json.success) {
+                                  Swal.fire("Berhasil", "Tahun ajaran berhasil dihapus", "success");
+                                  refreshData();
+                                } else {
+                                  Swal.fire("Gagal", json.message || "Gagal menghapus tahun ajaran", "error");
+                                }
+                              } catch (error: unknown) { 
+                                const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+                                Swal.fire("Error", msg, "error"); 
+                              }
                             }}
                             style={{ display: "inline-flex", alignItems: "center", padding: "0.375rem 0.75rem", fontSize: "0.6875rem", fontWeight: 600, color: "#e11d48", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "0.5rem", cursor: "pointer" }}
                           >

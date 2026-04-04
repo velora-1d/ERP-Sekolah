@@ -30,7 +30,7 @@ export default function Card({
         >
           <div className="flex items-center gap-2">
             {icon && (
-              <div className="w-2 h-2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500" />
+              <div className="w-2 h-2 rounded-full bg-linear-to-br from-indigo-500 to-violet-500" />
             )}
             {title && (
               <h4 className="font-heading font-bold text-sm text-slate-800 m-0">

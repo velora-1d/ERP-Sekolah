@@ -45,14 +45,14 @@ export async function PUT(
       await db.update(academicYears).set({ isActive: false });
     }
 
+    const updateData: Partial<typeof academicYears.$inferInsert> = { updatedAt: new Date() };
+    if (body.year !== undefined) updateData.year = body.year;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.startDate !== undefined) updateData.startDate = body.startDate;
+    if (body.endDate !== undefined) updateData.endDate = body.endDate;
+
     const [updated] = await db.update(academicYears)
-      .set({
-        year: body.year,
-        isActive: body.isActive,
-        startDate: body.startDate,
-        endDate: body.endDate,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(academicYears.id, id))
       .returning();
 

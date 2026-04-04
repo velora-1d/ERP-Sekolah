@@ -47,20 +47,49 @@ export default function CoopProductsPage() {
 
   const handleSubmit = async () => {
     if (!form.name) { Swal.fire("Error", "Nama produk wajib", "error"); return; }
-    const method = editItem ? "PUT" : "POST";
-    const url = editItem ? `/api/coop/products/${editItem.id}` : "/api/coop/products";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    setShowModal(false); setEditItem(null);
-    setForm({ name: "", category: "", hargaJual: "", hargaBeli: "", stok: "", minStok: "" });
-    fetchData();
-    Swal.fire("Berhasil", editItem ? "Produk diperbarui" : "Produk ditambahkan", "success");
+    try {
+      const method = editItem ? "PUT" : "POST";
+      const url = editItem ? `/api/coop/products/${editItem.id}` : "/api/coop/products";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        setShowModal(false); setEditItem(null);
+        setForm({ name: "", category: "", hargaJual: "", hargaBeli: "", stok: "", minStok: "" });
+        fetchData();
+        Swal.fire("Berhasil", editItem ? "Produk diperbarui" : "Produk ditambahkan", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menyimpan data", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleDelete = async (id: number) => {
-    const r = await Swal.fire({ title: "Hapus produk?", icon: "warning", showCancelButton: true, confirmButtonText: "Ya, Hapus" });
+    const r = await Swal.fire({ title: "Hapus produk?", icon: "warning", showCancelButton: true, confirmButtonText: "Ya, Hapus", confirmButtonColor: "#ef4444" });
     if (!r.isConfirmed) return;
-    await fetch(`/api/coop/products/${id}`, { method: "DELETE" });
-    fetchData();
+    try {
+      const res = await fetch(`/api/coop/products/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
+      const json = await res.json();
+      if (json.success) {
+        fetchData();
+        Swal.fire("Berhasil", "Produk berhasil dihapus", "success");
+      } else {
+        Swal.fire("Gagal", json.message || "Gagal menghapus", "error");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan sistem";
+      Swal.fire("Error", msg, "error");
+    }
   };
 
   const handleEdit = (item: Product) => {

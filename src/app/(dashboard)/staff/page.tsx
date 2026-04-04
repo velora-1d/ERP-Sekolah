@@ -97,7 +97,7 @@ export default function StaffPage() {
       <Card
         title="Daftar Staf"
         icon={
-          <div className="w-2 h-2 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500" />
+          <div className="w-2 h-2 rounded-full bg-linear-to-tr from-blue-500 to-indigo-500" />
         }
         actions={
           <div className="flex gap-2 items-center flex-wrap">

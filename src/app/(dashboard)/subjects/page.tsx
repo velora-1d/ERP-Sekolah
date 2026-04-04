@@ -76,15 +76,26 @@ export default function SubjectsPage() {
             headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify(r.value) 
           });
+
+          if (!res.ok) {
+            let errorMsg = `HTTP error! status: ${res.status}`;
+            try {
+              const errorData = await res.json();
+              if (errorData.message) errorMsg = errorData.message;
+            } catch (e) {}
+            throw new Error(errorMsg);
+          }
+
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success !== false) { 
             Swal.fire("Berhasil", "Mata pelajaran ditambahkan", "success"); 
             refreshData(); 
           } else {
-            Swal.fire("Gagal", json.message || json.error || "Gagal", "error");
+            Swal.fire("Gagal", json.message || "Gagal", "error");
           }
-        } catch { 
-          Swal.fire("Error", "Server error", "error"); 
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
         }
       }
     });
@@ -137,15 +148,26 @@ export default function SubjectsPage() {
             headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify(r.value) 
           });
+
+          if (!res.ok) {
+            let errorMsg = `HTTP error! status: ${res.status}`;
+            try {
+              const errorData = await res.json();
+              if (errorData.message) errorMsg = errorData.message;
+            } catch (e) {}
+            throw new Error(errorMsg);
+          }
+
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success !== false) { 
             Swal.fire("Berhasil", "Mata pelajaran diperbarui", "success"); 
             refreshData(); 
           } else {
-            Swal.fire("Gagal", json.message || json.error || "Gagal", "error");
+            Swal.fire("Gagal", json.message || "Gagal", "error");
           }
-        } catch { 
-          Swal.fire("Error", "Server error", "error"); 
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
         }
       }
     });
@@ -163,15 +185,26 @@ export default function SubjectsPage() {
       if (r.isConfirmed) {
         try {
           const res = await fetch(`/api/subjects/${id}`, { method: "DELETE" });
+
+          if (!res.ok) {
+            let errorMsg = `HTTP error! status: ${res.status}`;
+            try {
+              const errorData = await res.json();
+              if (errorData.message) errorMsg = errorData.message;
+            } catch (e) {}
+            throw new Error(errorMsg);
+          }
+
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success !== false) { 
             Swal.fire("Berhasil", "Dihapus", "success"); 
             refreshData(); 
           } else {
-            Swal.fire("Gagal", json.message || json.error || "Gagal", "error");
+            Swal.fire("Gagal", json.message || "Gagal", "error");
           }
-        } catch { 
-          Swal.fire("Error", "Server error", "error"); 
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
         }
       }
     });
@@ -243,7 +276,7 @@ export default function SubjectsPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left bg-white">
             <thead className="bg-slate-50 border-b border-slate-100">
-              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+              <tr className="bg-linear-to-b from-slate-50 to-slate-100/50">
                 <th className="py-3 px-4 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200 w-[50px]">No</th>
                 <th className="py-3 px-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Kode</th>
                 <th className="py-3 px-4 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Nama Mata Pelajaran</th>

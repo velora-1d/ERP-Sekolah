@@ -24,8 +24,9 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: subject });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -62,8 +63,9 @@ export async function PUT(
     const [updated] = await db.update(subjects).set(updateData).where(eq(subjects.id, id)).returning();
 
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -85,7 +87,8 @@ export async function DELETE(
       .where(eq(subjects.id, id));
 
     return NextResponse.json({ success: true, message: "Mata pelajaran berhasil dihapus" });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

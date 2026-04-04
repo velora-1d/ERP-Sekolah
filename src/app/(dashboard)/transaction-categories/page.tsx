@@ -73,13 +73,20 @@ export default function TransactionCategoriesPage() {
       if (r.isConfirmed) {
         try {
           const res = await fetch("/api/transaction-categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Gagal menghubungi server");
+          }
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success) { 
             Swal.fire("Berhasil", "Kategori ditambahkan", "success"); 
             refreshData(r.value.type); 
           }
           else Swal.fire("Gagal", json.message || "Gagal", "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
+        }
       }
     });
   };
@@ -113,13 +120,20 @@ export default function TransactionCategoriesPage() {
       if (r.isConfirmed) {
         try {
           const res = await fetch(`/api/transaction-categories?id=${cat.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Gagal menghubungi server");
+          }
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success) { 
             Swal.fire("Berhasil", "Kategori diperbarui", "success"); 
             refreshData(); 
           }
           else Swal.fire("Gagal", json.message || "Gagal", "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
+        }
       }
     });
   };
@@ -136,13 +150,20 @@ export default function TransactionCategoriesPage() {
       if (r.isConfirmed) {
         try {
           const res = await fetch(`/api/transaction-categories?id=${id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Gagal menghubungi server");
+          }
           const json = await res.json();
-          if (res.ok && json.success) { 
+          if (json.success) { 
             Swal.fire("Berhasil", "Dihapus", "success"); 
             refreshData(type); 
           }
           else Swal.fire("Gagal", json.message || "Gagal", "error");
-        } catch { Swal.fire("Error", "Server error", "error"); }
+        } catch (error: unknown) { 
+          const msg = error instanceof Error ? error.message : "Server error";
+          Swal.fire("Error", msg, "error"); 
+        }
       }
     });
   };

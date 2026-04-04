@@ -73,62 +73,50 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   try {
     const body = await request.json();
 
-    const [student] = await db.update(students).set({
-      name: body.name,
-      nisn: body.nisn || "",
-      nis: body.nis || "",
-      nik: body.nik || "",
-      noKk: body.noKk || body.no_kk || "",
-      gender: body.gender || "L",
-      religion: body.religion || "Islam",
-      category: body.category || "reguler",
-      status: body.status || "aktif",
-      birthPlace: body.birthPlace || body.place_of_birth || "",
-      birthDate: body.birthDate || body.date_of_birth || "",
-      address: body.address || "",
-      phone: body.phone || body.parent_phone || "",
-      classroomId: (body.classroomId || body.classroom) ? Number(body.classroomId || body.classroom) : null,
-      familyStatus: body.familyStatus || "",
-      siblingCount: body.siblingCount ? Number(body.siblingCount) : null,
-      childPosition: body.childPosition ? Number(body.childPosition) : null,
-      village: body.village || "",
-      district: body.district || "",
-      residenceType: body.residenceType || "",
-      transportation: body.transportation || "",
-      studentPhone: body.studentPhone || "",
-      height: body.height ? Number(body.height) : null,
-      weight: body.weight ? Number(body.weight) : null,
-      distanceToSchool: body.distanceToSchool || "",
-      travelTime: body.travelTime ? Number(body.travelTime) : null,
-      fatherName: body.fatherName || body.father_name || "",
-      fatherNik: body.fatherNik || "",
-      fatherBirthPlace: body.fatherBirthPlace || "",
-      fatherBirthDate: body.fatherBirthDate || "",
-      fatherEducation: body.fatherEducation || "",
-      fatherOccupation: body.fatherOccupation || "",
-      motherName: body.motherName || body.mother_name || "",
-      motherNik: body.motherNik || "",
-      motherBirthPlace: body.motherBirthPlace || "",
-      motherBirthDate: body.motherBirthDate || "",
-      motherEducation: body.motherEducation || "",
-      motherOccupation: body.motherOccupation || "",
-      parentIncome: body.parentIncome || "",
-      guardianName: body.guardianName || "",
-      guardianNik: body.guardianNik || "",
-      guardianBirthPlace: body.guardianBirthPlace || "",
-      guardianBirthDate: body.guardianBirthDate || "",
-      guardianEducation: body.guardianEducation || "",
-      guardianOccupation: body.guardianOccupation || "",
-      guardianAddress: body.guardianAddress || "",
-      guardianPhone: body.guardianPhone || "",
-      infaqStatus: body.infaqStatus || "reguler",
-      infaqNominal: body.infaqNominal ? Number(body.infaqNominal) : 0,
+    const updateData: Partial<typeof students.$inferInsert> = {
       updatedAt: new Date(),
-    }).where(eq(students.id, parseInt(params.id))).returning();
+    };
+
+    const keys = [
+      "name", "nisn", "nis", "nik", "noKk", "gender", "religion", "category",
+      "status", "birthPlace", "birthDate", "address", "phone", "classroomId",
+      "familyStatus", "siblingCount", "childPosition", "village", "district",
+      "residenceType", "transportation", "studentPhone", "height", "weight",
+      "distanceToSchool", "travelTime", "fatherName", "fatherNik",
+      "fatherBirthPlace", "fatherBirthDate", "fatherEducation",
+      "fatherOccupation", "motherName", "motherNik", "motherBirthPlace",
+      "motherBirthDate", "motherEducation", "motherOccupation", "parentIncome",
+      "guardianName", "guardianNik", "guardianBirthPlace", "guardianBirthDate",
+      "guardianEducation", "guardianOccupation", "guardianAddress",
+      "guardianPhone", "infaqStatus", "infaqNominal"
+    ];
+
+    if (body.no_kk !== undefined && body.noKk === undefined) updateData.noKk = body.no_kk;
+    if (body.place_of_birth !== undefined && body.birthPlace === undefined) updateData.birthPlace = body.place_of_birth;
+    if (body.date_of_birth !== undefined && body.birthDate === undefined) updateData.birthDate = body.date_of_birth;
+    if (body.parent_phone !== undefined && body.phone === undefined) updateData.phone = body.parent_phone;
+    if (body.classroom !== undefined && body.classroomId === undefined) updateData.classroomId = body.classroom ? Number(body.classroom) : null;
+    if (body.father_name !== undefined && body.fatherName === undefined) updateData.fatherName = body.father_name;
+    if (body.mother_name !== undefined && body.motherName === undefined) updateData.motherName = body.mother_name;
+
+    for (const key of keys) {
+      if (body[key] !== undefined) {
+        if (["siblingCount", "childPosition", "height", "weight", "travelTime"].includes(key)) {
+           (updateData as any)[key] = body[key] ? Number(body[key]) : null;
+        } else if (["classroomId", "infaqNominal"].includes(key)) {
+           (updateData as any)[key] = body[key] ? Number(body[key]) : (key === "infaqNominal" ? 0 : null);
+        } else {
+           (updateData as any)[key] = body[key];
+        }
+      }
+    }
+
+    const [student] = await db.update(students).set(updateData).where(eq(students.id, parseInt(params.id))).returning();
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil diupdate", data: student });
-  } catch (error: any) {
-    if (error.code === '23505') {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (err.code === '23505') {
       return NextResponse.json({ success: false, message: "NISN sudah dipakai" }, { status: 400 });
     }
     console.error("Error updating student:", error);

@@ -23,20 +23,24 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   const params = await props.params;
   try {
     const body = await request.json();
+    
+    const updateData: Partial<typeof employees.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.nip !== undefined) updateData.nip = body.nip;
+    if (body.type !== undefined) updateData.type = body.type as any;
+    if (body.position !== undefined) updateData.position = body.position;
+    if (body.status !== undefined) updateData.status = body.status as any;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.address !== undefined) updateData.address = body.address;
+    if (body.joinDate !== undefined) updateData.joinDate = body.joinDate;
+    if (body.baseSalary !== undefined) updateData.baseSalary = Number(body.baseSalary);
+
     const [employee] = await db
       .update(employees)
-      .set({
-        name: body.name,
-        nip: body.nip || "",
-        type: (body.type || "guru") as any,
-        position: body.position || "",
-        status: (body.status || "aktif") as any,
-        phone: body.phone || "",
-        address: body.address || "",
-        joinDate: body.joinDate || "",
-        baseSalary: body.baseSalary ? Number(body.baseSalary) : 0,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(employees.id, parseInt(params.id)))
       .returning();
 

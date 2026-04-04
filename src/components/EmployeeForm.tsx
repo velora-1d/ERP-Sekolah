@@ -45,13 +45,20 @@ export default function EmployeeForm({ initialData, employeeType = "guru" }: { i
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...f, type: employeeType }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Gagal menghubungi server");
+      }
       const json = await res.json();
       if (json.success) {
         Swal.fire("Berhasil", json.message, "success").then(() => router.push(backUrl));
       } else {
         Swal.fire("Gagal", json.message || "Error", "error");
       }
-    } catch { Swal.fire("Error", "Gagal menghubungi server", "error"); }
+    } catch (error: unknown) { 
+      const msg = error instanceof Error ? error.message : "Gagal menghubungi server";
+      Swal.fire("Error", msg, "error"); 
+    }
     finally { setLoading(false); }
   };
 

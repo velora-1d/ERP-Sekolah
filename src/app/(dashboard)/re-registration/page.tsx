@@ -287,10 +287,10 @@ export default function ReRegistrationPage() {
       <Card className="p-0 overflow-hidden transition-all">
         <button 
           onClick={() => setSettingsOpen(!settingsOpen)}
-          className="w-full flex items-center justify-between p-5 bg-gradient-to-br from-violet-50 to-slate-50 hover:from-violet-100 hover:to-slate-100 transition-colors border-b border-slate-200"
+          className="w-full flex items-center justify-between p-5 bg-linear-to-br from-violet-50 to-slate-50 hover:from-violet-100 hover:to-slate-100 transition-colors border-b border-slate-200"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 bg-linear-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -338,7 +338,7 @@ export default function ReRegistrationPage() {
             </div>
 
             <div className="flex justify-end mb-8">
-              <button onClick={saveSettings} className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+              <button onClick={saveSettings} className="flex items-center gap-2 px-6 py-2.5 bg-linear-to-r from-violet-600 to-purple-600 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
                 Simpan Pengaturan
               </button>
@@ -397,7 +397,7 @@ export default function ReRegistrationPage() {
       <Card className="p-0 overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-br from-violet-500 to-purple-600"></div>
+            <div className="w-2 h-2 rounded-full bg-linear-to-br from-violet-500 to-purple-600"></div>
             <h4 className="font-heading font-bold text-sm text-slate-800 m-0">Daftar Siswa</h4>
           </div>
           {data.length > 0 && (
@@ -562,7 +562,7 @@ export default function ReRegistrationPage() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setShowPayModal(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-500 bg-slate-100 border-none rounded-xl cursor-pointer hover:bg-slate-200 transition-colors">Batal</button>
-              <button onClick={handlePayConfirm} disabled={payLoading} className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl border-none cursor-pointer transition-all ${payLoading ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:shadow-lg hover:-translate-y-0.5'}`}>
+              <button onClick={handlePayConfirm} disabled={payLoading} className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl border-none cursor-pointer transition-all ${payLoading ? 'bg-slate-400 cursor-not-allowed' : 'bg-linear-to-r from-violet-600 to-purple-600 hover:shadow-lg hover:-translate-y-0.5'}`}>
                 {payLoading ? "Memproses..." : "Bayar Sekarang"}
               </button>
             </div>
