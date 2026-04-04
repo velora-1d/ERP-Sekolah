@@ -14,7 +14,7 @@ export async function POST(
 ) {
   const { slug } = await params;
   const user = await getAuthUser();
-  if (!["superadmin", "admin"].includes(user?.role)) {
+  if (!user?.role || (user.role !== "superadmin" && user.role !== "admin")) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
   }
 
@@ -47,7 +47,7 @@ export async function PUT(
 ) {
   const { slug } = await params;
   const user = await getAuthUser();
-  if (!["superadmin", "admin"].includes(user?.role)) {
+  if (!user?.role || (user.role !== "superadmin" && user.role !== "admin")) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
   }
 
@@ -80,7 +80,7 @@ export async function DELETE(
 ) {
   const { slug } = await params;
   const user = await getAuthUser();
-  if (!["superadmin", "admin"].includes(user?.role)) {
+  if (!user?.role || (user.role !== "superadmin" && user.role !== "admin")) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
   }
 
