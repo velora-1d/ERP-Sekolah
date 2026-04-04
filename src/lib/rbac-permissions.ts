@@ -95,7 +95,10 @@ export function isPublicApiPath(pathname: string): boolean {
  * Cek apakah role tertentu boleh mengakses path API
  */
 export function canAccess(role: string, pathname: string): boolean {
-  if (role === "superadmin") return true;
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase().replace(/\s+/g, "");
+
+  if (normalizedRole === "superadmin") return true;
 
   let matchedRoles: Role[] | null = null;
   let matchLength = 0;
@@ -108,7 +111,7 @@ export function canAccess(role: string, pathname: string): boolean {
   }
 
   if (matchedRoles === null) return true;
-  return matchedRoles.includes(role as Role);
+  return matchedRoles.includes(normalizedRole as Role);
 }
 
 /**
