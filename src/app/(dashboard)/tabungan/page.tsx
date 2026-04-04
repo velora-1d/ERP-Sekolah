@@ -1,23 +1,46 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Pagination from "@/components/Pagination";
 import { ExportButtons, fmtRupiah } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
-import { Wallet } from "lucide-react";
+import { Wallet, Search } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface StudentTabungan {
+  id: number;
+  name: string;
+  nisn: string;
+  classroom: string;
+  balance: number;
+}
+
+interface Classroom {
+  id: number;
+  name: string;
+}
+
+interface Transaction {
+  id: number;
+  type: "setor" | "tarik";
+  amount: number;
+  date: string;
+  description: string;
+  balanceAfter: number;
+}
 
 export default function TabunganPage() {
   const queryClient = useQueryClient();
-  const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [classFilter, setClassFilter] = useState("");
+  const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
   // Modal setor/tarik
   const [showTransaction, setShowTransaction] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentTabungan | null>(null);
   const [txType, setTxType] = useState<"setor" | "tarik">("setor");
   const [txAmount, setTxAmount] = useState("");
   const [txDate, setTxDate] = useState(new Date().toISOString().split("T")[0]);
@@ -26,8 +49,8 @@ export default function TabunganPage() {
 
   // Modal riwayat
   const [showHistory, setShowHistory] = useState(false);
-  const [historyStudent, setHistoryStudent] = useState<any>(null);
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyStudent, setHistoryStudent] = useState<StudentTabungan | null>(null);
+  const [historyData, setHistoryData] = useState<Transaction[]>([]);
   const [historyBalance, setHistoryBalance] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -39,18 +62,19 @@ export default function TabunganPage() {
   const fmtRp = (n: number) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
   const { data: queryResult, isLoading } = useQuery({
-    queryKey: ["tabungan", classFilter, page, limit],
+    queryKey: ["tabungan", classFilter, search, page, limit],
     queryFn: async () => {
-      const res = await fetch(`/api/tabungan?classId=${classFilter}&page=${page}&limit=${limit}`);
+      const res = await fetch(`/api/tabungan?classId=${classFilter}&q=${search}&page=${page}&limit=${limit}`);
       return res.json();
     },
     staleTime: 1000 * 60 * 5,
     placeholderData: (prev) => prev,
   });
 
-  const data: any[] = queryResult?.data || [];
+  const studentList: StudentTabungan[] = queryResult?.data || [];
   const totalPages = queryResult?.pagination?.totalPages || 1;
   const total = queryResult?.pagination?.total || 0;
+  const totalBalanceGlobal = queryResult?.totalBalance || 0;
 
   const refreshData = () => queryClient.invalidateQueries({ queryKey: ["tabungan"] });
 
@@ -95,7 +119,7 @@ export default function TabunganPage() {
   }
 
   // === Riwayat Mutasi ===
-  async function openHistory(student: any) {
+  async function openHistory(student: StudentTabungan) {
     setHistoryStudent(student);
     setShowHistory(true);
     setHistoryLoading(true);
@@ -110,7 +134,7 @@ export default function TabunganPage() {
     finally { setHistoryLoading(false); }
   }
 
-  function openTransaction(student: any, type: "setor" | "tarik") {
+  function openTransaction(student: StudentTabungan, type: "setor" | "tarik") {
     setSelectedStudent(student);
     setTxType(type);
     setTxAmount("");
@@ -118,7 +142,6 @@ export default function TabunganPage() {
     setShowTransaction(true);
   }
 
-  const totalSaldo = data.reduce((sum, s) => sum + (s.balance || 0), 0);
   const thStyle: React.CSSProperties = { padding: "0.875rem 1.5rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" };
 
   return (
@@ -138,8 +161,18 @@ export default function TabunganPage() {
         actions={
           <div className="flex items-center gap-3">
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2">
-              <p className="text-[10px] font-semibold text-white/70 uppercase tracking-wider">Total Saldo</p>
-              <p className="font-heading text-lg font-extrabold text-white m-0 leading-tight">{fmtRp(totalSaldo)}</p>
+              <p className="text-[10px] font-semibold text-white/70 uppercase tracking-wider">Total Saldo Global</p>
+              <p className="font-heading text-lg font-extrabold text-white m-0 leading-tight">{fmtRp(totalBalanceGlobal)}</p>
+            </div>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 group-focus-within:text-white transition-colors" />
+              <input
+                type="text"
+                placeholder="Cari siswa..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="pl-9 pr-4 py-2 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-xl text-sm font-medium placeholder:text-white/50 outline-none focus:ring-2 focus:ring-white/30 transition-all w-48 focus:w-64"
+              />
             </div>
             <select
               value={classFilter}
@@ -148,7 +181,7 @@ export default function TabunganPage() {
               style={{ paddingRight: "2rem" }}
             >
               <option value="" className="text-slate-800">Semua Kelas</option>
-              {classrooms.map((c: any) => (
+              {classrooms.map((c) => (
                 <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
               ))}
             </select>
@@ -165,7 +198,7 @@ export default function TabunganPage() {
           </div>
           <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{total} Siswa</span>
         </div>
-        {data.length > 0 && (
+        {studentList.length > 0 && (
           <div className="px-6 py-3 border-b border-slate-100">
             <ExportButtons options={{
               title: "Tabungan Siswa",
@@ -177,7 +210,7 @@ export default function TabunganPage() {
                 { header: "Kelas", key: "classroom", width: 15, align: "center" },
                 { header: "Saldo", key: "balance", width: 20, align: "right", format: (v: number) => fmtRupiah(v) },
               ],
-              data: data.map((s: any, i: number) => ({
+              data: studentList.map((s, i) => ({
                 ...s,
                 _no: (page - 1) * limit + i + 1,
                 nisn: s.nisn || '-',
@@ -200,7 +233,7 @@ export default function TabunganPage() {
             <tbody>
               {isLoading ? (
                 <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8" }}>Memuat data...</td></tr>
-              ) : data.length === 0 ? (
+              ) : studentList.length === 0 ? (
                 <tr><td colSpan={5} style={{ padding: "4rem 2rem", textAlign: "center" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                     <div style={{ width: 64, height: 64, background: "linear-gradient(135deg,#ede9fe,#e0e7ff)", borderRadius: "1rem", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
@@ -209,7 +242,7 @@ export default function TabunganPage() {
                     <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Siswa</p>
                   </div>
                 </td></tr>
-              ) : data.map((s: any, i: number) => {
+              ) : studentList.map((s, i) => {
                 const initial = (s.name || "?").charAt(0).toUpperCase();
                 const saldoColor = (s.balance || 0) > 0 ? "#059669" : "#94a3b8";
 
@@ -297,7 +330,7 @@ export default function TabunganPage() {
                 <p style={{ textAlign: "center", color: "#94a3b8", padding: "2rem 0" }}>Belum ada transaksi.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {historyData.map((h: any) => (
+                  {historyData.map((h: Transaction) => (
                     <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1rem", borderRadius: "0.625rem", background: h.type === "setor" ? "#f0fdf4" : "#fef2f2", border: `1px solid ${h.type === "setor" ? "#bbf7d0" : "#fecaca"}` }}>
                       <div>
                         <p style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#1e293b", margin: 0 }}>

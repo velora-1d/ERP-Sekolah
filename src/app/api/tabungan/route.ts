@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students, classrooms, studentSavings } from "@/db/schema";
-import { isNull, and, eq, asc, sql, inArray } from "drizzle-orm";
+import { students, classrooms, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
+import { isNull, and, eq, asc, sql, inArray, or, ilike } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classFilter = searchParams.get("classId") || "";
+  const query = searchParams.get("q") || ""; // Tambahkan q
   const studentId = searchParams.get("studentId");
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
@@ -15,41 +16,94 @@ export async function GET(request: Request) {
     if (studentId) {
       const [{ savingsIn }] = await db.select({
         savingsIn: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number)
-      }).from(studentSavings).where(and(eq(studentSavings.studentId, Number(studentId)), eq(studentSavings.type, "setor" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+      }).from(studentSavings).where(and(eq(studentSavings.studentId, Number(studentId)), eq(studentSavings.type, "setor"), eq(studentSavings.status, "active"), isNull(studentSavings.deletedAt)));
 
       const [{ savingsOut }] = await db.select({
         savingsOut: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number)
-      }).from(studentSavings).where(and(eq(studentSavings.studentId, Number(studentId)), eq(studentSavings.type, "tarik" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+      }).from(studentSavings).where(and(eq(studentSavings.studentId, Number(studentId)), eq(studentSavings.type, "tarik"), eq(studentSavings.status, "active"), isNull(studentSavings.deletedAt)));
 
       const balance = savingsIn - savingsOut;
       return NextResponse.json({ success: true, balance });
     }
 
-    // Build where clause untuk siswa
-    const studentConditions = [isNull(students.deletedAt), eq(students.status, "aktif" as any)];
-    if (classFilter) studentConditions.push(eq(students.classroomId, Number(classFilter)));
-    const studentWhere = and(...studentConditions);
+    // 1. Tentukan Tahun Ajaran Aktif (Agar sinkron dengan menu Data Siswa)
+    const activeYearRes = await db.select({ id: academicYears.id })
+      .from(academicYears)
+      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+      .limit(1);
+    const targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
 
-    const [studentList, [{ total }]] = await Promise.all([
+    // 2. Build where clause untuk siswa berdasarkan pendaftaran (Enrollment)
+    const conditions = [
+      isNull(studentEnrollments.deletedAt),
+      isNull(students.deletedAt),
+      eq(students.status, "aktif")
+    ];
+
+    if (targetAcademicYearId) {
+      conditions.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
+    }
+
+    if (classFilter) {
+      conditions.push(eq(studentEnrollments.classroomId, Number(classFilter)));
+    }
+
+    if (query) {
+      conditions.push(or(
+        ilike(students.name, `%${query}%`),
+        ilike(students.nisn, `%${query}%`)
+      ) as any);
+    }
+
+    const whereClause = and(...conditions);
+
+    // 3. Fetch data list dan total global balance
+    const [enrollmentsRes, totalRes, totalBalanceRes] = await Promise.all([
       db.select({
         id: students.id,
         name: students.name,
         nisn: students.nisn,
         classroomName: classrooms.name,
       })
-      .from(students)
-      .leftJoin(classrooms, eq(students.classroomId, classrooms.id))
-      .where(studentWhere)
+      .from(studentEnrollments)
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
+      .leftJoin(classrooms, eq(studentEnrollments.classroomId, classrooms.id))
+      .where(whereClause)
       .orderBy(asc(students.name))
       .limit(limit)
       .offset((page - 1) * limit),
 
-      db.select({ total: sql<number>`count(*)`.mapWith(Number) })
-      .from(students)
-      .where(studentWhere)
+      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(studentEnrollments)
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
+      .where(whereClause),
+
+      // Hitung total balance global (untuk filter saat ini)
+      db.select({
+        type: studentSavings.type,
+        total: sql<number>`sum(${studentSavings.amount})`.mapWith(Number)
+      })
+      .from(studentSavings)
+      .innerJoin(studentEnrollments, eq(studentSavings.studentId, studentEnrollments.studentId))
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
+      .where(and(
+        whereClause,
+        eq(studentSavings.status, "active"),
+        isNull(studentSavings.deletedAt)
+      ))
+      .groupBy(studentSavings.type)
     ]);
 
-    // Hitung saldo via SQL groupBy
+    const studentList = enrollmentsRes;
+    const total = totalRes[0].count;
+
+    let globalTotalBalance = 0;
+    totalBalanceRes.forEach(b => {
+      if (b.type === "setor") globalTotalBalance += b.total;
+      else if (b.type === "tarik") globalTotalBalance -= b.total;
+    });
+
+    // Hitung saldo per siswa (untuk halaman ini) via SQL groupBy
     const studentIds = studentList.map(s => s.id);
 
     let balances: { studentId: number | null; type: string; total: number }[] = [];
@@ -63,7 +117,7 @@ export async function GET(request: Request) {
       .where(and(
         inArray(studentSavings.studentId, studentIds),
         isNull(studentSavings.deletedAt),
-        eq(studentSavings.status, "active" as any)
+        eq(studentSavings.status, "active")
       ))
       .groupBy(studentSavings.studentId, studentSavings.type);
     }
@@ -90,6 +144,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data,
+      totalBalance: globalTotalBalance,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
