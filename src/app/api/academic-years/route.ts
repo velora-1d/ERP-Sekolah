@@ -42,7 +42,34 @@ export async function GET(req: NextRequest) {
       },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    if (!body.year) {
+      return NextResponse.json({ success: false, message: "Tahun ajaran wajib diisi" }, { status: 400 });
+    }
+
+    // Jika isActive true, nonaktifkan tahun ajaran lain
+    if (body.isActive) {
+      await db.update(academicYears).set({ isActive: false });
+    }
+
+    const [newYear] = await db.insert(academicYears).values({
+      year: body.year,
+      isActive: body.isActive || false,
+      startDate: body.startDate || null,
+      endDate: body.endDate || null,
+    }).returning();
+
+    return NextResponse.json({ success: true, message: "Tahun ajaran berhasil ditambahkan", data: newYear });
+  } catch (error) {
+    console.error("POST Academic Year error:", error);
+    return NextResponse.json({ success: false, message: "Gagal menambah tahun ajaran" }, { status: 500 });
   }
 }

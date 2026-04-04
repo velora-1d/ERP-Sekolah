@@ -5,6 +5,7 @@ import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq } from "drizzle-orm";
 
 /**
+ * - [x] Implementasi DELETE di `src/app/api/classrooms/[id]/route.ts`
  * PUT /api/classrooms/[id]
  * Update data kelas — termasuk infaqNominal untuk setting nominal SPP/Infaq per kelas.
  */
@@ -50,5 +51,31 @@ export async function PUT(
       return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
     }
     return NextResponse.json({ success: false, message: "Gagal update kelas" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const params = await props.params;
+    const id = Number(params.id);
+
+    if (isNaN(id)) {
+      return NextResponse.json({ success: false, message: "ID tidak valid" }, { status: 400 });
+    }
+
+    await db.update(classrooms)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(classrooms.id, id));
+
+    return NextResponse.json({ success: true, message: "Kelas berhasil dihapus" });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
+    }
+    return NextResponse.json({ success: false, message: "Gagal menghapus kelas" }, { status: 500 });
   }
 }

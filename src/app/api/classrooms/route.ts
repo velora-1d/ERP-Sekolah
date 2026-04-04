@@ -75,3 +75,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    
+    if (!body.name) {
+      return NextResponse.json({ success: false, message: "Nama kelas wajib diisi" }, { status: 400 });
+    }
+
+    const [newClassroom] = await db.insert(classrooms).values({
+      name: body.name,
+      academicYearId: body.academicYearId ? Number(body.academicYearId) : null,
+      waliKelasId: body.waliKelasId ? Number(body.waliKelasId) : null,
+      infaqNominal: body.infaqNominal ? Number(body.infaqNominal) : 0,
+    }).returning();
+
+    return NextResponse.json({ success: true, message: "Kelas berhasil ditambahkan", data: newClassroom });
+  } catch (error) {
+    console.error("POST Classroom error:", error);
+    return NextResponse.json({ success: false, message: "Gagal menambah kelas" }, { status: 500 });
+  }
+}

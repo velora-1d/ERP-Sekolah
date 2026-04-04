@@ -23,6 +23,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/api/users": ["superadmin", "admin"],
   "/api/seed": ["superadmin"],
 
+  // === WEB CMS (superadmin + admin) ===
+  "/api/admin/cms": ["superadmin", "admin"],
+
   // === KEUANGAN (superadmin + admin + bendahara) ===
   "/api/payroll": ["superadmin", "admin", "bendahara"],
   "/api/infaq-bills": ["superadmin", "admin", "bendahara"],
@@ -78,6 +81,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
 export const PUBLIC_API_PATHS = [
   "/api/auth/login",
   "/api/auth/logout",
+  "/api/web", // Public Web API
 ];
 
 /**
@@ -159,6 +163,9 @@ export const SIDEBAR_PERMISSIONS: Record<string, Role[]> = {
   "/letters": ["superadmin", "admin", "operator"],
   "/announcements": ["superadmin", "admin", "operator"],
   "/school-profile": ["superadmin", "admin"],
+  
+  // Website CMS
+  "/admin/cms": ["superadmin", "admin"],
   
   // Sistem
   "/settings": ["superadmin", "admin"],

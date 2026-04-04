@@ -843,6 +843,91 @@ export const studentCredits = pgTable('student_credits', {
   index('student_credits_student_id_status_idx').on(t.studentId, t.status),
 ]);
 
+// ─── WEB CMS TABLES ────────────────────────────────────────────────────────
+
+export const webHeroes = pgTable('web_heroes', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  subtitle: text('subtitle'),
+  mediaType: text('media_type').notNull().default('image'), // 'image' | 'video'
+  mediaUrl: text('media_url').notNull(),
+  ctaText: text('cta_text'),
+  ctaUrl: text('cta_url'),
+  order: integer('order').notNull().default(0),
+  status: text('status').notNull().default('aktif'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const webPosts = pgTable('web_posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  slug: text('slug').notNull().unique(),
+  excerpt: text('excerpt'),
+  content: text('content').notNull(),
+  thumbnailUrl: text('thumbnail_url'),
+  category: text('category').notNull().default('berita'), // 'berita' | 'artikel' | 'info'
+  status: text('status').notNull().default('draft'), // 'draft' | 'published'
+  publishedAt: timestamp('published_at'),
+  metaTitle: text('meta_title'),
+  metaDescription: text('meta_description'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('web_posts_slug_idx').on(t.slug),
+  index('web_posts_status_idx').on(t.status),
+]);
+
+export const webFacilities = pgTable('web_facilities', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  iconSvg: text('icon_svg'),
+  order: integer('order').notNull().default(0),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const webAchievements = pgTable('web_achievements', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  studentName: text('student_name'),
+  competitionName: text('competition_name'),
+  level: text('level').notNull().default('kabupaten'), // 'kecamatan' | 'kabupaten' | 'provinsi' | 'nasional'
+  year: integer('year').notNull(),
+  imageUrl: text('image_url'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const webTeachers = pgTable('web_teachers', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  position: text('position'),
+  bio: text('bio'),
+  photoUrl: text('photo_url'),
+  order: integer('order').notNull().default(0),
+  status: text('status').notNull().default('aktif'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const webSettings = pgTable('web_settings', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+  group: text('group').notNull().default('umum'), // 'umum' | 'kontak' | 'sosmed' | 'ppdb'
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RELATIONS
 // ═══════════════════════════════════════════════════════════════════════════

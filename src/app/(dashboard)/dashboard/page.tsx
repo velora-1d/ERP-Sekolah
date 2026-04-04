@@ -5,17 +5,17 @@ import {
   coopTransactions, studentCredits, counselingRecords, announcements, letters,
   transactionCategories
 } from "@/db/schema";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, JwtPayload } from "@/lib/auth";
 import DashboardCharts from "@/components/DashboardCharts";
 import FilterBar from "@/components/FilterBar";
 import DashboardTabs from "@/components/DashboardTabs";
 import { Suspense } from "react";
-import { and, eq, ilike, gte, lte, isNull, inArray, not, sql, asc } from "drizzle-orm";
+import { and, eq, ilike, gte, lte, isNull, inArray, not, sql } from "drizzle-orm";
 
 // ISR: revalidate setiap 60 detik agar lebih ringan dan mengurangi SSR time (bottleneck LCP).
 export const revalidate = 60;
 
-async function getDashboardData(searchParams: any) {
+async function getDashboardData(searchParams: { [key: string]: string | undefined }) {
   const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
   const semester = searchParams.semester;
   const month = searchParams.month;
@@ -267,7 +267,7 @@ function fmtRp(n: number) {
   return "Rp " + (n || 0).toLocaleString("id-ID");
 }
 
-export default async function DashboardPage(props: { searchParams: Promise<any> }) {
+export default async function DashboardPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const searchParams = await props.searchParams;
   const user = await getAuthUser();
 
@@ -324,7 +324,7 @@ function DashboardContentLoading() {
   );
 }
 
-async function DashboardContent({ searchParams, activeTab, user }: { searchParams: any, activeTab: string, user: any }) {
+async function DashboardContent({ searchParams, activeTab, user }: { searchParams: { [key: string]: string | undefined }, activeTab: string, user: JwtPayload | null }) {
   const data = await getDashboardData(searchParams);
 
   return (

@@ -1,0 +1,144 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Badge from '@/components/ui/Badge';
+import { getHeroes, saveHero, deleteHero } from '@/app/actions/cms-actions';
+
+export default function HeroesCMS() {
+  const [heroes, setHeroes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any>(null);
+
+  const fetchHeroes = async () => {
+    setLoading(true);
+    const data = await getHeroes();
+    setHeroes(data as any[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchHeroes();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+    
+    await saveHero({ id: editing?.id, ...data } as any);
+    setEditing(null);
+    fetchHeroes();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Hapus slide hero ini?')) {
+      await deleteHero(id);
+      fetchHeroes();
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Modul Banner Hero</h1>
+          <p className="text-slate-500">Kelola gambar banner utama di halaman beranda profil.</p>
+        </div>
+        <Button onClick={() => setEditing({ title: '', subtitle: '', image_url: '', action_text: '', action_url: '', order: 0 })}>
+          + Tambah Banner
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {loading ? (
+          <div className="col-span-2 py-20 text-center text-slate-400 italic">Memuat data banner...</div>
+        ) : heroes.length === 0 ? (
+          <div className="col-span-2 py-20 text-center text-slate-400 italic">Belum ada banner.</div>
+        ) : heroes.map((hero) => (
+          <div key={hero.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
+            <div className="relative aspect-video bg-slate-900">
+              <img 
+                src={hero.image_url || 'https://via.placeholder.com/1280x720'} 
+                alt={hero.title} 
+                className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" 
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
+                <Badge variant="info" className="mb-3 w-fit">Order: {hero.order}</Badge>
+                <h3 className="text-2xl font-bold text-white mb-2 line-clamp-1">{hero.title}</h3>
+                <p className="text-slate-300 text-sm line-clamp-2 max-w-md">{hero.subtitle}</p>
+              </div>
+              <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                <button 
+                  onClick={() => setEditing(hero)}
+                  className="p-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-indigo-600 transition-colors"
+                  title="Edit Banner"
+                >
+                  ✏️
+                </button>
+                <button 
+                  onClick={() => handleDelete(hero.id)}
+                  className="p-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-rose-600 transition-colors"
+                  title="Hapus Banner"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {editing && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in-up">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold font-display">{editing.id ? 'Edit Banner' : 'Tambah Banner Baru'}</h2>
+              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-slate-900">✕</button>
+            </div>
+            <form onSubmit={handleSave} className="p-8 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Judul Utama</label>
+                  <Input name="title" defaultValue={editing.title} required placeholder="Contoh: Selamat Datang" />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Urutan Tampil</label>
+                  <Input type="number" name="order" defaultValue={editing.order} required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700">Subtitle / Penjelasan</label>
+                <textarea 
+                  name="subtitle" 
+                  defaultValue={editing.subtitle} 
+                  rows={2} 
+                  className="w-full border border-slate-300 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700">URL Gambar Banner</label>
+                <Input name="image_url" defaultValue={editing.image_url} required placeholder="https://..." />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Teks Tombol (Opsional)</label>
+                  <Input name="action_text" defaultValue={editing.action_text} placeholder="Contoh: Daftar Sekarang" />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">URL Tujuan Tombol</label>
+                  <Input name="action_url" defaultValue={editing.action_url} placeholder="Contoh: /daftar" />
+                </div>
+              </div>
+              <div className="pt-6 flex justify-end gap-3 border-t border-slate-50">
+                <Button variant="ghost" type="button" onClick={() => setEditing(null)}>Batal</Button>
+                <Button type="submit">Simpan Banner</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

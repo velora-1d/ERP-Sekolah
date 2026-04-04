@@ -1,7 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { SIDEBAR_PERMISSIONS, type Role } from "@/lib/rbac-permissions";
 
 const menuItems = [
@@ -55,6 +56,9 @@ const menuItems = [
     { name: "Pengumuman", short: "Pengumuman", href: "/announcements", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
     { name: "Profil Sekolah", short: "Profil", href: "/school-profile", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
   ]},
+  { group: "WEBSITE", items: [
+    { name: "Website CMS", short: "CMS", href: "/admin/cms", icon: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18" },
+  ]},
   { group: "SISTEM", items: [
     { name: "Pengaturan", short: "Setting", href: "/settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   ]},
@@ -80,8 +84,12 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
   }, []);
 
   // Close mobile sidebar on route change
+  const prevPathRef = useRef(pathname);
   useEffect(() => {
-    setMobileOpen(false);
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      setMobileOpen(false);
+    }
   }, [pathname]);
 
   const initial = (user.name || "A").charAt(0).toUpperCase();
@@ -89,10 +97,10 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className={`flex items-center flex-shrink-0 ${collapsed ? "px-3 py-5 justify-center" : "px-5 py-5"}`} style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
+      <div className={`flex items-center shrink-0 ${collapsed ? "px-3 py-5 justify-center" : "px-5 py-5"}`} style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
         {profile?.logo ? (
           <div className="shrink-0 w-10 h-10 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center p-0.5" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-            <img src={profile.logo} alt="Logo" className="w-full h-full object-contain rounded-lg" />
+            <Image src={profile.logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain rounded-lg" />
           </div>
         ) : (
           <div className="shrink-0" style={{ padding: 7, background: "linear-gradient(135deg, #f59e0b, #f97316)", borderRadius: 10, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>
@@ -145,7 +153,7 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
                         "group flex items-center rounded-xl transition-all duration-200",
                         collapsed ? "justify-center p-3 my-0.5" : "px-3 py-2.5 gap-3",
                         isActive
-                          ? "bg-gradient-to-r from-indigo-600/30 to-violet-600/20 text-white shadow-sm"
+                          ? "bg-linear-to-r from-indigo-600/30 to-violet-600/20 text-white shadow-sm"
                           : "text-indigo-200/70 hover:bg-indigo-600/15 hover:text-white",
                       ].join(" ")}
                     >
@@ -180,7 +188,7 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
 
 
       {/* User Footer */}
-      <div className={`flex-shrink-0 ${collapsed ? "p-3" : "p-4"}`} style={{ borderTop: "1px solid rgba(99,102,241,0.2)", background: "rgba(15,12,60,0.5)" }}>
+      <div className={`shrink-0 ${collapsed ? "p-3" : "p-4"}`} style={{ borderTop: "1px solid rgba(99,102,241,0.2)", background: "rgba(15,12,60,0.5)" }}>
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
           <div className="w-9 h-9 flex items-center justify-center font-bold text-sm rounded-lg shrink-0" style={{ background: "linear-gradient(135deg, #f59e0b, #f97316)", color: "#1e1b4b" }}>
             {initial}
@@ -221,7 +229,7 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
       {/* Desktop sidebar */}
       <aside
         className={[
-          "hidden md:flex flex-col h-full flex-shrink-0 relative transition-all duration-300 ease-in-out",
+          "hidden md:flex flex-col h-full shrink-0 relative transition-all duration-300 ease-in-out",
           collapsed ? "w-[72px]" : "w-[272px]",
         ].join(" ")}
         style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0c3c 100%)" }}
