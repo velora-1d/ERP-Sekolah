@@ -8,6 +8,18 @@ import Pagination from "@/components/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
+export interface ClassroomRecord {
+  id: number;
+  name: string;
+  level: number;
+  academicYearId?: number;
+  waliKelasId?: number;
+  waliKelas?: string;
+  student_count: number;
+  infaqNominal?: number;
+  infaq_nominal?: number;
+}
+
 export default function ClassroomsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -65,7 +77,7 @@ export default function ClassroomsPage() {
                   { header: "Jumlah Siswa", key: "student_count", width: 15, align: "center" },
                   { header: "Tarif Infaq", key: "infaq_nominal", width: 18, align: "right", format: (v: number) => fmtRupiah(v) },
                 ],
-                data: data.map((c: any, i: number) => ({
+                data: data.map((c: ClassroomRecord, i: number) => ({
                   ...c,
                   _no: (page - 1) * limit + i + 1,
                   wali_kelas: c.waliKelas || 'Belum ada',
@@ -152,7 +164,7 @@ export default function ClassroomsPage() {
       <Card noPadding>
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500"></div>
+            <div className="w-2 h-2 rounded-full bg-linear-to-tr from-amber-500 to-orange-500"></div>
             <h4 className="font-bold text-slate-800 text-sm">Daftar Ruang Kelas</h4>
           </div>
           <div className="relative">
@@ -172,7 +184,7 @@ export default function ClassroomsPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left bg-white whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-100">
-              <tr className="bg-gradient-to-b from-slate-50 to-slate-100/50">
+              <tr className="bg-linear-to-b from-slate-50 to-slate-100/50">
                 <th className="py-3 px-6 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200 w-[50px]">No</th>
                 <th className="py-3 px-6 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Tingkat</th>
                 <th className="py-3 px-6 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b-[1.5px] border-slate-200">Nama Kelas</th>
@@ -201,12 +213,12 @@ export default function ClassroomsPage() {
                   </div>
                 </td></tr>
               ) : (
-                data.map((c: any, i: number) => (
+                data.map((c: ClassroomRecord, i: number) => (
                   <tr key={c.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
                     <td className="py-4 px-6 text-center text-xs text-slate-500 font-medium">{(page - 1) * limit + i + 1}</td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-gradient-to-tr from-amber-50 to-orange-50 border border-amber-100/50 rounded-lg flex items-center justify-center font-bold text-sm text-amber-600 shadow-sm">{c.level || "-"}</div>
+                        <div className="w-9 h-9 bg-linear-to-tr from-amber-50 to-orange-50 border border-amber-100/50 rounded-lg flex items-center justify-center font-bold text-sm text-amber-600 shadow-sm">{c.level || "-"}</div>
                         <span className="font-semibold text-slate-700 text-sm">Tingkat {c.level || "-"}</span>
                       </div>
                     </td>
@@ -229,7 +241,7 @@ export default function ClassroomsPage() {
                       <button 
                         onClick={(ev) => { 
                           ev.stopPropagation(); 
-                          (ev.nativeEvent as any).stopImmediatePropagation();
+                          (ev.nativeEvent as Event).stopImmediatePropagation();
                           setOpenActionId(openActionId === c.id ? null : c.id); 
                         }}
                         className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-all active:scale-95"
@@ -256,6 +268,17 @@ export default function ClassroomsPage() {
                                   <label style="font-size: 14px; font-weight: 600;">Nama Kelas</label>
                                   <input id="swal-input1" class="swal2-input" value="${c.name || ''}" style="margin-top: 5px;">
                                 </div>
+                                <div style="text-align: left; margin-bottom: 10px;">
+                                  <label style="font-size: 14px; font-weight: 600;">Tingkat</label>
+                                  <select id="swal-input-level" class="swal2-input" style="margin-top: 5px; width: 100%;">
+                                    <option value="1" ${c.level === 1 ? 'selected' : ''}>Tingkat 1</option>
+                                    <option value="2" ${c.level === 2 ? 'selected' : ''}>Tingkat 2</option>
+                                    <option value="3" ${c.level === 3 ? 'selected' : ''}>Tingkat 3</option>
+                                    <option value="4" ${c.level === 4 ? 'selected' : ''}>Tingkat 4</option>
+                                    <option value="5" ${c.level === 5 ? 'selected' : ''}>Tingkat 5</option>
+                                    <option value="6" ${c.level === 6 ? 'selected' : ''}>Tingkat 6</option>
+                                  </select>
+                                </div>
                                 <div style="text-align: left;">
                                   <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
                                   <input id="swal-input2" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
@@ -267,9 +290,11 @@ export default function ClassroomsPage() {
                               cancelButtonText: "Batal",
                               preConfirm: () => {
                                 const input1 = document.getElementById('swal-input1') as HTMLInputElement;
+                                const inputLevel = document.getElementById('swal-input-level') as HTMLSelectElement;
                                 const input2 = document.getElementById('swal-input2') as HTMLInputElement;
                                 return {
                                   newName: input1 ? input1.value : '',
+                                  newLevel: inputLevel ? inputLevel.value : '1',
                                   newInfaq: input2 ? input2.value : '0'
                                 }
                               }
@@ -277,7 +302,7 @@ export default function ClassroomsPage() {
 
                             if (!result.isConfirmed) return;
                             
-                            const { newName, newInfaq } = result.value || {};
+                            const { newName, newLevel, newInfaq } = result.value || {};
                             if (!newName) {
                               Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
                               return;
@@ -286,7 +311,7 @@ export default function ClassroomsPage() {
                             try {
                               const res = await fetch(`/api/classrooms/${c.id}`, {
                                 method: "PUT", headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ name: newName, infaqNominal: Number(newInfaq) }),
+                                body: JSON.stringify({ name: newName, level: Number(newLevel), infaqNominal: Number(newInfaq) }),
                               });
                               const json = await res.json();
                               if (json.success) { 

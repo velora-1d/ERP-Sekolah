@@ -34,6 +34,7 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
+    if (body.level !== undefined) updateData.level = Number(body.level);
     if (body.academicYearId !== undefined) updateData.academicYearId = body.academicYearId ? Number(body.academicYearId) : null;
     if (body.waliKelasId !== undefined) updateData.waliKelasId = body.waliKelasId ? Number(body.waliKelasId) : null;
     if (body.infaqNominal !== undefined) updateData.infaqNominal = Number(body.infaqNominal);

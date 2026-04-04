@@ -674,6 +674,7 @@ export const classTeacherNotes = pgTable("class_teacher_notes", {
 export const classrooms = pgTable("classrooms", {
 	id: serial().primaryKey().notNull(),
 	name: text().notNull(),
+	level: integer("level").default(1).notNull(),
 	academicYearId: integer("academic_year_id"),
 	waliKelasId: integer("wali_kelas_id"),
 	infaqNominal: doublePrecision("infaq_nominal").default(0).notNull(),

@@ -6,7 +6,6 @@ import {
   doublePrecision,
   integer,
   timestamp,
-  unique,
   index,
   uniqueIndex,
   jsonb,
@@ -43,6 +42,7 @@ export const academicYears = pgTable('academic_years', {
 export const classrooms = pgTable('classrooms', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
+  level: integer('level').notNull().default(1),
   academicYearId: integer('academic_year_id'),
   waliKelasId: integer('wali_kelas_id'),
   infaqNominal: doublePrecision('infaq_nominal').notNull().default(0),

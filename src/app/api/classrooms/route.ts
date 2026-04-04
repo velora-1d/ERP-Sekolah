@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     const [classroomsData, [{ count }]] = await Promise.all([
       db.select({
         id: classrooms.id,
+        level: classrooms.level,
         name: classrooms.name,
         academicYearId: classrooms.academicYearId,
         academicYear: academicYears.year,
@@ -39,7 +40,16 @@ export async function GET(req: NextRequest) {
         isNull(students.deletedAt)
       ))
       .where(whereClause)
-      .groupBy(classrooms.id, academicYears.year, employees.name)
+      .groupBy(
+        classrooms.id,
+        classrooms.level,
+        classrooms.name,
+        classrooms.academicYearId,
+        classrooms.waliKelasId,
+        classrooms.infaqNominal,
+        academicYears.year, 
+        employees.name
+      )
       .orderBy(asc(classrooms.name))
       .limit(limit)
       .offset(skip),
@@ -51,6 +61,7 @@ export async function GET(req: NextRequest) {
 
     const classroomsWithCount = classroomsData.map((cls) => ({
       id: cls.id,
+      level: cls.level,
       name: cls.name,
       academicYearId: cls.academicYearId,
       academicYear: cls.academicYear || "-",
@@ -72,6 +83,7 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
   } catch (error) {
+    console.error("GET classrooms error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
@@ -86,6 +98,7 @@ export async function POST(req: NextRequest) {
 
     const [newClassroom] = await db.insert(classrooms).values({
       name: body.name,
+      level: body.level ? Number(body.level) : 1,
       academicYearId: body.academicYearId ? Number(body.academicYearId) : null,
       waliKelasId: body.waliKelasId ? Number(body.waliKelasId) : null,
       infaqNominal: body.infaqNominal ? Number(body.infaqNominal) : 0,
