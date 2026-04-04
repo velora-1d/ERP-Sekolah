@@ -1,24 +1,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPosts, savePost, deletePost } from '@/app/actions/cms-actions';
+import { getPosts, savePost, deletePost, type PostData } from '@/app/actions/cms-actions';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
+import ImageUpload from '@/components/ui/ImageUpload';
+
+interface Post {
+  id?: number;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content: string;
+  thumbnailUrl?: string; 
+  thumbnail_url?: string; // Fallback for form data
+  category?: string;
+  status?: string;
+  publishedAt?: Date | string;
+}
 
 export default function PostsCMS() {
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
-
-  const fetchPosts = async () => {
-    setLoading(true);
-    const data = await getPosts();
-    setPosts(data as any[]);
-    setLoading(false);
-  };
+  const [editing, setEditing] = useState<Post | null>(null);
 
   useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const data = await getPosts();
+        setPosts(data as Post[]);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchPosts();
   }, []);
 
@@ -27,15 +42,34 @@ export default function PostsCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await savePost({ id: editing?.id, ...data } as any);
+    // Align with PostData interface
+    const payload: PostData = {
+      title: data.title as string,
+      slug: data.slug as string,
+      excerpt: data.excerpt as string,
+      content: data.content as string,
+      thumbnailUrl: (data.thumbnail_url || data.thumbnailUrl) as string,
+      category: data.category as string,
+      status: data.status as string,
+      id: editing?.id,
+    };
+
+    // Correctly handle Date for publishedAt if present
+    if (data.publishedAt) {
+      payload.publishedAt = new Date(data.publishedAt as string);
+    }
+
+    await savePost(payload);
     setEditing(null);
-    fetchPosts();
+    const updated = await getPosts();
+    setPosts(updated as Post[]);
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Hapus berita ini?')) {
       await deletePost(id);
-      fetchPosts();
+      const updated = await getPosts();
+      setPosts(updated as Post[]);
     }
   };
 
@@ -77,7 +111,7 @@ export default function PostsCMS() {
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
                   <button onClick={() => setEditing(post)} className="text-indigo-600 hover:text-indigo-900 font-bold">Edit</button>
-                  <button onClick={() => handleDelete(post.id)} className="text-rose-600 hover:text-rose-900 font-bold">Hapus</button>
+                  <button onClick={() => handleDelete(post.id!)} className="text-rose-600 hover:text-rose-900 font-bold">Hapus</button>
                 </td>
               </tr>
             ))}
@@ -121,8 +155,8 @@ export default function PostsCMS() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Thumbnail URL</label>
-                  <Input name="thumbnail_url" defaultValue={editing.thumbnail_url} placeholder="https://..." />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Thumbnail Gambar</label>
+                  <ImageUpload name="thumbnail_url" defaultValue={editing.thumbnail_url} />
                 </div>
               </div>
               <div>

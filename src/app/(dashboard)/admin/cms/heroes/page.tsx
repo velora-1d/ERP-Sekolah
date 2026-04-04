@@ -4,22 +4,42 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
+import ImageUpload from '@/components/ui/ImageUpload';
 import { getHeroes, saveHero, deleteHero } from '@/app/actions/cms-actions';
 
-export default function HeroesCMS() {
-  const [heroes, setHeroes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
+import Image from 'next/image';
 
-  const fetchHeroes = async () => {
-    setLoading(true);
-    const data = await getHeroes();
-    setHeroes(data as any[]);
-    setLoading(false);
-  };
+interface Hero {
+  id?: number;
+  title: string;
+  subtitle?: string;
+  mediaType?: string;
+  mediaUrl: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  order?: number;
+  status?: string;
+  // Fallback for current mismatched usage in page if needed
+  image_url?: string;
+  action_text?: string;
+  action_url?: string;
+}
+
+export default function HeroesCMS() {
+  const [heroes, setHeroes] = useState<Hero[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Hero | null>(null);
 
   useEffect(() => {
-    fetchHeroes();
+    const fetchHeroesSorted = async () => {
+      try {
+        const data = await getHeroes();
+        setHeroes(data as Hero[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHeroesSorted();
   }, []);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -27,15 +47,28 @@ export default function HeroesCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await saveHero({ id: editing?.id, ...data } as any);
+    // Align with HeroData interface (mediaUrl vs image_url)
+    const payload: Hero = { 
+      id: editing?.id, 
+      title: data.title as string,
+      subtitle: data.subtitle as string,
+      mediaUrl: (data.image_url || data.mediaUrl) as string,
+      ctaText: (data.action_text || data.ctaText) as string,
+      ctaUrl: (data.action_url || data.ctaUrl) as string,
+      order: Number(data.order)
+    };
+
+    await saveHero(payload);
     setEditing(null);
-    fetchHeroes();
+    const updated = await getHeroes();
+    setHeroes(updated as Hero[]);
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Hapus slide hero ini?')) {
       await deleteHero(id);
-      fetchHeroes();
+      const updated = await getHeroes();
+      setHeroes(updated as Hero[]);
     }
   };
 
@@ -46,7 +79,7 @@ export default function HeroesCMS() {
           <h1 className="text-2xl font-bold text-slate-900">Modul Banner Hero</h1>
           <p className="text-slate-500">Kelola gambar banner utama di halaman beranda profil.</p>
         </div>
-        <Button onClick={() => setEditing({ title: '', subtitle: '', image_url: '', action_text: '', action_url: '', order: 0 })}>
+        <Button onClick={() => setEditing({ title: '', subtitle: '', mediaUrl: '', ctaText: '', ctaUrl: '', order: 0 })}>
           + Tambah Banner
         </Button>
       </div>
@@ -59,10 +92,11 @@ export default function HeroesCMS() {
         ) : heroes.map((hero) => (
           <div key={hero.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
             <div className="relative aspect-video bg-slate-900">
-              <img 
-                src={hero.image_url || 'https://via.placeholder.com/1280x720'} 
+              <Image 
+                src={(hero.mediaUrl || hero.image_url) || 'https://via.placeholder.com/1280x720'} 
                 alt={hero.title} 
-                className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" 
+                fill
+                className="object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" 
               />
               <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
                 <Badge variant="info" className="mb-3 w-fit">Order: {hero.order}</Badge>
@@ -78,7 +112,7 @@ export default function HeroesCMS() {
                   ✏️
                 </button>
                 <button 
-                  onClick={() => handleDelete(hero.id)}
+                  onClick={() => handleDelete(hero.id!)}
                   className="p-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-rose-600 transition-colors"
                   title="Hapus Banner"
                 >
@@ -118,8 +152,8 @@ export default function HeroesCMS() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-700">URL Gambar Banner</label>
-                <Input name="image_url" defaultValue={editing.image_url} required placeholder="https://..." />
+                <label className="block text-sm font-bold text-slate-700">Gambar Banner</label>
+                <ImageUpload name="image_url" defaultValue={editing.image_url} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">

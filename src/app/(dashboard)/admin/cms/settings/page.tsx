@@ -10,16 +10,17 @@ export default function SettingsCMS() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const fetchSettings = async () => {
-    setLoading(true);
-    const res = await fetch('/api/web/settings');
-    const data = await res.json();
-    setSettings(data.data || {});
-    setLoading(false);
-  };
-
   useEffect(() => {
-    fetchSettings();
+    const fetchSettingsData = async () => {
+      try {
+        const res = await fetch('/api/web/settings');
+        const data = await res.json();
+        setSettings(data.data || {});
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettingsData();
   }, []);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -31,7 +32,11 @@ export default function SettingsCMS() {
     await saveSettings(data);
     setSaving(false);
     alert('Pengaturan website berhasil disimpan!');
-    fetchSettings();
+    
+    // Refresh settings
+    const res = await fetch('/api/web/settings');
+    const updatedData = await res.json();
+    setSettings(updatedData.data || {});
   }
 
   const sections = [

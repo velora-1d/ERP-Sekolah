@@ -27,6 +27,15 @@ export default function ClassroomsPage() {
   const [limit] = useState(10);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({ name: '', level: '1', infaqNominal: '0', academicYearId: '', waliKelasId: '' });
+
+  const { data: rawAcademicYears, isLoading: loadingAY } = useQuery({ queryKey: ['academic-years-all'], queryFn: async () => (await fetch('/api/academic-years?limit=100')).json() });
+  const academicYears = rawAcademicYears?.data || [];
+
+  const { data: rawTeachers, isLoading: loadingTeachers } = useQuery({ queryKey: ['teachers-all'], queryFn: async () => (await fetch('/api/teachers?limit=100')).json() });
+  const teachers = rawTeachers?.data || [];
+
   const { data: result, isLoading } = useQuery({
     queryKey: ["classrooms", page, search],
     queryFn: async () => {
@@ -87,69 +96,7 @@ export default function ClassroomsPage() {
               }} />
             )}
             <button 
-              onClick={async () => {
-                const result = await Swal.fire({
-                  title: "Tambah Kelas Baru",
-                  html: `
-                    <div style="text-align: left; margin-bottom: 10px;">
-                      <label style="font-size: 14px; font-weight: 600;">Nama Kelas</label>
-                      <input id="swal-input1" class="swal2-input" placeholder="Contoh: 1-A" style="margin-top: 5px;">
-                    </div>
-                    <div style="text-align: left; margin-bottom: 10px;">
-                      <label style="font-size: 14px; font-weight: 600;">Tingkat</label>
-                      <select id="swal-input2" class="swal2-input" style="margin-top: 5px; width: 100%;">
-                        <option value="1">Tingkat 1</option>
-                        <option value="2">Tingkat 2</option>
-                        <option value="3">Tingkat 3</option>
-                        <option value="4">Tingkat 4</option>
-                        <option value="5">Tingkat 5</option>
-                        <option value="6">Tingkat 6</option>
-                      </select>
-                    </div>
-                    <div style="text-align: left;">
-                      <label style="font-size: 14px; font-weight: 600;">Tarif Infaq (Rp)</label>
-                      <input id="swal-input3" type="number" class="swal2-input" placeholder="0" style="margin-top: 5px;">
-                    </div>
-                  `,
-                  focusConfirm: false,
-                  showCancelButton: true,
-                  confirmButtonText: "Simpan",
-                  cancelButtonText: "Batal",
-                  preConfirm: () => {
-                    const input1 = document.getElementById('swal-input1') as HTMLInputElement;
-                    const input2 = document.getElementById('swal-input2') as HTMLSelectElement;
-                    const input3 = document.getElementById('swal-input3') as HTMLInputElement;
-                    return {
-                      name: input1 ? input1.value : '',
-                      level: input2 ? input2.value : '1',
-                      infaq: input3 ? input3.value : '0'
-                    }
-                  }
-                });
-
-                if (!result.isConfirmed) return;
-                const { name, level, infaq } = result.value || {};
-                if (!name) {
-                  Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
-                  return;
-                }
-
-                try {
-                  const res = await fetch("/api/classrooms", {
-                    method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name, level: Number(level), infaqNominal: Number(infaq) }),
-                  });
-                  const json = await res.json();
-                  if (json.success) { 
-                    Swal.fire("Berhasil", "Kelas berhasil ditambahkan", "success"); 
-                    refreshData(); 
-                  } else {
-                    Swal.fire("Gagal", json.message, "error");
-                  }
-                } catch { 
-                  Swal.fire("Error", "Gagal menghubungi server", "error"); 
-                }
-              }}
+              onClick={() => setShowAddModal(true)}
               className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-indigo-950 rounded-lg text-xs font-bold border border-amber-400 shadow-lg shadow-amber-900/20 transition-all uppercase tracking-wider"
             >
               <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -375,6 +322,91 @@ export default function ClassroomsPage() {
           </div>
         )}
       </Card>
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">Tambah Kelas Baru</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!formData.name) return Swal.fire("Error", "Nama kelas wajib diisi", "error");
+              
+              try {
+                const res = await fetch("/api/classrooms", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ 
+                    name: formData.name, 
+                    level: Number(formData.level), 
+                    infaqNominal: Number(formData.infaqNominal),
+                    academicYearId: formData.academicYearId || null,
+                    waliKelasId: formData.waliKelasId || null
+                  }),
+                });
+                const json = await res.json();
+                if (json.success) {
+                  setShowAddModal(false);
+                  setFormData({ name: '', level: '1', infaqNominal: '0', academicYearId: '', waliKelasId: '' });
+                  Swal.fire("Berhasil", "Kelas berhasil ditambahkan", "success");
+                  refreshData();
+                } else {
+                  Swal.fire("Gagal", json.message, "error");
+                }
+              } catch {
+                Swal.fire("Error", "Gagal menghubungi server", "error");
+              }
+            }} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Kelas <span className="text-rose-500">*</span></label>
+                <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Contoh: 1-A" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tingkat</label>
+                  <select value={formData.level} onChange={e => setFormData({ ...formData, level: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                    <option value="1">Tingkat 1</option>
+                    <option value="2">Tingkat 2</option>
+                    <option value="3">Tingkat 3</option>
+                    <option value="4">Tingkat 4</option>
+                    <option value="5">Tingkat 5</option>
+                    <option value="6">Tingkat 6</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tarif Infaq (Rp)</label>
+                  <input type="number" value={formData.infaqNominal} onChange={e => setFormData({ ...formData, infaqNominal: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tahun Ajaran</label>
+                <select value={formData.academicYearId} onChange={e => setFormData({ ...formData, academicYearId: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                  <option value="">-- Tidak Ada --</option>
+                  {!loadingAY && academicYears.map((ay: { id: number, year: string, semester: string, isActive: boolean }) => (
+                    <option key={ay.id} value={ay.id}>{ay.year} - {ay.semester === 'ganjil' ? 'Ganjil' : 'Genap'} {ay.isActive ? '(Aktif)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Wali Kelas</label>
+                <select value={formData.waliKelasId} onChange={e => setFormData({ ...formData, waliKelasId: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                  <option value="">-- Belum Ada --</option>
+                  {!loadingTeachers && teachers.map((t: { id: number, name: string }) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 -mx-6 -mb-6 mt-6 bg-slate-50">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">Batal</button>
+                <button type="submit" className="px-4 py-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-indigo-950 rounded-lg shadow-sm transition-colors">Simpan Kelas</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

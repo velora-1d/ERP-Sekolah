@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -9,6 +9,15 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+interface Teacher {
+  id: number;
+  name: string;
+  nip?: string;
+  position?: string;
+  phone?: string;
+  status: 'aktif' | 'nonaktif';
+}
+
 export default function TeachersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -17,7 +26,6 @@ export default function TeachersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Row Action Dropdown state
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
   const { data: result, isLoading } = useQuery({
@@ -29,7 +37,7 @@ export default function TeachersPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const data: any[] = result?.data || [];
+  const data: Teacher[] = (result?.data as Teacher[]) || [];
 
   const refreshTeachers = () => queryClient.invalidateQueries({ queryKey: ["teachers"] });
 
@@ -45,13 +53,11 @@ export default function TeachersPage() {
   const totalPages = Math.ceil(filteredData.length / limit) || 1;
   const paginatedData = filteredData.slice((page - 1) * limit, page * limit);
 
-
-
-  const handleEdit = (t: any) => {
+  const handleEdit = (t: Teacher) => {
     router.push(`/teachers/${t.id}/edit`);
   };
 
-  const handleDelete = (t: any) => {
+  const handleDelete = (t: Teacher) => {
     Swal.fire({
       title: "Hapus Data Guru?",
       html: `<p style="font-size:0.875rem;color:#475569;">Data <strong>"${t.name}"</strong> akan dihapus.</p>`,
@@ -137,7 +143,7 @@ export default function TeachersPage() {
       <Card
         title="Daftar Guru"
         icon={
-          <div className="w-2 h-2 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500" />
+          <div className="w-2 h-2 rounded-full bg-linear-to-tr from-indigo-500 to-violet-500" />
         }
         actions={
           <div className="flex gap-2 items-center flex-wrap">
@@ -174,7 +180,7 @@ export default function TeachersPage() {
                 { header: "No. Telepon", key: "phone", width: 18 },
                 { header: "Status", key: "status", width: 12, align: "center", format: (v: string) => v === 'aktif' ? 'Aktif' : 'Non-Aktif' },
               ],
-              data: filteredData.map((t: any, i: number) => ({
+              data: filteredData.map((t, i) => ({
                 ...t,
                 _no: i + 1,
                 nip: t.nip || '-',
@@ -241,7 +247,6 @@ export default function TeachersPage() {
                         <button 
                           onClick={(ev) => { 
                             ev.stopPropagation(); 
-                            (ev.nativeEvent as any).stopImmediatePropagation();
                             setOpenActionId(openActionId === t.id ? null : t.id); 
                           }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}

@@ -4,22 +4,37 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
+import ImageUpload from '@/components/ui/ImageUpload';
 import { getFacilities, saveFacility, deleteFacility } from '@/app/actions/cms-actions';
 
-export default function FacilitiesCMS() {
-  const [facilities, setFacilities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
+import Image from 'next/image';
 
-  const fetchFacilities = async () => {
-    setLoading(true);
-    const data = await getFacilities();
-    setFacilities(data as any[]);
-    setLoading(false);
-  };
+interface Facility {
+  id?: number;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  image_url?: string; // Fallback for form data
+  iconSvg?: string;
+  order?: number;
+  status?: string;
+}
+
+export default function FacilitiesCMS() {
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Facility | null>(null);
 
   useEffect(() => {
-    fetchFacilities();
+    const fetchFacilitiesData = async () => {
+      try {
+        const data = await getFacilities();
+        setFacilities(data as Facility[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFacilitiesData();
   }, []);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -27,15 +42,28 @@ export default function FacilitiesCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await saveFacility({ id: editing?.id, ...data } as any);
+    // Align with FacilityData interface
+    const payload: Facility = {
+      name: data.name as string,
+      description: data.description as string,
+      imageUrl: (data.image_url || data.imageUrl) as string,
+      iconSvg: (data.iconSvg || data.icon) as string,
+      order: Number(data.order),
+      status: data.status as string,
+      id: editing?.id,
+    };
+
+    await saveFacility(payload);
     setEditing(null);
-    fetchFacilities();
+    const updated = await getFacilities();
+    setFacilities(updated as Facility[]);
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Hapus fasilitas ini?')) {
       await deleteFacility(id);
-      fetchFacilities();
+      const updated = await getFacilities();
+      setFacilities(updated as Facility[]);
     }
   };
 
@@ -46,7 +74,7 @@ export default function FacilitiesCMS() {
           <h1 className="text-2xl font-bold text-slate-900">Modul Fasilitas Sekolah</h1>
           <p className="text-slate-500">Kelola daftar fasilitas yang dimiliki sekolah.</p>
         </div>
-        <Button onClick={() => setEditing({ name: '', description: '', icon: '', status: 'aktif', order: 0 })}>
+        <Button onClick={() => setEditing({ name: '', description: '', iconSvg: '', status: 'aktif', order: 0 })}>
           + Tambah Fasilitas
         </Button>
       </div>
@@ -59,7 +87,12 @@ export default function FacilitiesCMS() {
         ) : facilities.map((fac) => (
           <div key={fac.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300">
             <div className="h-48 bg-slate-100 overflow-hidden relative">
-              <img src={fac.image_url || 'https://via.placeholder.com/600x400'} alt={fac.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <Image 
+                src={(fac.imageUrl || fac.image_url) || 'https://via.placeholder.com/600x400'} 
+                alt={fac.name} 
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-500" 
+              />
               <div className="absolute top-4 left-4">
                 <Badge variant={fac.status === 'aktif' ? 'success' : 'neutral'}>{fac.status}</Badge>
               </div>
@@ -78,7 +111,7 @@ export default function FacilitiesCMS() {
                   Edit
                 </button>
                 <button 
-                  onClick={() => handleDelete(fac.id)}
+                  onClick={() => handleDelete(fac.id!)}
                   className="px-4 py-2 bg-slate-50 text-rose-600 font-bold rounded-xl hover:bg-rose-600 hover:text-white transition-colors"
                 >
                   🗑️
@@ -115,8 +148,8 @@ export default function FacilitiesCMS() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Link Gambar</label>
-                <Input name="image_url" defaultValue={editing.image_url} placeholder="https://..." />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Gambar Fasilitas</label>
+                <ImageUpload name="image_url" defaultValue={editing.image_url} />
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Deskripsi</label>

@@ -9,7 +9,7 @@ import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // --- TYPES ---
-interface PostData {
+export interface PostData {
   id?: number;
   title: string;
   slug: string;
@@ -24,7 +24,7 @@ interface PostData {
   unitId?: string;
 }
 
-interface TeacherData {
+export interface TeacherData {
   id?: number;
   name: string;
   position?: string;
@@ -35,7 +35,7 @@ interface TeacherData {
   unitId?: string;
 }
 
-interface FacilityData {
+export interface FacilityData {
   id?: number;
   name: string;
   description?: string;
@@ -45,7 +45,7 @@ interface FacilityData {
   unitId?: string;
 }
 
-interface AchievementData {
+export interface AchievementData {
   id?: number;
   title: string;
   studentName?: string;
@@ -56,7 +56,7 @@ interface AchievementData {
   unitId?: string;
 }
 
-interface HeroData {
+export interface HeroData {
   id?: number;
   title: string;
   subtitle?: string;

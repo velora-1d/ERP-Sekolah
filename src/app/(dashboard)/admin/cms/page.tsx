@@ -3,7 +3,7 @@ import {
   webPosts, webTeachers, webFacilities, 
   webAchievements, webHeroes 
 } from "@/db/schema";
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import Link from "next/link";
 
 async function getCMSStats() {

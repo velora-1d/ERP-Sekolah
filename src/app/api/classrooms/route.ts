@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
     const [newClassroom] = await db.insert(classrooms).values({
       name: body.name,
       level: body.level ? Number(body.level) : 1,
-      academicYearId: body.academicYearId ? Number(body.academicYearId) : null,
-      waliKelasId: body.waliKelasId ? Number(body.waliKelasId) : null,
-      infaqNominal: body.infaqNominal ? Number(body.infaqNominal) : 0,
+      academicYearId: (body.academicYearId && body.academicYearId !== "null") ? Number(body.academicYearId) : null,
+      waliKelasId: (body.waliKelasId && body.waliKelasId !== "null") ? Number(body.waliKelasId) : null,
+      infaqNominal: (body.infaqNominal && body.infaqNominal !== "null") ? Number(body.infaqNominal) : 0,
     }).returning();
 
     return NextResponse.json({ success: true, message: "Kelas berhasil ditambahkan", data: newClassroom });

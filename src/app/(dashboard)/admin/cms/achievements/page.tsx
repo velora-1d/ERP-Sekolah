@@ -6,19 +6,35 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import { getAchievements, saveAchievement, deleteAchievement } from '@/app/actions/cms-actions';
 
-export default function AchievementsCMS() {
-  const [achievements, setAchievements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
+interface Achievement {
+  id?: number;
+  title: string;
+  description?: string;
+  year: number;
+  category?: string;
+  status?: string;
+  order?: number;
+  studentName?: string;
+  competitionName?: string;
+  level?: string;
+  imageUrl?: string;
+}
 
-  const fetchAchievements = async () => {
-    setLoading(true);
-    const data = await getAchievements();
-    setAchievements(data as any[]);
-    setLoading(false);
-  };
+export default function AchievementsCMS() {
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Achievement | null>(null);
 
   useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        const data = await getAchievements();
+        setAchievements(data as Achievement[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchAchievements();
   }, []);
 
@@ -27,15 +43,17 @@ export default function AchievementsCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await saveAchievement({ id: editing?.id, ...data } as any);
+    await saveAchievement({ id: editing?.id, ...data } as Achievement);
     setEditing(null);
-    fetchAchievements();
+    const updated = await getAchievements();
+    setAchievements(updated as Achievement[]);
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Hapus prestasi ini?')) {
       await deleteAchievement(id);
-      fetchAchievements();
+      const updated = await getAchievements();
+      setAchievements(updated as Achievement[]);
     }
   };
 
@@ -75,7 +93,7 @@ export default function AchievementsCMS() {
                 Edit
               </button>
               <button 
-                onClick={() => handleDelete(ach.id)}
+                onClick={() => handleDelete(ach.id!)}
                 className="px-3 py-2 bg-slate-50 text-rose-600 font-bold rounded-xl hover:bg-rose-600 hover:text-white transition-colors text-sm"
               >
                 🗑️

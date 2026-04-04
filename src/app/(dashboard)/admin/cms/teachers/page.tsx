@@ -4,22 +4,37 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
-import { getTeachers, saveTeacher, deleteTeacher } from '@/app/actions/cms-actions';
+import ImageUpload from '@/components/ui/ImageUpload';
+import { getTeachers, saveTeacher, deleteTeacher, type TeacherData } from '@/app/actions/cms-actions';
+
+import Image from 'next/image';
+
+interface Teacher {
+  id?: number;
+  name: string;
+  position?: string;
+  bio?: string;
+  photoUrl?: string;
+  photo_url?: string; // Fallback for form data
+  order?: number;
+  status?: string;
+}
 
 export default function TeachersCMS() {
-  const [teachers, setTeachers] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
-
-  const fetchTeachers = async () => {
-    setLoading(true);
-    const data = await getTeachers();
-    setTeachers(data as any[]);
-    setLoading(false);
-  };
+  const [editing, setEditing] = useState<Teacher | null>(null);
 
   useEffect(() => {
-    fetchTeachers();
+    const fetchTeachersData = async () => {
+      try {
+        const data = await getTeachers();
+        setTeachers(data as Teacher[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTeachersData();
   }, []);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -27,15 +42,28 @@ export default function TeachersCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    await saveTeacher({ id: editing?.id, ...data } as any);
+    // Align with TeacherData interface
+    const payload: TeacherData = {
+      name: data.name as string,
+      position: data.position as string,
+      bio: (data.bio || data.description) as string,
+      photoUrl: (data.photo_url || data.photoUrl) as string,
+      order: Number(data.order),
+      status: data.status as string,
+      id: editing?.id,
+    };
+
+    await saveTeacher(payload);
     setEditing(null);
-    fetchTeachers();
+    const updated = await getTeachers();
+    setTeachers(updated as Teacher[]);
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Hapus data guru ini?')) {
       await deleteTeacher(id);
-      fetchTeachers();
+      const updated = await getTeachers();
+      setTeachers(updated as Teacher[]);
     }
   };
 
@@ -59,7 +87,12 @@ export default function TeachersCMS() {
         ) : teachers.map((teacher) => (
           <div key={teacher.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300">
             <div className="aspect-square bg-slate-100 overflow-hidden relative">
-              <img src={teacher.photo_url || 'https://via.placeholder.com/400'} alt={teacher.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <Image 
+                src={(teacher.photoUrl || teacher.photo_url) || 'https://via.placeholder.com/400'} 
+                alt={teacher.name} 
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-500" 
+              />
               <div className="absolute top-4 right-4 flex gap-2">
                 <Badge variant={teacher.status === 'aktif' ? 'success' : 'neutral'}>{teacher.status}</Badge>
               </div>
@@ -75,7 +108,7 @@ export default function TeachersCMS() {
                   Edit
                 </button>
                 <button 
-                  onClick={() => handleDelete(teacher.id)}
+                  onClick={() => handleDelete(teacher.id!)}
                   className="px-3 py-2 bg-slate-50 text-rose-600 font-bold rounded-xl hover:bg-rose-600 hover:text-white transition-colors text-sm"
                 >
                   🗑️
@@ -116,8 +149,8 @@ export default function TeachersCMS() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Link Foto (Opsional)</label>
-                <Input name="photo_url" defaultValue={editing.photo_url} placeholder="https://..." />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Foto Guru (Opsional)</label>
+                <ImageUpload name="photo_url" defaultValue={editing.photo_url} />
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Bio Singkat</label>
