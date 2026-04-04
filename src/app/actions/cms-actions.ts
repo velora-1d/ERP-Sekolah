@@ -3,12 +3,35 @@
 import { db } from "@/db";
 import { 
   webPosts, webTeachers, webFacilities, 
-  webAchievements, webSettings, webHeroes 
+  webAchievements, webSettings, webHeroes,
+  webPrograms, webStats
 } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // --- TYPES ---
+export interface ProgramData {
+  id?: number;
+  title: string;
+  description: string;
+  iconName?: string;
+  color?: string;
+  order?: number;
+  status?: string;
+  unitId?: string;
+}
+
+export interface StatData {
+  id?: number;
+  label: string;
+  value: number;
+  suffix?: string;
+  iconName?: string;
+  color?: string;
+  order?: number;
+  status?: string;
+  unitId?: string;
+}
 export interface PostData {
   id?: number;
   title: string;
@@ -183,7 +206,6 @@ export async function deleteHero(id: number) {
   revalidatePath("/admin/cms/heroes");
 }
 
-// --- SETTINGS ---
 export async function saveSettings(settings: Record<string, string>) {
   for (const [key, value] of Object.entries(settings)) {
     await db.insert(webSettings)
@@ -192,4 +214,48 @@ export async function saveSettings(settings: Record<string, string>) {
   }
   revalidatePath("/admin/cms/settings");
   revalidatePath("/api/web/settings");
+}
+
+// --- PROGRAMS ---
+export async function getPrograms() {
+  return await db.query.webPrograms.findMany({
+    orderBy: [webPrograms.order]
+  });
+}
+
+export async function saveProgram(data: ProgramData) {
+  const { id, ...values } = data;
+  if (id) {
+    await db.update(webPrograms).set({ ...values, updatedAt: new Date() }).where(eq(webPrograms.id, Number(id)));
+  } else {
+    await db.insert(webPrograms).values(values);
+  }
+  revalidatePath("/admin/cms/programs");
+}
+
+export async function deleteProgram(id: number) {
+  await db.delete(webPrograms).where(eq(webPrograms.id, Number(id)));
+  revalidatePath("/admin/cms/programs");
+}
+
+// --- STATS ---
+export async function getStats() {
+  return await db.query.webStats.findMany({
+    orderBy: [webStats.order]
+  });
+}
+
+export async function saveStat(data: StatData) {
+  const { id, ...values } = data;
+  if (id) {
+    await db.update(webStats).set({ ...values, updatedAt: new Date() }).where(eq(webStats.id, Number(id)));
+  } else {
+    await db.insert(webStats).values(values);
+  }
+  revalidatePath("/admin/cms/stats");
+}
+
+export async function deleteStat(id: number) {
+  await db.delete(webStats).where(eq(webStats.id, Number(id)));
+  revalidatePath("/admin/cms/stats");
 }

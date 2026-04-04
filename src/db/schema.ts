@@ -928,6 +928,33 @@ export const webSettings = pgTable('web_settings', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const webPrograms = pgTable('web_programs', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  iconName: text('icon_name').notNull().default('BookOpen'),
+  color: text('color').notNull().default('from-emerald-500 to-teal-600'),
+  order: integer('order').notNull().default(0),
+  status: text('status').notNull().default('aktif'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const webStats = pgTable('web_stats', {
+  id: serial('id').primaryKey(),
+  label: text('label').notNull(),
+  value: integer('value').notNull().default(0),
+  suffix: text('suffix').notNull().default('+'),
+  iconName: text('icon_name').notNull().default('Trophy'),
+  color: text('color').notNull().default('from-amber-500 to-orange-600'),
+  order: integer('order').notNull().default(0),
+  status: text('status').notNull().default('aktif'),
+  unitId: text('unit_id').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RELATIONS
 // ═══════════════════════════════════════════════════════════════════════════

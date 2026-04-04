@@ -6,7 +6,9 @@ import {
   webFacilities, 
   webTeachers, 
   webAchievements, 
-  webSettings 
+  webSettings,
+  webPrograms,
+  webStats
 } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -81,6 +83,24 @@ export async function GET(
         orderBy: [desc(webAchievements.year)],
       });
       return NextResponse.json({ success: true, data: achievements });
+    }
+
+    // 6. PROGRAMS
+    if (resource === "programs") {
+      const programs = await db.query.webPrograms.findMany({
+        where: eq(webPrograms.status, "aktif"),
+        orderBy: [webPrograms.order],
+      });
+      return NextResponse.json({ success: true, data: programs });
+    }
+
+    // 7. STATS
+    if (resource === "stats") {
+      const stats = await db.query.webStats.findMany({
+        where: eq(webStats.status, "aktif"),
+        orderBy: [webStats.order],
+      });
+      return NextResponse.json({ success: true, data: stats });
     }
 
     // 6. SETTINGS
