@@ -210,7 +210,7 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
         <div style={{ background: "#fff", borderRadius: "1rem", border: "1px solid #e2e8f0", padding: "2rem", marginBottom: "1.5rem" }}>
           {sectionHeaderStyle("E", "Status & Administrasi Internal", "#8b5cf6")}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem" }}>
-            <Select label="Kategori Biaya" name="category" required options={[["reguler", "Reguler (Wajib Bayar)"], ["kurang_mampu", "Kurang Mampu"], ["yatim_piatu", "Yatim / Piatu"]]} formData={f} onChange={handleChange} />
+            <Select label="Kategori Biaya" name="category" required options={[["reguler", "Reguler (Wajib Bayar)"], ["kurang_mampu", "Kurang Mampu"], ["yatim_piatu", "Yatim / Piatu"], ["keluarga_guru", "Keluarga Guru"]]} formData={f} onChange={handleChange} />
             <Select label="Status Siswa" name="status" required options={[["aktif", "Aktif"], ["lulus", "Lulus"], ["pindah", "Pindah"], ["nonaktif", "Nonaktif"]]} formData={f} onChange={handleChange} />
             {f.category !== "reguler" ? (
               <Select label="Skema Infaq/SPP" name="infaqStatus" options={[["bayar_penuh", "Bayar Penuh"], ["potongan", "Potongan (Nominal Custom)"], ["gratis", "Gratis (Rp 0)"]]} formData={f} onChange={handleChange} />

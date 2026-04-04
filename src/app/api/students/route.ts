@@ -7,7 +7,7 @@ import { and, eq, ilike, or, gte, lte, isNull, asc, sql } from "drizzle-orm";
  * Mengekstrak field Dapodik dari body request.
  * Menangani field lama (place_of_birth, father_name dll) DAN field baru (birthPlace, fatherName dll).
  */
-function extractStudentData(body: any) {
+function extractStudentData(body: Record<string, any>) {
   return {
     name: body.name,
     nisn: body.nisn || "",
@@ -200,9 +200,10 @@ export async function POST(request: Request) {
     const [student] = await db.insert(students).values(data).returning();
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: student });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
     // Drizzle postgres duplicate key error is usually 23505
-    if (error.code === '23505' || error.message?.includes('duplicate key')) {
+    if (err.code === '23505' || err.message?.includes('duplicate key')) {
       return NextResponse.json({ success: false, message: "NISN sudah dipakai siswa lain" }, { status: 400 });
     }
     console.error("Error creating student:", error);
