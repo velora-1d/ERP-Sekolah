@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students, classrooms, infaqBills, studentSavings, studentEnrollments } from "@/db/schema";
+import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq, and, isNull, desc, asc, sql } from "drizzle-orm";
 
@@ -111,7 +111,47 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       }
     }
 
-    const [student] = await db.update(students).set(updateData).where(eq(students.id, parseInt(params.id))).returning();
+    const studentId = parseInt(params.id);
+    const [student] = await db.transaction(async (tx) => {
+      const [updatedStudent] = await tx.update(students).set(updateData).where(eq(students.id, studentId)).returning();
+
+      // Sinkronisasi Enrollment ke Tahun Ajaran Aktif
+      // Ini memastikan jika kelas diubah di profil, pendaftaran tahun berjalan juga terupdate
+      const activeYearRes = await tx.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      
+      if (activeYearRes.length > 0) {
+        const yearId = activeYearRes[0].id;
+        const currentClassId = updateData.classroomId !== undefined ? updateData.classroomId : updatedStudent.classroomId;
+
+        const existingEnrollment = await tx.select()
+          .from(studentEnrollments)
+          .where(and(
+            eq(studentEnrollments.studentId, studentId), 
+            eq(studentEnrollments.academicYearId, yearId),
+            isNull(studentEnrollments.deletedAt)
+          ))
+          .limit(1);
+        
+        if (existingEnrollment.length > 0) {
+          await tx.update(studentEnrollments)
+            .set({ classroomId: currentClassId, updatedAt: new Date() })
+            .where(eq(studentEnrollments.id, existingEnrollment[0].id));
+        } else {
+          // Jika belum ada pendaftaran di tahun aktif (kasus data lama/migrasi), buatkan
+          await tx.insert(studentEnrollments).values({
+            studentId,
+            classroomId: currentClassId,
+            academicYearId: yearId,
+            enrollmentType: "umum",
+          });
+        }
+      }
+
+      return [updatedStudent];
+    });
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil diupdate", data: student });
   } catch (error: unknown) {

@@ -7,62 +7,63 @@ import { and, eq, ilike, or, gte, lte, isNull, asc, sql } from "drizzle-orm";
  * Mengekstrak field Dapodik dari body request.
  * Menangani field lama (place_of_birth, father_name dll) DAN field baru (birthPlace, fatherName dll).
  */
-function extractStudentData(body: Record<string, any>) {
+function extractStudentData(body: Record<string, unknown>) {
+  const b = body as Record<string, string | number | boolean | null | undefined>;
   return {
-    name: body.name,
-    nisn: body.nisn || "",
-    nis: body.nis || "",
-    nik: body.nik || "",
-    noKk: body.noKk || body.no_kk || "",
-    gender: body.gender || "L",
-    religion: body.religion || "Islam",
-    category: body.category || "reguler",
-    status: body.status || "aktif",
-    birthPlace: body.birthPlace || body.place_of_birth || "",
-    birthDate: body.birthDate || body.date_of_birth || "",
-    address: body.address || "",
-    phone: body.phone || body.parent_phone || "",
-    classroomId: (body.classroomId || body.classroom) ? Number(body.classroomId || body.classroom) : null,
+    name: b.name as string,
+    nisn: (b.nisn || "") as string,
+    nis: (b.nis || "") as string,
+    nik: (b.nik || "") as string,
+    noKk: (b.noKk || b.no_kk || "") as string,
+    gender: (b.gender || "L") as string,
+    religion: (b.religion || "Islam") as string,
+    category: (b.category || "reguler") as string,
+    status: (b.status || "aktif") as string,
+    birthPlace: (b.birthPlace || b.place_of_birth || "") as string,
+    birthDate: (b.birthDate || b.date_of_birth || "") as string,
+    address: (b.address || "") as string,
+    phone: (b.phone || b.parent_phone || "") as string,
+    classroomId: (b.classroomId || b.classroom) ? Number(b.classroomId || b.classroom) : null,
     // A. Identitas (Dapodik)
-    familyStatus: body.familyStatus || "",
-    siblingCount: body.siblingCount ? Number(body.siblingCount) : null,
-    childPosition: body.childPosition ? Number(body.childPosition) : null,
-    village: body.village || "",
-    district: body.district || "",
-    residenceType: body.residenceType || "",
-    transportation: body.transportation || "",
-    studentPhone: body.studentPhone || "",
+    familyStatus: (b.familyStatus || "") as string,
+    siblingCount: b.siblingCount ? Number(b.siblingCount) : null,
+    childPosition: b.childPosition ? Number(b.childPosition) : null,
+    village: (b.village || "") as string,
+    district: (b.district || "") as string,
+    residenceType: (b.residenceType || "") as string,
+    transportation: (b.transportation || "") as string,
+    studentPhone: (b.studentPhone || "") as string,
     // B. Periodik
-    height: body.height ? Number(body.height) : null,
-    weight: body.weight ? Number(body.weight) : null,
-    distanceToSchool: body.distanceToSchool || "",
-    travelTime: body.travelTime ? Number(body.travelTime) : null,
+    height: b.height ? Number(b.height) : null,
+    weight: b.weight ? Number(b.weight) : null,
+    distanceToSchool: (b.distanceToSchool || "") as string,
+    travelTime: b.travelTime ? Number(b.travelTime) : null,
     // C. Orang Tua
-    fatherName: body.fatherName || body.father_name || "",
-    fatherNik: body.fatherNik || "",
-    fatherBirthPlace: body.fatherBirthPlace || "",
-    fatherBirthDate: body.fatherBirthDate || "",
-    fatherEducation: body.fatherEducation || "",
-    fatherOccupation: body.fatherOccupation || "",
-    motherName: body.motherName || body.mother_name || "",
-    motherNik: body.motherNik || "",
-    motherBirthPlace: body.motherBirthPlace || "",
-    motherBirthDate: body.motherBirthDate || "",
-    motherEducation: body.motherEducation || "",
-    motherOccupation: body.motherOccupation || "",
-    parentIncome: body.parentIncome || "",
+    fatherName: (b.fatherName || b.father_name || "") as string,
+    fatherNik: (b.fatherNik || "") as string,
+    fatherBirthPlace: (b.fatherBirthPlace || "") as string,
+    fatherBirthDate: (b.fatherBirthDate || "") as string,
+    fatherEducation: (b.fatherEducation || "") as string,
+    fatherOccupation: (b.fatherOccupation || "") as string,
+    motherName: (b.motherName || b.mother_name || "") as string,
+    motherNik: (b.motherNik || "") as string,
+    motherBirthPlace: (b.motherBirthPlace || "") as string,
+    motherBirthDate: (b.motherBirthDate || "") as string,
+    motherEducation: (b.motherEducation || "") as string,
+    motherOccupation: (b.motherOccupation || "") as string,
+    parentIncome: (b.parentIncome || "") as string,
     // D. Wali
-    guardianName: body.guardianName || "",
-    guardianNik: body.guardianNik || "",
-    guardianBirthPlace: body.guardianBirthPlace || "",
-    guardianBirthDate: body.guardianBirthDate || "",
-    guardianEducation: body.guardianEducation || "",
-    guardianOccupation: body.guardianOccupation || "",
-    guardianAddress: body.guardianAddress || "",
-    guardianPhone: body.guardianPhone || "",
+    guardianName: (b.guardianName || "") as string,
+    guardianNik: (b.guardianNik || "") as string,
+    guardianBirthPlace: (b.guardianBirthPlace || "") as string,
+    guardianBirthDate: (b.guardianBirthDate || "") as string,
+    guardianEducation: (b.guardianEducation || "") as string,
+    guardianOccupation: (b.guardianOccupation || "") as string,
+    guardianAddress: (b.guardianAddress || "") as string,
+    guardianPhone: (b.guardianPhone || "") as string,
     // E. Administrasi
-    infaqStatus: body.infaqStatus || "reguler",
-    infaqNominal: body.infaqNominal ? Number(body.infaqNominal) : 0,
+    infaqStatus: (b.infaqStatus || "reguler") as string,
+    infaqNominal: b.infaqNominal ? Number(b.infaqNominal) : 0,
   };
 }
 
@@ -197,12 +198,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Nama siswa wajib diisi" }, { status: 400 });
     }
 
-    const [student] = await db.insert(students).values(data).returning();
+    // 1. Cari tahun ajaran aktif
+    const activeYearRes = await db.select({ id: academicYears.id })
+      .from(academicYears)
+      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+      .limit(1);
+    
+    if (activeYearRes.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Tidak ada tahun ajaran aktif. Silakan aktifkan tahun ajaran di menu Pengaturan terlebih dahulu." 
+      }, { status: 400 });
+    }
+
+    const targetYearId = activeYearRes[0].id;
+
+    // 2. Gunakan transaksi untuk insert siswa dan pendaftaran otomatis
+    const student = await db.transaction(async (tx) => {
+      const [newStudent] = await tx.insert(students).values(data).returning();
+
+      await tx.insert(studentEnrollments).values({
+        studentId: newStudent.id,
+        classroomId: data.classroomId,
+        academicYearId: targetYearId,
+        enrollmentType: "baru",
+      });
+
+      return newStudent;
+    });
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: student });
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
-    // Drizzle postgres duplicate key error is usually 23505
     if (err.code === '23505' || err.message?.includes('duplicate key')) {
       return NextResponse.json({ success: false, message: "NISN sudah dipakai siswa lain" }, { status: 400 });
     }
