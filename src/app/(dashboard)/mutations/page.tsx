@@ -149,8 +149,9 @@ export default function MutationsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-2">Kelas Asal</label>
-            <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setPage(1); }} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-500 bg-white">
+            <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setPage(1); }} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-500 bg-white font-medium">
               <option value="">— Pilih Kelas —</option>
+              <option value="none" className="text-rose-600 font-bold">⚠️ Tanpa Kelas (Siswa Baru)</option>
               {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>

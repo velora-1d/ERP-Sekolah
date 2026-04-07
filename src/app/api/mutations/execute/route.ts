@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students } from "@/db/schema";
+import { students, studentEnrollments, academicYears } from "@/db/schema";
 import { inArray, eq, isNull, and } from "drizzle-orm";
 import { requireAuth, AuthError } from "@/lib/rbac";
 
@@ -23,6 +23,16 @@ export async function POST(request: Request) {
     }
 
     const result = await db.transaction(async (tx) => {
+      // 1. Cari Tahun Ajaran Aktif
+      const activeYear = await tx
+        .select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      
+      const academicYearId = activeYear[0]?.id;
+
+      // 2. Update Profil Siswa (Master)
       const updateData: any = { updatedAt: new Date() };
       if (targetClassroomId) updateData.classroomId = Number(targetClassroomId);
       if (newStatus) updateData.status = newStatus;
@@ -31,12 +41,29 @@ export async function POST(request: Request) {
         .update(students)
         .set(updateData)
         .where(
-            and(
-                inArray(students.id, studentIds.map(Number)),
-                isNull(students.deletedAt)
-            )
+          and(
+            inArray(students.id, studentIds.map(Number)),
+            isNull(students.deletedAt)
+          )
         )
         .returning();
+
+      // 3. Update Pendaftaran Siswa (Enrollment) - Penting untuk statistik & listing
+      if (academicYearId && targetClassroomId) {
+        await tx
+          .update(studentEnrollments)
+          .set({ 
+            classroomId: Number(targetClassroomId),
+            updatedAt: new Date()
+          })
+          .where(
+            and(
+              inArray(studentEnrollments.studentId, studentIds.map(Number)),
+              eq(studentEnrollments.academicYearId, academicYearId),
+              isNull(studentEnrollments.deletedAt)
+            )
+          );
+      }
 
       return { count: updated.length };
     });

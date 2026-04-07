@@ -101,7 +101,11 @@ export async function GET(request: Request) {
     }
 
     if (reqClassroomId) {
-      conditions.push(eq(studentEnrollments.classroomId, Number(reqClassroomId)));
+      if (reqClassroomId === "none") {
+        conditions.push(isNull(studentEnrollments.classroomId));
+      } else {
+        conditions.push(eq(studentEnrollments.classroomId, Number(reqClassroomId)));
+      }
     }
 
     if (search) {

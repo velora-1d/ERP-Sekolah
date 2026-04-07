@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -13,25 +13,100 @@ const sectionHeaderStyle = (letter: string, label: string, color = "#6366f1") =>
   </h3>
 );
 
-const Field = ({ label, name, type = "text", required = false, span2 = false, placeholder = "", children, formData, onChange }: any) => (
+interface StudentFormData {
+  [key: string]: string | number | boolean | null | undefined;
+  name: string;
+  nisn: string;
+  nis: string;
+  nik: string;
+  noKk: string;
+  gender: string;
+  religion: string;
+  birthPlace: string;
+  birthDate: string;
+  familyStatus: string;
+  childPosition: string;
+  siblingCount: string;
+  address: string;
+  village: string;
+  district: string;
+  residenceType: string;
+  transportation: string;
+  studentPhone: string;
+  phone: string;
+  height: string;
+  weight: string;
+  distanceToSchool: string;
+  travelTime: string;
+  fatherName: string;
+  fatherNik: string;
+  fatherBirthPlace: string;
+  fatherBirthDate: string;
+  fatherEducation: string;
+  fatherOccupation: string;
+  motherName: string;
+  motherNik: string;
+  motherBirthPlace: string;
+  motherBirthDate: string;
+  motherEducation: string;
+  motherOccupation: string;
+  parentIncome: string;
+  guardianName: string;
+  guardianNik: string;
+  guardianBirthPlace: string;
+  guardianBirthDate: string;
+  guardianEducation: string;
+  guardianOccupation: string;
+  guardianAddress: string;
+  guardianPhone: string;
+  category: string;
+  status: string;
+  classroomId: string | number;
+  infaqStatus: string;
+  infaqNominal: number;
+}
+
+interface FieldProps {
+  label: string;
+  name: string;
+  type?: string;
+  required?: boolean;
+  span2?: boolean;
+  placeholder?: string;
+  children?: React.ReactNode;
+  formData: StudentFormData;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+}
+
+const Field = ({ label, name, type = "text", required = false, span2 = false, placeholder = "", children, formData, onChange }: FieldProps) => (
   <div style={span2 ? { gridColumn: "span 2" } : {}}>
     <label style={labelStyle}>{label} {required && <span style={{ color: "#e11d48" }}>*</span>}</label>
-    {children || <input type={type} name={name} value={(formData as any)[name]} onChange={onChange} required={required} placeholder={placeholder} style={inputStyle} className="focus:border-indigo-500 transition-colors" />}
+    {children || <input type={type} name={name} value={formData[name] as string} onChange={onChange} required={required} placeholder={placeholder} style={inputStyle} className="focus:border-indigo-500 transition-colors" />}
   </div>
 );
 
-const Select = ({ label, name, required = false, options, formData, onChange }: { label: string; name: string; required?: boolean; options: [string, string][]; formData: any; onChange: any }) => (
-  <div>
+interface SelectProps {
+  label: string;
+  name: string;
+  required?: boolean;
+  options: [string, string][];
+  formData: StudentFormData;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
+const Select = ({ label, name, required = false, options, formData, onChange }: SelectProps) => (
+  <div style={{ width: "100%" }}>
     <label style={labelStyle}>{label} {required && <span style={{ color: "#e11d48" }}>*</span>}</label>
-    <select name={name} value={(formData as any)[name]} onChange={onChange} required={required} style={inputStyle} className="focus:border-indigo-500 bg-white">
+    <select name={name} value={formData[name] as string} onChange={onChange} required={required} style={inputStyle} className="focus:border-indigo-500 bg-white">
       {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
     </select>
   </div>
 );
 
-export default function StudentForm({ initialData }: { initialData?: any }) {
+export default function StudentForm({ initialData }: { initialData?: Partial<StudentFormData> & { id?: number } }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [classrooms, setClassrooms] = useState<{id: string | number, name: string}[]>([]);
   const isEdit = !!initialData;
   const d = initialData || {};
 
@@ -64,7 +139,17 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
     infaqStatus: d.infaqStatus || "reguler", infaqNominal: d.infaqNominal || 0,
   });
 
-  const handleChange = (e: any) => setF({ ...f, [e.target.name]: e.target.value });
+  useEffect(() => {
+    fetch("/api/classrooms?limit=100")
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setClassrooms(json.data || []);
+      })
+      .catch(console.error);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => 
+    setF({ ...f, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +167,7 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
          try {
            const errorData = await res.json();
            if (errorData.message) errorMsg = errorData.message;
-         } catch (e) {
+         } catch {
            // ignore JSON parse error
          }
          throw new Error(errorMsg);
@@ -227,6 +312,13 @@ export default function StudentForm({ initialData }: { initialData?: any }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.25rem" }}>
             <Select label="Kategori Biaya" name="category" required options={[["reguler", "Reguler (Wajib Bayar)"], ["kurang_mampu", "Kurang Mampu"], ["yatim_piatu", "Yatim / Piatu"], ["keluarga_guru", "Keluarga Guru"]]} formData={f} onChange={handleChange} />
             <Select label="Status Siswa" name="status" required options={[["aktif", "Aktif"], ["lulus", "Lulus"], ["pindah", "Pindah"], ["nonaktif", "Nonaktif"]]} formData={f} onChange={handleChange} />
+            <Select 
+              label="Kelas" 
+              name="classroomId" 
+              options={[["", "— Tanpa Kelas —"], ...classrooms.map(c => [String(c.id), c.name] as [string, string])]} 
+              formData={f} 
+              onChange={handleChange} 
+            />
             {f.category !== "reguler" ? (
               <Select label="Skema Infaq/SPP" name="infaqStatus" options={[["bayar_penuh", "Bayar Penuh"], ["potongan", "Potongan (Nominal Custom)"], ["gratis", "Gratis (Rp 0)"]]} formData={f} onChange={handleChange} />
             ) : (
