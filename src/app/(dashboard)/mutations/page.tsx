@@ -217,7 +217,13 @@ export default function MutationsPage() {
                 students.map((s, i) => (
                   <tr key={s.id} onClick={() => toggleSelect(s.id)} className={`border-b border-slate-100 cursor-pointer transition-colors ${selected.includes(s.id) ? "bg-indigo-50" : "hover:bg-slate-50"}`}>
                     <td className="px-6 py-3 text-center">
-                      <input type="checkbox" checked={selected.includes(s.id)} readOnly className="w-4 h-4 accent-indigo-600" />
+                      <input 
+                        type="checkbox" 
+                        checked={selected.includes(s.id)} 
+                        onChange={() => toggleSelect(s.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 accent-indigo-600 cursor-pointer" 
+                      />
                     </td>
                     <td className="px-6 py-3 text-center text-xs text-slate-400">{(page - 1) * limit + i + 1}</td>
                     <td className="px-6 py-3 text-sm text-slate-600">{s.nisn || "-"}</td>
