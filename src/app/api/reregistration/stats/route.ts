@@ -1,21 +1,35 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { registrationPayments } from "@/db/schema";
+import { registrationPayments, reRegistrations, students, academicYears } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 
 export async function GET() {
   try {
+    // 1. Dapatkan Tahun Ajaran Aktif
+    const activeYearRes = await db.select({ id: academicYears.id })
+      .from(academicYears)
+      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+      .limit(1);
+    const activeYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
+
+    // 2. Query pembayaran hanya untuk siswa aktif dan tahun ajaran aktif
     const paymentsList = await db
       .select({
         paymentType: registrationPayments.paymentType,
         nominal: registrationPayments.nominal,
       })
       .from(registrationPayments)
+      .innerJoin(reRegistrations, eq(registrationPayments.payableId, reRegistrations.id))
+      .innerJoin(students, eq(reRegistrations.studentId, students.id))
       .where(
         and(
           eq(registrationPayments.payableType, "reregistration"),
           eq(registrationPayments.isPaid, true),
-          isNull(registrationPayments.deletedAt)
+          isNull(registrationPayments.deletedAt),
+          isNull(reRegistrations.deletedAt),
+          isNull(students.deletedAt),
+          eq(students.status, 'aktif'),
+          activeYearId ? eq(reRegistrations.academicYearId, activeYearId) : undefined
         )
       );
 

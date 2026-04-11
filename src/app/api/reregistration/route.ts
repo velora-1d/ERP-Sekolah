@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { reRegistrations, students, classrooms, registrationPayments } from "@/db/schema";
+import { reRegistrations, students, classrooms, registrationPayments, academicYears } from "@/db/schema";
 import { eq, and, isNull, desc, inArray } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const reqAcademicYearId = searchParams.get("academicYearId");
+
+    // 1. Tentukan Tahun Ajaran Target (Penting: Membuang sampah tahun lalu)
+    let targetAcademicYearId = reqAcademicYearId ? Number(reqAcademicYearId) : null;
+    if (!targetAcademicYearId) {
+      const activeYearRes = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
+    }
+
+    // 2. Query Daftar Ulang dengan Filter Ketat
     const reregList = await db
       .select({
         id: reRegistrations.id,
@@ -18,8 +32,15 @@ export async function GET() {
         }
       })
       .from(reRegistrations)
-      .leftJoin(students, eq(reRegistrations.studentId, students.id))
-      .where(isNull(reRegistrations.deletedAt))
+      .innerJoin(students, eq(reRegistrations.studentId, students.id)) // Hilangkan orphaned records
+      .where(
+        and(
+          isNull(reRegistrations.deletedAt),
+          isNull(students.deletedAt), // Hilangkan siswa yang sudah dihapus
+          eq(students.status, "aktif"), // Pilih hanya siswa aktif
+          targetAcademicYearId ? eq(reRegistrations.academicYearId, targetAcademicYearId) : undefined
+        )
+      )
       .orderBy(desc(reRegistrations.id));
 
     // Map classrooms
@@ -30,7 +51,7 @@ export async function GET() {
 
     // Map payments
     const reregIds = reregList.map(r => r.id);
-    let payments: any[] = [];
+    let payments: (typeof registrationPayments.$inferSelect)[] = [];
     if (reregIds.length > 0) {
       payments = await db
         .select()
