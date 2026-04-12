@@ -29,7 +29,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       const updateData: Record<string, any> = { updatedAt: new Date() };
       if (amount !== undefined) updateData.amount = Number(amount);
       if (description !== undefined) updateData.description = description;
-      if (date !== undefined) updateData.date = date;
+      if (date !== undefined) updateData.transactionDate = date;
       if (wakafDonorId !== undefined) updateData.wakafDonorId = wakafDonorId ? Number(wakafDonorId) : null;
       if (wakafPurposeId !== undefined) updateData.wakafPurposeId = wakafPurposeId ? Number(wakafPurposeId) : null;
 

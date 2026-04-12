@@ -1,0 +1,40 @@
+{
+  "name": "erp-sekolah",
+  "description": "Enterprise Resource Planning for Schools",
+  "version": "1.0.0",
+  "lastUpdated": "2026-03-XX",
+
+  "stack": {
+    "frontend": "next.js-16",
+    "backend": "next.js-16",
+    "database": "postgresql",
+    "orm": "drizzle",
+    "auth": "custom-jwt",
+    "realtime": null,
+    "mobile": null
+  },
+
+  "mode": "fullstack",
+  "platform": ["web"],
+  "multiTenant": true,
+  "tenantStrategy": "single-db",
+
+  "scale": "medium",
+  "team": "solo",
+
+  "hosting": {
+    "development": "local",
+    "staging": null,
+    "production": "vercel"
+  },
+
+  "infraBudget": "free-tier",
+
+  "activeRules": [
+    "nextjs-fullstack",
+    "postgresql",
+    "drizzle-orm"
+  ],
+
+  "notes": "Debugging Penugasan Guru"
+}

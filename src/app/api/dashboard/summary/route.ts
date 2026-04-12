@@ -64,78 +64,46 @@ export async function GET(request: Request) {
 
     // Hitung paralel
     const [
-      [{ siswaTerdaftar }],
-      [{ totalGuru }],
-      [{ totalStaff }],
-      [{ totalKelas }],
-      [{ tunggakanCount }],
-      [{ tunggakanSum }],
+      [resSiswa],
+      [resGuru],
+      [resStaff],
+      [resKelas],
+      [resTunggakanCount],
+      [resTunggakanSum],
       ppdbStats,
-      [{ pemasukanPeriode }],
-      [{ pengeluaranPeriode }],
-      [{ totalSaldoTabungan }],
-      [{ totalSaldoKas }],
+      [resPemasukan],
+      [resPengeluaran],
+      [resTabungan],
+      [resKas],
     ] = await Promise.all([
-      db.select({ siswaTerdaftar: sql<number>`count(*)`.mapWith(Number) })
-        .from(studentEnrollments)
-        .where(and(...enrollmentConditions)),
-
-      db.select({ totalGuru: sql<number>`count(*)`.mapWith(Number) })
-        .from(employees)
-        .where(and(isNull(employees.deletedAt), ilike(employees.position, "%guru%"), eq(employees.status, "aktif" as any))),
-
-      db.select({ totalStaff: sql<number>`count(*)`.mapWith(Number) })
-        .from(employees)
-        .where(and(isNull(employees.deletedAt), eq(employees.status, "aktif" as any))),
-
-      db.select({ totalKelas: sql<number>`count(*)`.mapWith(Number) })
-        .from(classrooms)
-        .where(and(...classroomConditions)),
-
-      db.select({ tunggakanCount: sql<number>`count(*)`.mapWith(Number) })
-        .from(infaqBills)
-        .where(and(...billConditions)),
-
-      db.select({ tunggakanSum: sql<number>`coalesce(sum(${infaqBills.nominal}), 0)`.mapWith(Number) })
-        .from(infaqBills)
-        .where(and(...billConditions)),
-
-      db.select({
-        status: ppdbRegistrations.status,
-        count: sql<number>`count(*)`.mapWith(Number),
-      })
-      .from(ppdbRegistrations)
-      .where(isNull(ppdbRegistrations.deletedAt))
-      .groupBy(ppdbRegistrations.status),
-
-      db.select({ pemasukanPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions)
-        .where(and(eq(generalTransactions.type, "in" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
-
-      db.select({ pengeluaranPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions)
-        .where(and(eq(generalTransactions.type, "out" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
-
-      db.select({ totalSaldoTabungan: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
-        .from(studentSavings)
-        .where(isNull(studentSavings.deletedAt)),
-
-      db.select({ totalSaldoKas: sql<number>`coalesce(sum(${cashAccounts.balance}), 0)`.mapWith(Number) })
-        .from(cashAccounts)
-        .where(isNull(cashAccounts.deletedAt)),
+      db.select({ siswaTerdaftar: sql<number>`count(*)`.mapWith(Number) }).from(studentEnrollments).where(and(...enrollmentConditions)),
+      db.select({ totalGuru: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), ilike(employees.position, "%guru%"), eq(employees.status, "aktif" as any))),
+      db.select({ totalStaff: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), eq(employees.status, "aktif" as any))),
+      db.select({ totalKelas: sql<number>`count(*)`.mapWith(Number) }).from(classrooms).where(and(...classroomConditions)),
+      db.select({ tunggakanCount: sql<number>`count(*)`.mapWith(Number) }).from(infaqBills).where(and(...billConditions)),
+      db.select({ tunggakanSum: sql<number>`coalesce(sum(${infaqBills.nominal}), 0)`.mapWith(Number) }).from(infaqBills).where(and(...billConditions)),
+      db.select({ status: ppdbRegistrations.status, count: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)).groupBy(ppdbRegistrations.status),
+      db.select({ pemasukanPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "in" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
+      db.select({ pengeluaranPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "out" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
+      db.select({ totalIn: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'setor' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number), totalOut: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'tarik' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number) }).from(studentSavings).where(and(isNull(studentSavings.deletedAt), eq(studentSavings.status, "active" as any))),
+      db.select({ totalSaldoKas: sql<number>`coalesce(sum(${cashAccounts.balance}), 0)`.mapWith(Number) }).from(cashAccounts).where(isNull(cashAccounts.deletedAt)),
     ]);
 
+    const totalSaldoTabungan = resTabungan.totalIn - resTabungan.totalOut;
     const ppdbMap: Record<string, number> = {};
     ppdbStats.forEach((p: any) => { ppdbMap[p.status] = p.count; });
 
     return NextResponse.json({
       success: true,
       data: {
-        siswaAktif: siswaTerdaftar,
-        totalGuru,
-        totalStaff,
-        totalKelas,
-        tunggakan: { count: tunggakanCount, total: tunggakanSum },
+        siswaAktif: resSiswa.siswaTerdaftar,
+        totalGuru: resGuru.totalGuru,
+        totalStaff: resStaff.totalStaff,
+        totalKelas: resKelas.totalKelas,
+        tunggakan: { 
+          count: resTunggakanCount.tunggakanCount, 
+          total: resTunggakanSum.tunggakanSum 
+        },
         ppdb: {
           total: Object.values(ppdbMap).reduce((s, c) => s + c, 0),
           menunggu: (ppdbMap["menunggu"] || 0) + (ppdbMap["pending"] || 0),
@@ -143,10 +111,10 @@ export async function GET(request: Request) {
           ditolak: ppdbMap["ditolak"] || 0,
           converted: ppdbMap["converted"] || 0,
         },
-        pemasukanPeriode,
-        pengeluaranPeriode,
+        pemasukanPeriode: resPemasukan.pemasukanPeriode,
+        pengeluaranPeriode: resPengeluaran.pengeluaranPeriode,
         totalSaldoTabungan,
-        totalSaldoKas,
+        totalSaldoKas: resKas.totalSaldoKas,
       },
     });
   } catch (error) {

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireAuth();
     const body = await request.json();
-    const { studentId, type, amount, date, description } = body;
+    const { studentId, type, amount, date, description, cashAccountId, transactionCategoryId } = body;
 
     if (!studentId) {
       return NextResponse.json({ success: false, message: "ID siswa wajib diisi" }, { status: 400 });
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       if (!student || student.deletedAt) throw new Error("Siswa tidak ditemukan");
       if (student.status !== "aktif") throw new Error("Siswa tidak aktif");
 
-      // 2. Hitung saldo sekarang
+      // 2. Hitung saldo sekarang (ACID: Sum inside transaction)
       const [{ totalSetor }] = await tx.select({ totalSetor: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
         .from(studentSavings).where(and(eq(studentSavings.studentId, student.id), eq(studentSavings.type, "setor" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
 
@@ -64,15 +64,22 @@ export async function POST(request: Request) {
 
       // 6. Jurnal otomatis + update saldo kas
       const txDate = date || new Date().toISOString().split("T")[0];
-      const [defaultCash] = await tx.select().from(cashAccounts).where(isNull(cashAccounts.deletedAt)).orderBy(asc(cashAccounts.id)).limit(1);
+      
+      // Pilih Kas (Input atau Default)
+      let selectedCashId = cashAccountId ? Number(cashAccountId) : null;
+      if (!selectedCashId) {
+        const [defaultCash] = await tx.select().from(cashAccounts).where(isNull(cashAccounts.deletedAt)).orderBy(asc(cashAccounts.id)).limit(1);
+        selectedCashId = defaultCash?.id;
+      }
 
-      if (defaultCash) {
+      if (selectedCashId) {
         await tx.insert(generalTransactions).values({
           type: (type === "setor" ? "in" : "out") as any,
           amount: Number(amount),
-          cashAccountId: defaultCash.id,
+          cashAccountId: selectedCashId,
+          transactionCategoryId: transactionCategoryId ? Number(transactionCategoryId) : null,
           description: `Tabungan ${type} - ${student.name}${description ? ` (${description})` : ""}`,
-          date: txDate,
+          transactionDate: txDate, // FIXED MAPPING
           status: "valid" as any,
           referenceType: "student_saving",
           referenceId: String(saving.id),
@@ -84,7 +91,7 @@ export async function POST(request: Request) {
         const balanceChange = type === "setor" ? Number(amount) : -Number(amount);
         await tx.update(cashAccounts)
           .set({ balance: sql`${cashAccounts.balance} + ${balanceChange}` })
-          .where(eq(cashAccounts.id, defaultCash.id));
+          .where(eq(cashAccounts.id, selectedCashId));
       }
 
       return { saving, student, currentBalance, newBalance };

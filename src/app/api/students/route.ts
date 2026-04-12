@@ -32,6 +32,7 @@ function extractStudentData(body: Record<string, unknown>) {
     district: (b.district || "") as string,
     residenceType: (b.residenceType || "") as string,
     transportation: (b.transportation || "") as string,
+    previousSchool: (b.previousSchool || b.asalTk || "") as string,
     studentPhone: (b.studentPhone || "") as string,
     // B. Periodik
     height: b.height ? Number(b.height) : null,
@@ -187,9 +188,10 @@ export async function GET(request: Request) {
       data: resultStudents,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("GET Students error:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -198,7 +200,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = extractStudentData(body);
 
-    if (!data.name) {
+    if (!data.name?.trim()) {
       return NextResponse.json({ success: false, message: "Nama siswa wajib diisi" }, { status: 400 });
     }
 
@@ -217,27 +219,103 @@ export async function POST(request: Request) {
 
     const targetYearId = activeYearRes[0].id;
 
-    // 2. Gunakan transaksi untuk insert siswa dan pendaftaran otomatis
-    const student = await db.transaction(async (tx) => {
-      const [newStudent] = await tx.insert(students).values(data).returning();
+    // 2. Cek Duplikasi (termasuk yang di-soft delete)
+    // Kita cek berdasarkan NISN atau NIK (karena ini unik di Dapodik)
+    // Nama saja tidak cukup unik, tapi jika NISN & NIK kosong (jarang di Dapodik), kita cek Nama + Tgl Lahir
+    const existing = await db.select()
+      .from(students)
+      .where(
+        or(
+          data.nisn ? eq(students.nisn, data.nisn.trim()) : undefined,
+          data.nik ? eq(students.nik, data.nik.trim()) : undefined,
+          and(
+            ilike(students.name, data.name.trim()),
+            data.birthDate ? eq(students.birthDate, data.birthDate) : undefined
+          )
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const record = existing[0];
+
+      // Jika masih aktif
+      if (!record.deletedAt) {
+        return NextResponse.json({ 
+          success: false, 
+          message: `Siswa dengan Nama/NISN/NIK tersebut sudah terdaftar dan masih aktif.` 
+        }, { status: 400 });
+      }
+
+      // Jika terhapus, lakukan Restore
+      const student = await db.transaction(async (tx) => {
+        // A. Update data utama & hilangkan deletedAt
+        const [restored] = await tx.update(students)
+          .set({
+            ...data,
+            deletedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(students.id, record.id))
+          .returning();
+
+        // B. Cek pendaftaran di tahun ajaran aktif
+        const existingEnrollment = await tx.select()
+          .from(studentEnrollments)
+          .where(and(
+            eq(studentEnrollments.studentId, record.id),
+            eq(studentEnrollments.academicYearId, targetYearId),
+            isNull(studentEnrollments.deletedAt)
+          ))
+          .limit(1);
+        
+        if (existingEnrollment.length === 0) {
+           await tx.insert(studentEnrollments).values({
+            studentId: record.id,
+            classroomId: data.classroomId,
+            academicYearId: targetYearId,
+            enrollmentType: "kembali", // Mark sebagai siswa yang kembali/restore
+          });
+        } else {
+           // Jika sudah ada enrollment aktif (aneh tapi mungkin), update kelasnya
+           await tx.update(studentEnrollments)
+            .set({ classroomId: data.classroomId, updatedAt: new Date() })
+            .where(eq(studentEnrollments.id, existingEnrollment[0].id));
+        }
+
+        return restored;
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "Data siswa yang sebelumnya terhapus telah diaktifkan kembali dan didaftarkan pada tahun ajaran aktif.", 
+        data: student,
+        isRestored: true 
+      });
+    }
+
+    // 3. Insert Baru (Gunakan transaksi)
+    const newStudent = await db.transaction(async (tx) => {
+      const [inserted] = await tx.insert(students).values(data).returning();
 
       await tx.insert(studentEnrollments).values({
-        studentId: newStudent.id,
+        studentId: inserted.id,
         classroomId: data.classroomId,
         academicYearId: targetYearId,
         enrollmentType: "baru",
       });
 
-      return newStudent;
+      return inserted;
     });
 
-    return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: student });
+    return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: newStudent });
   } catch (error: unknown) {
+    console.error("Error creating student:", error);
     const err = error as { code?: string; message?: string };
     if (err.code === '23505' || err.message?.includes('duplicate key')) {
-      return NextResponse.json({ success: false, message: "NISN sudah dipakai siswa lain" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "NISN atau NIK sudah dipakai siswa lain" }, { status: 400 });
     }
-    console.error("Error creating student:", error);
-    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }

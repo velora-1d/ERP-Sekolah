@@ -130,7 +130,7 @@ export async function POST(request: Request) {
         const bulan = monthNames[bill.month] || bill.month;
 
         await tx.insert(generalTransactions).values({
-          date: paymentDate || new Date().toISOString().split("T")[0],
+          transactionDate: paymentDate || new Date().toISOString().split("T")[0],
           description: `Pembayaran Infaq/SPP ${studentName} bulan ${bulan} (${method})`,
           amount: amount,
           type: "in" as any,
@@ -138,6 +138,7 @@ export async function POST(request: Request) {
           referenceId: String(payment.id),
           cashAccountId: Number(cashAccountId),
           unitId: user.unitId || "",
+          userId: user.userId,
         });
 
         await tx.update(cashAccounts)

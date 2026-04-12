@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { teachingAssignments, employees, subjects, classrooms, academicYears } from "@/db/schema";
-import { isNull, and, eq, desc, sql } from "drizzle-orm";
+import { isNull, isNotNull, and, eq, desc, sql } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -96,30 +96,48 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check for duplicate assignment
-    const [existing] = await db.select({ id: teachingAssignments.id })
+    // Check for duplicate assignment (including soft-deleted ones)
+    const [existing] = await db.select()
       .from(teachingAssignments)
       .where(and(
         eq(teachingAssignments.employeeId, parseInt(employeeId)),
         eq(teachingAssignments.subjectId, parseInt(subjectId)),
         eq(teachingAssignments.classroomId, parseInt(classroomId)),
-        eq(teachingAssignments.academicYearId, parseInt(academicYearId)),
-        isNull(teachingAssignments.deletedAt)
+        eq(teachingAssignments.academicYearId, parseInt(academicYearId))
       ))
       .limit(1);
 
     if (existing) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Penugasan untuk guru, mapel, kelas, dan tahun ajaran tersebut sudah ada" 
-      }, { status: 400 });
+      if (existing.deletedAt === null) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Penugasan untuk guru, mapel, kelas, dan tahun ajaran tersebut sudah aktif ada" 
+        }, { status: 400 });
+      } else {
+        // Restore soft-deleted record
+        const [restored] = await db.update(teachingAssignments)
+          .set({ 
+            deletedAt: null,
+            updatedAt: new Date(),
+            unitId: body.unitId || existing.unitId 
+          })
+          .where(eq(teachingAssignments.id, existing.id))
+          .returning();
+        
+        return NextResponse.json({ 
+          success: true, 
+          message: "Data lama ditemukan dan telah diaktifkan kembali",
+          data: restored 
+        }, { status: 200 });
+      }
     }
 
     const [newAssignment] = await db.insert(teachingAssignments).values({
       employeeId: parseInt(employeeId),
       subjectId: parseInt(subjectId),
       classroomId: parseInt(classroomId),
-      academicYearId: parseInt(academicYearId)
+      academicYearId: parseInt(academicYearId),
+      unitId: body.unitId || ""
     }).returning();
 
     return NextResponse.json({ success: true, data: newAssignment }, { status: 201 });

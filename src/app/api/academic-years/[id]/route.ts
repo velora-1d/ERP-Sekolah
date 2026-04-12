@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { academicYears } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -22,8 +22,9 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: item });
-  } catch {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("GET Academic Year ID Error:", error);
+    return NextResponse.json({ success: false, message: "Gagal mengambil data tahun ajaran" }, { status: 500 });
   }
 }
 
@@ -45,6 +46,28 @@ export async function PUT(
       await db.update(academicYears).set({ isActive: false });
     }
 
+    // Pengecekan duplikasi jika year diubah
+    if (body.year) {
+      const [duplicate] = await db
+        .select()
+        .from(academicYears)
+        .where(
+          and(
+            eq(academicYears.year, body.year),
+            ne(academicYears.id, id)
+          )
+        );
+      
+      if (duplicate) {
+        return NextResponse.json({ 
+          success: false, 
+          message: duplicate.deletedAt 
+            ? "Tahun ajaran tersebut sudah ada di arsip. Silakan hapus data lama atau aktifkan kembali via menu tambah."
+            : "Tahun ajaran tersebut sudah digunakan oleh data lain" 
+        }, { status: 400 });
+      }
+    }
+
     const updateData: Partial<typeof academicYears.$inferInsert> = { updatedAt: new Date() };
     if (body.year !== undefined) updateData.year = body.year;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
@@ -57,8 +80,9 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ success: true, message: "Tahun ajaran berhasil diperbarui", data: updated });
-  } catch {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("PUT Academic Year ID Error:", error);
+    return NextResponse.json({ success: false, message: "Gagal memperbarui data tahun ajaran" }, { status: 500 });
   }
 }
 
@@ -79,7 +103,8 @@ export async function DELETE(
       .where(eq(academicYears.id, id));
 
     return NextResponse.json({ success: true, message: "Tahun ajaran berhasil dihapus" });
-  } catch {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("DELETE Academic Year ID Error:", error);
+    return NextResponse.json({ success: false, message: "Gagal menghapus data tahun ajaran" }, { status: 500 });
   }
 }

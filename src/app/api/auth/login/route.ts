@@ -43,13 +43,7 @@ function clearAttempts(ip: string): void {
   loginAttempts.delete(ip);
 }
 
-// Bersihkan map setiap 30 menit untuk cegah memory leak
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, record] of loginAttempts.entries()) {
-    if (now > record.resetAt) loginAttempts.delete(ip);
-  }
-}, 30 * 60 * 1000);
+// Bersihkan map setiap 30 menit (di-delay ke fungsi checkRateLimit agar tak menyebabkan memory leak Vercel)
 
 export async function POST(request: NextRequest) {
   try {

@@ -79,6 +79,7 @@ export const students = pgTable('students', {
   district: text('district').notNull().default(''),
   residenceType: text('residence_type').notNull().default(''),
   transportation: text('transportation').notNull().default(''),
+  previousSchool: text('previous_school').notNull().default(''),
   studentPhone: text('student_phone').notNull().default(''),
   height: integer('height'),
   weight: integer('weight'),
@@ -317,13 +318,13 @@ export const wakafPurposes = pgTable('wakaf_purposes', {
 // ─── GENERAL TRANSACTIONS ──────────────────────────────────────────────────
 export const generalTransactions = pgTable('general_transactions', {
   id: serial('id').primaryKey(),
-  categoryId: integer('transaction_category_id'),
+  transactionCategoryId: integer('transaction_category_id'),
   cashAccountId: integer('cash_account_id'),
   userId: integer('user_id'),
   type: text('type').notNull().default('in'),
   amount: doublePrecision('amount').notNull().default(0),
   description: text('description').notNull().default(''),
-  date: text('transaction_date').notNull().default(''),
+  transactionDate: text('transaction_date').notNull().default(''),
   status: text('status').notNull().default('valid'),
   referenceType: text('reference_type').notNull().default(''),
   referenceId: text('reference_id').notNull().default(''),
@@ -335,8 +336,8 @@ export const generalTransactions = pgTable('general_transactions', {
   deletedAt: timestamp('deleted_at'),
 }, (t) => [
   index('gen_tx_type_deleted_idx').on(t.type, t.deletedAt),
-  index('gen_tx_date_idx').on(t.date),
-  index('gen_tx_category_idx').on(t.categoryId),
+  index('gen_tx_date_idx').on(t.transactionDate),
+  index('gen_tx_category_idx').on(t.transactionCategoryId),
   index('gen_tx_deleted_at_idx').on(t.deletedAt),
 ]);
 
@@ -826,11 +827,14 @@ export const coopTransactions = pgTable('coop_transactions', {
   total: doublePrecision('total').notNull().default(0),
   paymentMethod: text('payment_method').notNull().default('tunai'),
   date: text('date').notNull().default(''),
+  status: text('status').notNull().default('valid'),
   unitId: text('unit_id').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 }, (t) => [
   index('coop_transactions_date_idx').on(t.date),
+  index('coop_transactions_status_idx').on(t.status),
 ]);
 
 // ─── STUDENT CREDITS ───────────────────────────────────────────────────────
@@ -844,6 +848,7 @@ export const studentCredits = pgTable('student_credits', {
   dueDate: text('due_date').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 }, (t) => [
   index('student_credits_student_id_status_idx').on(t.studentId, t.status),
 ]);
@@ -1043,7 +1048,7 @@ export const infaqPaymentsRelations = relations(infaqPayments, ({ one }) => ({
 
 export const generalTransactionsRelations = relations(generalTransactions, ({ one }) => ({
   cashAccount: one(cashAccounts, { fields: [generalTransactions.cashAccountId], references: [cashAccounts.id] }),
-  category: one(transactionCategories, { fields: [generalTransactions.categoryId], references: [transactionCategories.id] }),
+  category: one(transactionCategories, { fields: [generalTransactions.transactionCategoryId], references: [transactionCategories.id] }),
   user: one(users, { fields: [generalTransactions.userId], references: [users.id] }),
   wakafDonor: one(wakafDonors, { fields: [generalTransactions.wakafDonorId], references: [wakafDonors.id] }),
   wakafPurpose: one(wakafPurposes, { fields: [generalTransactions.wakafPurposeId], references: [wakafPurposes.id] }),

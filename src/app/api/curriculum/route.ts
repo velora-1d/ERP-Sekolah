@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
+
+export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { curriculums, academicYears, gradeComponents } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 

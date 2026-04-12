@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const entries = await db.select({
       id: generalTransactions.id,
-      date: generalTransactions.date,
+      date: generalTransactions.transactionDate,
       type: generalTransactions.type,
       description: generalTransactions.description,
       amount: generalTransactions.amount,
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       cashAccountName: cashAccounts.name,
     })
     .from(generalTransactions)
-    .leftJoin(transactionCategories, eq(generalTransactions.categoryId, transactionCategories.id))
+    .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
     .leftJoin(cashAccounts, eq(generalTransactions.cashAccountId, cashAccounts.id))
     .where(and(...conditions))
     .orderBy(desc(generalTransactions.createdAt));

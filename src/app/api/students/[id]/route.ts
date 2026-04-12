@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
-import { eq, and, isNull, desc, asc, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, sql, ne, or } from "drizzle-orm";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -60,11 +60,12 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       success: true,
       data: { ...student, classroom, infaqBills: bills, savings, enrollments: enrollmentList, savingsBalance, tunggakanCount: tunggakan }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
     }
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -72,6 +73,44 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   const params = await props.params;
   try {
     const body = await request.json();
+    const studentId = parseInt(params.id);
+
+    // 1. Ambil data lama
+    const [existing] = await db
+      .select()
+      .from(students)
+      .where(and(eq(students.id, studentId), isNull(students.deletedAt)))
+      .limit(1);
+
+    if (!existing) {
+      return NextResponse.json({ success: false, message: "Siswa tidak ditemukan" }, { status: 404 });
+    }
+
+    // 2. Pengecekan Duplikasi (jika NISN atau NIK diubah)
+    const { nisn, nik } = body;
+    if ((nisn && nisn !== existing.nisn) || (nik && nik !== existing.nik)) {
+      const [duplicate] = await db.select()
+        .from(students)
+        .where(
+          and(
+            ne(students.id, studentId),
+            isNull(students.deletedAt),
+            or(
+              nisn ? eq(students.nisn, nisn.trim()) : undefined,
+              nik ? eq(students.nik, nik.trim()) : undefined
+            )
+          )
+        )
+        .limit(1);
+
+      if (duplicate) {
+        const field = duplicate.nisn === nisn?.trim() ? "NISN" : "NIK";
+        return NextResponse.json({ 
+          success: false, 
+          message: `${field} "${field === 'NISN' ? nisn : nik}" sudah terdaftar pada siswa lain.` 
+        }, { status: 400 });
+      }
+    }
 
     const updateData: Partial<typeof students.$inferInsert> = {
       updatedAt: new Date(),
@@ -81,7 +120,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       "name", "nisn", "nis", "nik", "noKk", "gender", "religion", "category",
       "status", "birthPlace", "birthDate", "address", "phone", "classroomId",
       "familyStatus", "siblingCount", "childPosition", "village", "district",
-      "residenceType", "transportation", "studentPhone", "height", "weight",
+      "residenceType", "transportation", "previousSchool", "studentPhone", "height", "weight",
       "distanceToSchool", "travelTime", "fatherName", "fatherNik",
       "fatherBirthPlace", "fatherBirthDate", "fatherEducation",
       "fatherOccupation", "motherName", "motherNik", "motherBirthPlace",
@@ -106,17 +145,15 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         } else if (["classroomId", "infaqNominal"].includes(key)) {
            (updateData as any)[key] = body[key] ? Number(body[key]) : (key === "infaqNominal" ? 0 : null);
         } else {
-           (updateData as any)[key] = body[key];
+           (updateData as any)[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
         }
       }
     }
 
-    const studentId = parseInt(params.id);
     const [student] = await db.transaction(async (tx) => {
       const [updatedStudent] = await tx.update(students).set(updateData).where(eq(students.id, studentId)).returning();
 
       // Sinkronisasi Enrollment ke Tahun Ajaran Aktif
-      // Ini memastikan jika kelas diubah di profil, pendaftaran tahun berjalan juga terupdate
       const activeYearRes = await tx.select({ id: academicYears.id })
         .from(academicYears)
         .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
@@ -140,7 +177,6 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             .set({ classroomId: currentClassId, updatedAt: new Date() })
             .where(eq(studentEnrollments.id, existingEnrollment[0].id));
         } else {
-          // Jika belum ada pendaftaran di tahun aktif (kasus data lama/migrasi), buatkan
           await tx.insert(studentEnrollments).values({
             studentId,
             classroomId: currentClassId,
@@ -155,21 +191,31 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil diupdate", data: student });
   } catch (error: unknown) {
+    console.error("Error updating student:", error);
     const err = error as { code?: string; message?: string };
     if (err.code === '23505') {
-      return NextResponse.json({ success: false, message: "NISN sudah dipakai" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "NISN atau NIK sudah dipakai siswa lain" }, { status: 400 });
     }
-    console.error("Error updating student:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Gagal memperbarui data siswa";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    await db.update(students).set({ deletedAt: new Date() }).where(eq(students.id, parseInt(params.id)));
-    return NextResponse.json({ success: true, message: "Data dihapus" });
-  } catch (error) {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    await db.update(students)
+      .set({ 
+        deletedAt: new Date(),
+        status: "dihapus",
+        updatedAt: new Date()
+      })
+      .where(eq(students.id, parseInt(params.id)));
+      
+    return NextResponse.json({ success: true, message: "Data siswa berhasil dihapus" });
+  } catch (error: unknown) {
+    console.error("Error deleting student:", error);
+    const msg = error instanceof Error ? error.message : "Gagal menghapus data siswa";
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }

@@ -13,6 +13,17 @@ const sectionHeaderStyle = (letter: string, label: string, color = "#6366f1") =>
   </h3>
 );
 
+const OCCUPATION_OPTIONS: [string, string][] = [
+  ["", "-- Pilih Pekerjaan --"],
+  ["ABRI/TNI", "ABRI/TNI"],
+  ["Pedagang", "Pedagang"],
+  ["Karyawan", "Karyawan"],
+  ["Guru", "Guru"],
+  ["Wiraswasta", "Wiraswasta"],
+  ["Buruh", "Buruh"],
+  ["Lainnya", "Lainnya"]
+];
+
 interface StudentFormData {
   [key: string]: string | number | boolean | null | undefined;
   name: string;
@@ -32,6 +43,7 @@ interface StudentFormData {
   district: string;
   residenceType: string;
   transportation: string;
+  previousSchool: string;
   studentPhone: string;
   phone: string;
   height: string;
@@ -117,7 +129,7 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
     birthPlace: d.birthPlace || "", birthDate: d.birthDate?.substring(0, 10) || "",
     familyStatus: d.familyStatus || "", childPosition: d.childPosition || "", siblingCount: d.siblingCount || "",
     address: d.address || "", village: d.village || "", district: d.district || "",
-    residenceType: d.residenceType || "", transportation: d.transportation || "",
+    residenceType: d.residenceType || "", transportation: d.transportation || "", previousSchool: d.previousSchool || "",
     studentPhone: d.studentPhone || "", phone: d.phone || "",
     // B. Periodik
     height: d.height || "", weight: d.weight || "", distanceToSchool: d.distanceToSchool || "", travelTime: d.travelTime || "",
@@ -175,7 +187,13 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
 
       const json = await res.json();
       if (json.success !== false) {
-        Swal.fire("Berhasil", json.message || "Data berhasil disimpan", "success").then(() => router.push("/students"));
+        const title = json.isRestored ? "Data Diaktifkan Kembali" : "Berhasil";
+        Swal.fire({
+          title: title,
+          text: json.message || "Data berhasil disimpan",
+          icon: "success",
+          confirmButtonColor: "#6366f1",
+        }).then(() => router.push("/students"));
       } else {
         Swal.fire("Gagal", json.message || "Error", "error");
       }
@@ -227,6 +245,7 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
             <Field label="Kecamatan" name="district" formData={f} onChange={handleChange} />
             <Select label="Tempat Tinggal Siswa" name="residenceType" options={[["", "-- Pilih --"], ["Orang tua", "Bersama Orang Tua"], ["Kerabat", "Bersama Kerabat/Wali"], ["Kos", "Kos / Asrama"], ["Lainnya", "Lainnya"]]} formData={f} onChange={handleChange} />
             <Select label="Alat Transportasi" name="transportation" options={[["", "-- Pilih --"], ["Motor", "Motor"], ["Jalan kaki", "Jalan Kaki"], ["Jemputan Sekolah", "Jemputan Sekolah"], ["Kendaraan Umum", "Angkutan Umum"], ["Lainnya", "Lainnya"]]} formData={f} onChange={handleChange} />
+            <Field label="Asal TK/Sekolah" name="previousSchool" formData={f} onChange={handleChange} />
             <Field label="No. HP Siswa (Jika Ada)" name="studentPhone" formData={f} onChange={handleChange} />
             <Field label="No. HP Kontak Orang Tua" name="phone" formData={f} onChange={handleChange} />
           </div>
@@ -258,7 +277,7 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
                   <Field label="Tgl Lahir" name="fatherBirthDate" type="date" formData={f} onChange={handleChange} />
                 </div>
                 <Field label="Pendidikan" name="fatherEducation" placeholder="SD / SMP / SMA / S1 / S2" formData={f} onChange={handleChange} />
-                <Field label="Pekerjaan" name="fatherOccupation" formData={f} onChange={handleChange} />
+                <Select label="Pekerjaan" name="fatherOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
               </div>
             </div>
             {/* Kolom Ibu */}
@@ -272,7 +291,7 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
                   <Field label="Tgl Lahir" name="motherBirthDate" type="date" formData={f} onChange={handleChange} />
                 </div>
                 <Field label="Pendidikan" name="motherEducation" placeholder="SD / SMP / SMA / S1 / S2" formData={f} onChange={handleChange} />
-                <Field label="Pekerjaan" name="motherOccupation" formData={f} onChange={handleChange} />
+                <Select label="Pekerjaan" name="motherOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
               </div>
             </div>
           </div>
@@ -297,7 +316,7 @@ export default function StudentForm({ initialData }: { initialData?: Partial<Stu
               </div>
             </div>
             <Field label="Pendidikan" name="guardianEducation" formData={f} onChange={handleChange} />
-            <Field label="Pekerjaan" name="guardianOccupation" formData={f} onChange={handleChange} />
+            <Select label="Pekerjaan" name="guardianOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
             <Field label="No. Kontak Wali" name="guardianPhone" formData={f} onChange={handleChange} />
             <div style={{ gridColumn: "span 2" }}>
               <label style={labelStyle}>Alamat Wali</label>

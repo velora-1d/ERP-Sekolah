@@ -88,5 +88,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)" ],
+  matcher: [
+    "/",
+    "/login",
+    "/api/:path*",
+    "/(academic-years|admin|announcements|attendance|calendar|classrooms|coop|counseling|curriculum|dashboard|employee-attendance|extracurricular|grades|infaq-bills|inventory|journal|letters|mutations|payroll|ppdb|profile|re-registration|report-cards|reports|schedules|school-profile|settings|staff|students|subjects|tabungan|teachers|teaching-assignments|transaction-categories|wakaf)/:path*",
+  ],
 };

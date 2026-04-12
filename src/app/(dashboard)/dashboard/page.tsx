@@ -171,7 +171,7 @@ async function getDashboardData(searchParams: { [key: string]: string | undefine
     // Wakaf (Kategori LIKE '%wakaf%')
     db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
       .from(generalTransactions)
-      .leftJoin(transactionCategories, eq(generalTransactions.categoryId, transactionCategories.id))
+      .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
       .where(and(
         eq(generalTransactions.type, "in"), 
         eq(generalTransactions.status, "valid"), 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
+
+export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { subjects } from "@/db/schema";
 import { isNull, and, eq, or, ilike, asc, sql } from "drizzle-orm";
 
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
@@ -57,9 +59,49 @@ export async function POST(request: Request) {
     const { name, code, type, tingkatKelas, unitId } = body;
 
     if (!name) {
-      return NextResponse.json({ success: false, error: "Nama mata pelajaran wajib diisi" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Nama mata pelajaran wajib diisi" }, { status: 400 });
     }
 
+    // 1. Cek duplikasi (termasuk yang di-soft delete)
+    const existing = await db.select()
+      .from(subjects)
+      .where(ilike(subjects.name, name))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const record = existing[0];
+
+      // Jika masih aktif
+      if (!record.deletedAt) {
+        return NextResponse.json({ 
+          success: false, 
+          message: `Mata pelajaran "${name}" sudah ada dan masih aktif.` 
+        }, { status: 400 });
+      }
+
+      // Jika terhapus, lakukan Restore
+      const [restored] = await db.update(subjects)
+        .set({
+          code: code || record.code,
+          type: (type as any) || record.type,
+          tingkatKelas: tingkatKelas || record.tingkatKelas,
+          unitId: unitId || record.unitId,
+          status: 'aktif',
+          deletedAt: null,
+          updatedAt: new Date()
+        })
+        .where(eq(subjects.id, record.id))
+        .returning();
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "Mata pelajaran yang sebelumnya terhapus telah diaktifkan kembali.", 
+        data: restored,
+        isRestored: true 
+      });
+    }
+
+    // 2. Insert baru
     const [newSubject] = await db.insert(subjects).values({
       name,
       code: code || '',
@@ -71,7 +113,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: newSubject }, { status: 201 });
   } catch (error: unknown) {
+    console.error("POST Subject error:", error);
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }

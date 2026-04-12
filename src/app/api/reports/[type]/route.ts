@@ -122,7 +122,7 @@ export async function GET(
       const transactions = await db
         .select({
           id: generalTransactions.id,
-          date: generalTransactions.date,
+          date: generalTransactions.transactionDate,
           createdAt: generalTransactions.createdAt,
           description: generalTransactions.description,
           type: generalTransactions.type,
@@ -131,7 +131,7 @@ export async function GET(
           categoryName: transactionCategories.name
         })
         .from(generalTransactions)
-        .leftJoin(transactionCategories, eq(generalTransactions.categoryId, transactionCategories.id))
+        .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
         .where(
             and(
                 isNull(generalTransactions.deletedAt),

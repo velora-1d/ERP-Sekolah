@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { classrooms } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, ilike, isNull } from "drizzle-orm";
 
 /**
- * - [x] Implementasi DELETE di `src/app/api/classrooms/[id]/route.ts`
  * PUT /api/classrooms/[id]
- * Update data kelas — termasuk infaqNominal untuk setting nominal SPP/Infaq per kelas.
  */
 export async function PUT(
   request: Request,
@@ -32,6 +30,27 @@ export async function PUT(
       return NextResponse.json({ success: false, message: "Kelas tidak ditemukan" }, { status: 404 });
     }
 
+    // Pengecekan Duplikasi Nama (jika nama diubah)
+    if (body.name && body.name !== existing.name) {
+      const [duplicate] = await db.select()
+        .from(classrooms)
+        .where(
+          and(
+            ilike(classrooms.name, body.name),
+            ne(classrooms.id, id),
+            isNull(classrooms.deletedAt)
+          )
+        )
+        .limit(1);
+
+      if (duplicate) {
+        return NextResponse.json({ 
+          success: false, 
+          message: `Nama kelas "${body.name}" sudah digunakan oleh kelas lain yang aktif.` 
+        }, { status: 400 });
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.level !== undefined) updateData.level = Number(body.level);
@@ -47,11 +66,13 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ success: true, message: "Kelas berhasil diperbarui", data: updated });
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
     }
-    return NextResponse.json({ success: false, message: "Gagal update kelas" }, { status: 500 });
+    console.error("PUT Classroom error:", error);
+    const message = error instanceof Error ? error.message : "Gagal update kelas";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 
@@ -73,10 +94,12 @@ export async function DELETE(
       .where(eq(classrooms.id, id));
 
     return NextResponse.json({ success: true, message: "Kelas berhasil dihapus" });
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
     }
-    return NextResponse.json({ success: false, message: "Gagal menghapus kelas" }, { status: 500 });
+    console.error("DELETE Classroom error:", error);
+    const message = error instanceof Error ? error.message : "Gagal menghapus kelas";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

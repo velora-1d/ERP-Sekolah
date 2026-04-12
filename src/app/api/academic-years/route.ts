@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
+
+export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { academicYears } from "@/db/schema";
-import { and, ilike, isNull, desc, sql } from "drizzle-orm";
+import { and, ilike, isNull, desc, sql, eq } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,8 +44,9 @@ export async function GET(req: NextRequest) {
       },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
-  } catch {
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("GET Academic Years error:", error);
+    return NextResponse.json({ success: false, message: "Gagal mengambil data tahun ajaran" }, { status: 500 });
   }
 }
 
@@ -53,6 +56,31 @@ export async function POST(req: NextRequest) {
 
     if (!body.year) {
       return NextResponse.json({ success: false, message: "Tahun ajaran wajib diisi" }, { status: 400 });
+    }
+
+    // Pengecekan data duplikat (termasuk yang di-soft-delete)
+    const [existingWithDeleted] = await db
+      .select()
+      .from(academicYears)
+      .where(eq(academicYears.year, body.year));
+
+    if (existingWithDeleted) {
+      if (existingWithDeleted.deletedAt) {
+        // Jika ada tapi terhapus, aktifkan kembali (Restore)
+        const [restored] = await db.update(academicYears)
+          .set({ 
+            deletedAt: null, 
+            isActive: body.isActive || false,
+            updatedAt: new Date() 
+          })
+          .where(eq(academicYears.id, existingWithDeleted.id))
+          .returning();
+        
+        return NextResponse.json({ success: true, message: "Tahun ajaran lama ditemukan di arsip dan telah diaktifkan kembali", data: restored });
+      } else {
+        // Jika ada dan aktif, berikan error
+        return NextResponse.json({ success: false, message: "Tahun ajaran tersebut sudah ada dan masih aktif" }, { status: 400 });
+      }
     }
 
     // Jika isActive true, nonaktifkan tahun ajaran lain
@@ -68,7 +96,7 @@ export async function POST(req: NextRequest) {
     }).returning();
 
     return NextResponse.json({ success: true, message: "Tahun ajaran berhasil ditambahkan", data: newYear });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("POST Academic Year error:", error);
     return NextResponse.json({ success: false, message: "Gagal menambah tahun ajaran" }, { status: 500 });
   }

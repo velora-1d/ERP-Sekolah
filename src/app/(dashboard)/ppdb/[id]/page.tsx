@@ -33,6 +33,17 @@ const Select = ({ label, name, required = false, options, formData, onChange }: 
   </div>
 );
 
+const OCCUPATION_OPTIONS: [string, string][] = [
+  ["", "-- Pilih Pekerjaan --"],
+  ["ABRI/TNI", "ABRI/TNI"],
+  ["Pedagang", "Pedagang"],
+  ["Karyawan", "Karyawan"],
+  ["Guru", "Guru"],
+  ["Wiraswasta", "Wiraswasta"],
+  ["Buruh", "Buruh"],
+  ["Lainnya", "Lainnya"]
+];
+
 export default function PpdbEditPage(props: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const params = use(props.params);
@@ -172,7 +183,7 @@ export default function PpdbEditPage(props: { params: Promise<{ id: string }> })
                   <Field label="Tgl Lahir" name="fatherBirthDate" type="date" formData={f} onChange={handleChange} />
                 </div>
                 <Field label="Pendidikan" name="fatherEducation" placeholder="SD / SMP / SMA / S1 / S2" formData={f} onChange={handleChange} />
-                <Field label="Pekerjaan" name="fatherOccupation" formData={f} onChange={handleChange} />
+                <Select label="Pekerjaan" name="fatherOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
               </div>
             </div>
             {/* Kolom Ibu */}
@@ -186,7 +197,7 @@ export default function PpdbEditPage(props: { params: Promise<{ id: string }> })
                   <Field label="Tgl Lahir" name="motherBirthDate" type="date" formData={f} onChange={handleChange} />
                 </div>
                 <Field label="Pendidikan" name="motherEducation" placeholder="SD / SMP / SMA / S1 / S2" formData={f} onChange={handleChange} />
-                <Field label="Pekerjaan" name="motherOccupation" formData={f} onChange={handleChange} />
+                <Select label="Pekerjaan" name="motherOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
               </div>
             </div>
           </div>
@@ -213,7 +224,7 @@ export default function PpdbEditPage(props: { params: Promise<{ id: string }> })
               </div>
             </div>
             <Field label="Pendidikan" name="guardianEducation" formData={f} onChange={handleChange} />
-            <Field label="Pekerjaan" name="guardianOccupation" formData={f} onChange={handleChange} />
+            <Select label="Pekerjaan" name="guardianOccupation" options={OCCUPATION_OPTIONS} formData={f} onChange={handleChange} />
             <Field label="No. Kontak Wali" name="guardianPhone" formData={f} onChange={handleChange} />
             <div style={{ gridColumn: "span 2" }}>
               <label style={labelStyle}>Alamat Wali</label>

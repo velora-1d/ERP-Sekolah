@@ -56,8 +56,103 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    if (!body.name) return NextResponse.json({ success: false, message: "Nama calon murid wajib diisi" }, { status: 400 });
+    const name = body.name || body.nama; // Support field lama/baru
+    if (!name) return NextResponse.json({ success: false, message: "Nama calon murid wajib diisi" }, { status: 400 });
 
+    const nik = body.nik || "";
+    const nisn = body.nisn || "";
+
+    // 1. Cek Duplikasi Berdasarkan NIK atau NISN
+    if (nik || nisn) {
+      const existing = await db.select().from(ppdbRegistrations)
+        .where(
+          or(
+            nik ? eq(ppdbRegistrations.nik, nik) : undefined,
+            nisn ? eq(ppdbRegistrations.nisn, nisn) : undefined
+          )
+        ).limit(1);
+
+      if (existing.length > 0) {
+        const found = existing[0];
+        
+        // Jika data aktif ada, kembalikan error
+        if (!found.deletedAt) {
+          return NextResponse.json({ 
+            success: false, 
+            message: `Pendaftar dengan ${nik ? 'NIK' : 'NISN'} tersebut sudah terdaftar (No Formulir: ${found.formNo})` 
+          }, { status: 400 });
+        }
+
+        // 2. Restore Logic: Jika data terhapus, aktifkan kembali
+        // Sesuai permintaan user: Gunakan nomor formulir yang LAMA
+        const updateData: any = {
+          name: name,
+          gender: body.gender || "L",
+          birthPlace: body.birthPlace || body.tempat_lahir || "",
+          birthDate: body.birthDate || body.tanggal_lahir || "",
+          nik: nik,
+          noKk: body.noKk || body.no_kk || "",
+          nisn: nisn,
+          phone: body.phone || body.no_telp || "",
+          address: body.address || body.alamat || "",
+          previousSchool: body.previousSchool || body.asal_sekolah || "",
+          targetClassroom: body.targetClassroom || body.kelas_tujuan || "",
+          status: "pending",
+          registrationSource: "offline",
+          notes: body.notes || "",
+          familyStatus: body.familyStatus || "",
+          siblingCount: body.siblingCount ? Number(body.siblingCount) : null,
+          childPosition: body.childPosition ? Number(body.childPosition) : null,
+          religion: body.religion || "Islam",
+          village: body.village || "",
+          district: body.district || "",
+          residenceType: body.residenceType || "",
+          transportation: body.transportation || "",
+          studentPhone: body.studentPhone || "",
+          height: body.height ? Number(body.height) : null,
+          weight: body.weight ? Number(body.weight) : null,
+          distanceToSchool: body.distanceToSchool || "",
+          travelTime: body.travelTime ? Number(body.travelTime) : null,
+          fatherName: body.fatherName || "",
+          fatherNik: body.fatherNik || "",
+          fatherBirthPlace: body.fatherBirthPlace || "",
+          fatherBirthDate: body.fatherBirthDate || "",
+          fatherEducation: body.fatherEducation || "",
+          fatherOccupation: body.fatherOccupation || "",
+          motherName: body.motherName || "",
+          motherNik: body.motherNik || "",
+          motherBirthPlace: body.motherBirthPlace || "",
+          motherBirthDate: body.motherBirthDate || "",
+          motherEducation: body.motherEducation || "",
+          motherOccupation: body.motherOccupation || "",
+          parentIncome: body.parentIncome || "",
+          guardianName: body.guardianName || "",
+          guardianNik: body.guardianNik || "",
+          guardianBirthPlace: body.guardianBirthPlace || "",
+          guardianBirthDate: body.guardianBirthDate || "",
+          guardianEducation: body.guardianEducation || "",
+          guardianOccupation: body.guardianOccupation || "",
+          guardianAddress: body.guardianAddress || "",
+          guardianPhone: body.guardianPhone || "",
+          deletedAt: null,
+          updatedAt: new Date(),
+        };
+
+        const [restored] = await db.update(ppdbRegistrations)
+          .set(updateData)
+          .where(eq(ppdbRegistrations.id, found.id))
+          .returning();
+
+        return NextResponse.json({ 
+          success: true, 
+          message: `Data pendaftar ${restored.formNo} berhasil dipulihkan dari arsip`, 
+          data: restored,
+          isRestored: true 
+        });
+      }
+    }
+
+    // 3. Create New Logic (Jika tidak ada data lama atau NIK/NISN kosong)
     const now = new Date();
     const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
     const [{ cnt }] = await db.select({ cnt: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations);
@@ -65,17 +160,17 @@ export async function POST(request: Request) {
 
     const [registration] = await db.insert(ppdbRegistrations).values({
       formNo,
-      name: body.name,
+      name: name,
       gender: body.gender || "L",
-      birthPlace: body.birthPlace || "",
-      birthDate: body.birthDate || "",
-      nik: body.nik || "",
-      noKk: body.noKk || "",
-      nisn: body.nisn || "",
-      phone: body.phone || "",
-      address: body.address || "",
-      previousSchool: body.previousSchool || "",
-      targetClassroom: body.targetClassroom || "",
+      birthPlace: body.birthPlace || body.tempat_lahir || "",
+      birthDate: body.birthDate || body.tanggal_lahir || "",
+      nik: nik,
+      noKk: body.noKk || body.no_kk || "",
+      nisn: nisn,
+      phone: body.phone || body.no_telp || "",
+      address: body.address || body.alamat || "",
+      previousSchool: body.previousSchool || body.asal_sekolah || "",
+      targetClassroom: body.targetClassroom || body.kelas_tujuan || "",
       status: "pending" as any,
       registrationSource: "offline",
       notes: body.notes || "",

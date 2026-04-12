@@ -690,11 +690,14 @@ export const coopTransactions = pgTable("coop_transactions", {
 	total: doublePrecision().default(0).notNull(),
 	paymentMethod: text("payment_method").default('tunai').notNull(),
 	date: text().default('').notNull(),
+	status: text().default('valid').notNull(),
 	unitId: text("unit_id").default('').notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	deletedAt: timestamp("deleted_at", { mode: 'string' }),
 }, (table) => [
 	index("coop_transactions_date_idx").using("btree", table.date.asc().nullsLast().op("text_ops")),
+	index("coop_transactions_deleted_at_idx").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
 ]);
 
 export const counselingRecords = pgTable("counseling_records", {

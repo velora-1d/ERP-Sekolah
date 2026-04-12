@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
+
+export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { classrooms, academicYears, employees, students } from "@/db/schema";
 import { eq, or, and, isNull, asc, ilike, sql } from "drizzle-orm";
 
@@ -82,31 +84,73 @@ export async function GET(req: NextRequest) {
       },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("GET classrooms error:", error);
-    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Server Error";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { name, level, academicYearId, waliKelasId, infaqNominal } = body;
     
-    if (!body.name) {
+    if (!name) {
       return NextResponse.json({ success: false, message: "Nama kelas wajib diisi" }, { status: 400 });
     }
 
+    // 1. Cek apakah ada record dengan nama yang sama (termasuk yang di-soft delete)
+    const existing = await db.select()
+      .from(classrooms)
+      .where(ilike(classrooms.name, name))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const record = existing[0];
+      
+      // Jika record aktif sudah ada, kembalikan error duplikasi
+      if (!record.deletedAt) {
+        return NextResponse.json({ 
+          success: false, 
+          message: `Kelas dengan nama "${name}" sudah ada dan masih aktif.` 
+        }, { status: 400 });
+      }
+
+      // Jika record terhapus ditemukan, lakukan Restore
+      const [restored] = await db.update(classrooms)
+        .set({
+          level: level ? Number(level) : 1,
+          academicYearId: (academicYearId && academicYearId !== "null") ? Number(academicYearId) : null,
+          waliKelasId: (waliKelasId && waliKelasId !== "null") ? Number(waliKelasId) : null,
+          infaqNominal: (infaqNominal && infaqNominal !== "null") ? Number(infaqNominal) : 0,
+          deletedAt: null,
+          updatedAt: new Date()
+        })
+        .where(eq(classrooms.id, record.id))
+        .returning();
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "Kelas yang sebelumnya terhapus telah diaktifkan kembali.", 
+        data: restored,
+        isRestored: true 
+      });
+    }
+
+    // 2. Jika tidak ada, insert baru
     const [newClassroom] = await db.insert(classrooms).values({
-      name: body.name,
-      level: body.level ? Number(body.level) : 1,
-      academicYearId: (body.academicYearId && body.academicYearId !== "null") ? Number(body.academicYearId) : null,
-      waliKelasId: (body.waliKelasId && body.waliKelasId !== "null") ? Number(body.waliKelasId) : null,
-      infaqNominal: (body.infaqNominal && body.infaqNominal !== "null") ? Number(body.infaqNominal) : 0,
+      name: name,
+      level: level ? Number(level) : 1,
+      academicYearId: (academicYearId && academicYearId !== "null") ? Number(academicYearId) : null,
+      waliKelasId: (waliKelasId && waliKelasId !== "null") ? Number(waliKelasId) : null,
+      infaqNominal: (infaqNominal && infaqNominal !== "null") ? Number(infaqNominal) : 0,
     }).returning();
 
     return NextResponse.json({ success: true, message: "Kelas berhasil ditambahkan", data: newClassroom });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("POST Classroom error:", error);
-    return NextResponse.json({ success: false, message: "Gagal menambah kelas" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Gagal menambah kelas";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

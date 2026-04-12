@@ -35,20 +35,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
     }
 
-    const [existingUser] = await db.select({ id: users.id })
+    const email = username.toLowerCase();
+
+    // 1. Cek User Existing (Aktif atau Terhapus)
+    const [existingUser] = await db.select()
       .from(users)
-      .where(eq(users.email, username.toLowerCase()))
+      .where(eq(users.email, email))
       .limit(1);
 
     if (existingUser) {
-      return NextResponse.json({ error: "Username (email) sudah digunakan" }, { status: 400 });
+      // Jika user masih aktif, return error
+      if (!existingUser.deletedAt) {
+        return NextResponse.json({ error: "Username (email) sudah digunakan dan masih aktif" }, { status: 400 });
+      }
+
+      // 2. Restore Logic: Jika user terhapus, aktifkan kembali
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const [restoredUser] = await db.update(users).set({
+        name,
+        role: role as any,
+        password: hashedPassword,
+        status: "aktif" as any,
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, existingUser.id))
+      .returning();
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "Akun pengguna berhasil dipulihkan",
+        user: { id: restoredUser.id, name: restoredUser.name },
+        isRestored: true 
+      });
     }
 
+    // 3. Create New User
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [newUser] = await db.insert(users).values({
       name,
-      email: username.toLowerCase(),
+      email: email,
       password: hashedPassword,
       role: role as any,
       status: "aktif" as any,
@@ -56,7 +83,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, user: { id: newUser.id, name: newUser.name } }, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error("Users POST error:", error);
     return NextResponse.json({ error: "Gagal membuat pengguna" }, { status: 500 });
   }
 }

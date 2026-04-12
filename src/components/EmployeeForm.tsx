@@ -51,7 +51,13 @@ export default function EmployeeForm({ initialData, employeeType = "guru" }: { i
       }
       const json = await res.json();
       if (json.success) {
-        Swal.fire("Berhasil", json.message, "success").then(() => router.push(backUrl));
+        const title = json.isRestored ? "Data Diaktifkan Kembali" : "Berhasil";
+        Swal.fire({
+          title: title,
+          text: json.message,
+          icon: "success",
+          confirmButtonColor: "#6366f1",
+        }).then(() => router.push(backUrl));
       } else {
         Swal.fire("Gagal", json.message || "Error", "error");
       }
