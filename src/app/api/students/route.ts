@@ -143,7 +143,20 @@ export async function GET(request: Request) {
 
     const [enrollmentsRes, totalRes] = await Promise.all([
       db.select({
-        student: students,
+        student: {
+          id: students.id,
+          name: students.name,
+          nisn: students.nisn,
+          nis: students.nis,
+          nik: students.nik,
+          gender: students.gender,
+          category: students.category,
+          status: students.status,
+          birthPlace: students.birthPlace,
+          birthDate: students.birthDate,
+          phone: students.phone,
+          address: students.address,
+        },
         enrollmentId: studentEnrollments.id,
         enrollmentType: studentEnrollments.enrollmentType,
         classroom: {
