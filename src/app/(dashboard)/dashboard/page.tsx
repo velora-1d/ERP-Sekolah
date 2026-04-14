@@ -12,10 +12,8 @@ import { Suspense } from "react";
 import DashboardCharts from "@/components/DashboardCharts";
 import { and, eq, ilike, gte, lte, isNull, inArray, not, sql } from "drizzle-orm";
 
-// ISR: revalidate setiap 60 detik agar lebih ringan dan mengurangi SSR time (bottleneck LCP).
-export const revalidate = 60;
-
-import { unstable_cache } from "next/cache";
+// Halaman berjalan full dynamic SSR — tidak ada ISR/caching
+// untuk menghindari tekanan koneksi database berlebih.
 
 const getCachedDashboardData = async (searchParams: { [key: string]: string | undefined }) => {
   const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
