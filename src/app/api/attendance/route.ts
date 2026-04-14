@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { attendances, students } from "@/db/schema";
+import { attendances, students, studentEnrollments, academicYears } from "@/db/schema";
 import { and, eq, gte, isNull, lte, asc, sql } from "drizzle-orm";
 
 // GET: Fetch attendance untuk kelas dan tanggal tertentu (Optimized: Join Students)
@@ -9,12 +9,22 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const classroomId = searchParams.get("classroomId");
     const dateQuery = searchParams.get("date");
+    const academicYearId = searchParams.get("academicYearId");
 
     if (!classroomId || !dateQuery) {
       return NextResponse.json({ success: false, error: "classroomId dan date wajib diisi" }, { status: 400 });
     }
 
     const dateStr = new Date(dateQuery).toISOString().split("T")[0];
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+
+    if (!targetAcademicYearId) {
+      const [activeYear] = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYear?.id || null;
+    }
 
     // Optimasi: Ambil ALL students di kelas tsb, lalu LEFT JOIN ke attendance pada tanggal tsb
     // Dengan ini, client cukup panggil SATU API ini saja untuk daftar abensi
@@ -28,17 +38,21 @@ export async function GET(request: Request) {
         note: attendances.note,
         isNotified: attendances.isNotified,
       })
-      .from(students)
+      .from(studentEnrollments)
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
       .leftJoin(
         attendances,
         and(
           eq(attendances.studentId, students.id),
-          eq(attendances.date, dateStr)
+          eq(attendances.date, dateStr),
+          targetAcademicYearId ? eq(attendances.academicYearId, targetAcademicYearId) : undefined
         )
       )
       .where(
         and(
-          eq(students.classroomId, parseInt(classroomId)),
+          eq(studentEnrollments.classroomId, parseInt(classroomId)),
+          targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+          isNull(studentEnrollments.deletedAt),
           isNull(students.deletedAt)
         )
       )
@@ -56,7 +70,7 @@ export async function GET(request: Request) {
     });
 
     // Cache pendek untuk meredam spam refresh saat input
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -154,7 +154,12 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     })
     .from(infaqBills)
     .leftJoin(students, eq(infaqBills.studentId, students.id))
-    .where(classroomId ? and(billWhere, eq(students.classroomId, classroomId)) : billWhere),
+    .leftJoin(studentEnrollments, and(
+      eq(studentEnrollments.studentId, infaqBills.studentId),
+      eq(studentEnrollments.academicYearId, infaqBills.academicYearId),
+      isNull(studentEnrollments.deletedAt)
+    ))
+    .where(classroomId ? and(billWhere, eq(studentEnrollments.classroomId, classroomId)) : billWhere),
 
     db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
       .from(generalTransactions)

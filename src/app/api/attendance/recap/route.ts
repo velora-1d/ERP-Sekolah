@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { attendances, students } from "@/db/schema";
+import { attendances, students, studentEnrollments, academicYears } from "@/db/schema";
 import { and, eq, gte, isNull, lte, asc, sql } from "drizzle-orm";
 
 // GET: Rekapitulasi absensi siswa per periode per kelas
@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const classroomId = searchParams.get("classroomId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const academicYearId = searchParams.get("academicYearId");
 
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -23,12 +24,27 @@ export async function GET(request: Request) {
     }
 
     const cId = parseInt(classroomId);
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+
+    if (!targetAcademicYearId) {
+      const [activeYear] = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYear?.id || null;
+    }
 
     // 1. Hitung total murid aktif di kelas ini (untuk pagination)
     const countRes = await db
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(students)
-      .where(and(eq(students.classroomId, cId), isNull(students.deletedAt)));
+      .from(studentEnrollments)
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
+      .where(and(
+        eq(studentEnrollments.classroomId, cId),
+        targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+        isNull(studentEnrollments.deletedAt),
+        isNull(students.deletedAt)
+      ));
     
     const totalStudents = countRes[0].count;
 
@@ -45,17 +61,24 @@ export async function GET(request: Request) {
         alpha: sql<number>`count(case when ${attendances.status} = 'alpha' then 1 end)`.mapWith(Number),
         total: sql<number>`count(${attendances.status})`.mapWith(Number),
       })
-      .from(students)
+      .from(studentEnrollments)
+      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
       .leftJoin(
         attendances,
         and(
           eq(students.id, attendances.studentId),
           gte(attendances.date, startDate),
           lte(attendances.date, endDate),
-          eq(attendances.classroomId, cId)
+          eq(attendances.classroomId, cId),
+          targetAcademicYearId ? eq(attendances.academicYearId, targetAcademicYearId) : undefined
         )
       )
-      .where(and(eq(students.classroomId, cId), isNull(students.deletedAt)))
+      .where(and(
+        eq(studentEnrollments.classroomId, cId),
+        targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+        isNull(studentEnrollments.deletedAt),
+        isNull(students.deletedAt)
+      ))
       .groupBy(students.id)
       .orderBy(asc(students.name))
       .limit(limit)
@@ -80,8 +103,7 @@ export async function GET(request: Request) {
       meta: { total: totalStudents, page, limit, totalPages: Math.ceil(totalStudents / limit) },
     });
 
-    // Cache rekap selama 60 detik karena data histori jarang berubah mendadak
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

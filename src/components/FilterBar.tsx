@@ -76,7 +76,7 @@ export default function FilterBar({
   useEffect(() => {
     // Ambil data Tahun Ajaran jika filter akademik aktif
     if (visibleFilters.includes("academicYear") || visibleFilters.includes("classroom")) {
-      fetch("/api/academic-years")
+      fetch("/api/academic-years?limit=1000")
         .then((res) => res.json())
         .then((data) => {
           const years: AcademicYear[] = data.success ? data.data : (Array.isArray(data) ? data : []);
@@ -90,7 +90,7 @@ export default function FilterBar({
 
     // Ambil data Kelas jika filter kelas aktif
     if (visibleFilters.includes("classroom")) {
-      fetch("/api/classrooms")
+      fetch("/api/classrooms?limit=1000")
         .then((res) => res.json())
         .then((data) => {
           if (data.success) setClassrooms(data.data);

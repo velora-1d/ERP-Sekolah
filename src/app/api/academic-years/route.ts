@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-
-export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { academicYears } from "@/db/schema";
 import { and, ilike, isNull, desc, sql, eq } from "drizzle-orm";
 
@@ -42,7 +40,7 @@ export async function GET(req: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit)
       },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error: unknown) {
     console.error("GET Academic Years error:", error);

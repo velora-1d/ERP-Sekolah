@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-
-export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { subjects } from "@/db/schema";
 import { isNull, and, eq, or, ilike, asc, sql } from "drizzle-orm";
 
@@ -45,7 +43,7 @@ export async function GET(request: Request) {
           totalPages: Math.ceil(total / limit)
         }
       },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan";

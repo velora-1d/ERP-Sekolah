@@ -85,8 +85,15 @@ export default function CounselingPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
-    fetch("/api/students").then(r => r.json()).then(d => setStudents(Array.isArray(d) ? d : []));
-    fetch("/api/teachers").then(r => r.json()).then(d => setTeachers(Array.isArray(d) ? d.filter((t: { status?: string }) => !t.status || t.status === "aktif") : []));
+    fetch("/api/students?limit=1000")
+      .then(r => r.json())
+      .then(d => setStudents(d.success ? (d.data || []) : (Array.isArray(d) ? d : [])));
+    fetch("/api/teachers?limit=1000")
+      .then(r => r.json())
+      .then(d => {
+        const items = d.success ? (d.data || []) : (Array.isArray(d) ? d : []);
+        setTeachers(items.filter((t: { status?: string }) => !t.status || t.status === "aktif"));
+      });
   }, []);
 
   const handleSubmit = async () => {

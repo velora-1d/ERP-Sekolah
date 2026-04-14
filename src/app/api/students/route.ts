@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { students, studentEnrollments, classrooms, academicYears } from "@/db/schema";
 import { and, eq, ilike, or, gte, lte, isNull, asc, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
+import { getStudentsList } from "@/lib/students";
 
 /**
  * Mengekstrak field Dapodik dari body request.
@@ -82,133 +83,25 @@ export async function GET(request: Request) {
   const ageMax = searchParams.get("ageMax");
 
   try {
-    // 1. Tentukan Tahun Ajaran Target
-    let targetAcademicYearId = reqAcademicYearId ? Number(reqAcademicYearId) : null;
-    if (!targetAcademicYearId) {
-      const activeYearRes = await db.select({ id: academicYears.id })
-        .from(academicYears)
-        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
-        .limit(1);
-      targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
-    }
-
-    // 2. Bangun Filter Enrollment (Sumber Utama Kebenaran Data per Tahun Ajaran)
-    const conditions = [
-      isNull(studentEnrollments.deletedAt),
-      isNull(students.deletedAt)
-    ];
-
-    if (targetAcademicYearId) {
-      conditions.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
-    }
-
-    if (reqClassroomId) {
-      if (reqClassroomId === "none") {
-        conditions.push(isNull(studentEnrollments.classroomId));
-      } else {
-        conditions.push(eq(studentEnrollments.classroomId, Number(reqClassroomId)));
-      }
-    }
-
-    if (search) {
-      const searchCondition = or(
-        ilike(students.name, `%${search}%`),
-        ilike(students.nisn, `%${search}%`),
-        ilike(students.nis, `%${search}%`)
-      );
-      if (searchCondition) conditions.push(searchCondition);
-    }
-
-    if (gender) {
-      conditions.push(eq(students.gender, gender));
-    }
-
-    if (status) {
-      conditions.push(eq(students.status, status));
-    }
-
-    if (ageMin || ageMax) {
-      if (ageMin) {
-        const d = new Date();
-        const maxDate = new Date(d.getFullYear() - Number(ageMin), d.getMonth(), d.getDate()).toISOString();
-        conditions.push(lte(students.birthDate, maxDate));
-      }
-      if (ageMax) {
-        const d = new Date();
-        const minDate = new Date(d.getFullYear() - Number(ageMax) - 1, d.getMonth(), d.getDate() + 1).toISOString();
-        conditions.push(gte(students.birthDate, minDate));
-      }
-    }
-
-    const whereClause = and(...conditions);
-
-    const [enrollmentsRes, totalRes] = await Promise.all([
-      db.select({
-        student: {
-          id: students.id,
-          name: students.name,
-          nisn: students.nisn,
-          nis: students.nis,
-          nik: students.nik,
-          gender: students.gender,
-          category: students.category,
-          status: students.status,
-          birthPlace: students.birthPlace,
-          birthDate: students.birthDate,
-          phone: students.phone,
-          address: students.address,
-        },
-        enrollmentId: studentEnrollments.id,
-        enrollmentType: studentEnrollments.enrollmentType,
-        classroom: {
-          id: classrooms.id,
-          name: classrooms.name
-        },
-        academicYear: {
-          id: academicYears.id,
-          year: academicYears.year
-        }
-      })
-      .from(studentEnrollments)
-      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
-      .leftJoin(classrooms, eq(studentEnrollments.classroomId, classrooms.id))
-      .leftJoin(academicYears, eq(studentEnrollments.academicYearId, academicYears.id))
-      .where(whereClause)
-      .orderBy(asc(students.name))
-      .limit(limit)
-      .offset((page - 1) * limit),
-
-      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(studentEnrollments)
-      .innerJoin(students, eq(studentEnrollments.studentId, students.id))
-      .where(whereClause)
-    ]);
-
-    // Transform agar format output tetap sama dengan yang diharapkan frontend (List of Students)
-    const resultStudents = enrollmentsRes.map(e => ({
-      ...e.student,
-      birthDate: e.student.birthDate ? (typeof e.student.birthDate === 'string' ? e.student.birthDate : new Date(e.student.birthDate).toISOString()) : null,
-      classroom: e.classroom,
-      enrollment: {
-        id: e.enrollmentId,
-        enrollmentType: e.enrollmentType,
-        academicYear: e.academicYear
-      }
-    }));
-
-    const total = totalRes[0].count;
+    const result = await getStudentsList({
+      page,
+      limit,
+      search,
+      classroomId: reqClassroomId,
+      academicYearId: reqAcademicYearId,
+      gender,
+      status,
+      ageMin,
+      ageMax,
+    });
 
     const response = NextResponse.json({
       success: true,
-      data: resultStudents,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      data: result.data,
+      pagination: result.pagination,
     });
 
-    // Optimasi: Tambahkan cache header untuk mengurangi beban DB pada request repetitif
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=30, stale-while-revalidate=60'
-    );
+    response.headers.set('Cache-Control', 'no-store');
 
     return response;
   } catch (error: unknown) {

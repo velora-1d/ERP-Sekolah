@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-
-export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
-import { classrooms, academicYears, employees, students, studentEnrollments } from "@/db/schema";
-import { eq, or, and, isNull, asc, ilike, sql } from "drizzle-orm";
+import { classrooms } from "@/db/schema";
+import { getClassroomsList } from "@/lib/classrooms";
+import { eq, ilike } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,79 +10,19 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const q = searchParams.get("q") || "";
-    const skip = (page - 1) * limit;
-
-    const conditions = [isNull(classrooms.deletedAt)];
-    if (q) {
-      conditions.push(or(
-        ilike(classrooms.name, `%${q}%`)
-      )!);
-    }
-
-    const whereClause = and(...conditions);
-
-    const [classroomsData, [{ count }]] = await Promise.all([
-      db.select({
-        id: classrooms.id,
-        level: classrooms.level,
-        name: classrooms.name,
-        academicYearId: classrooms.academicYearId,
-        academicYear: academicYears.year,
-        waliKelasId: classrooms.waliKelasId,
-        waliKelas: employees.name,
-        infaqNominal: classrooms.infaqNominal,
-        student_count: sql<number>`count(distinct ${studentEnrollments.studentId})`.mapWith(Number),
-      })
-      .from(classrooms)
-      .leftJoin(academicYears, eq(classrooms.academicYearId, academicYears.id))
-      .leftJoin(employees, eq(classrooms.waliKelasId, employees.id))
-      .leftJoin(studentEnrollments, and(
-        eq(classrooms.id, studentEnrollments.classroomId),
-        eq(classrooms.academicYearId, studentEnrollments.academicYearId),
-        isNull(studentEnrollments.deletedAt)
-      ))
-      .where(whereClause)
-      .groupBy(
-        classrooms.id,
-        classrooms.level,
-        classrooms.name,
-        classrooms.academicYearId,
-        classrooms.waliKelasId,
-        classrooms.infaqNominal,
-        academicYears.year, 
-        employees.name
-      )
-      .orderBy(asc(classrooms.name))
-      .limit(limit)
-      .offset(skip),
-      
-      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(classrooms)
-      .where(whereClause)
-    ]);
-
-    const classroomsWithCount = classroomsData.map((cls) => ({
-      id: cls.id,
-      level: cls.level,
-      name: cls.name,
-      academicYearId: cls.academicYearId,
-      academicYear: cls.academicYear || "-",
-      waliKelasId: cls.waliKelasId,
-      waliKelas: cls.waliKelas || "-",
-      infaqNominal: cls.infaqNominal || 0,
-      student_count: cls.student_count,
-    }));
+    const result = await getClassroomsList({ page, limit, q });
 
     return NextResponse.json(
       { 
         success: true, 
-        data: classroomsWithCount,
-        total: count,
-        page,
-        limit,
-        totalPages: Math.ceil(count / limit)
+        data: result.data,
+        pagination: result.pagination,
+        total: result.pagination.total,
+        page: result.pagination.page,
+        limit: result.pagination.limit,
+        totalPages: result.pagination.totalPages,
       },
-      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error: unknown) {
     console.error("GET classrooms error:", error);

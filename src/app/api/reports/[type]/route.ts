@@ -8,7 +8,9 @@ import {
     studentSavings, 
     classrooms,
     generalTransactions,
-    transactionCategories
+    transactionCategories,
+    studentEnrollments,
+    academicYears
 } from "@/db/schema";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { requireAuth, AuthError } from "@/lib/rbac";
@@ -21,6 +23,17 @@ export async function GET(
   try {
     await requireAuth();
     const { type } = params;
+    const { searchParams } = new URL(request.url);
+    const academicYearId = searchParams.get("academicYearId");
+
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    if (!targetAcademicYearId) {
+      const [activeYear] = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYear?.id || null;
+    }
 
     if (type === "infaq") {
       // Optimasi: Gunakan LEFT JOIN + SUM untuk menghindari N+1 Query
@@ -59,7 +72,7 @@ export async function GET(
       });
 
       const response = NextResponse.json({ success: true, data: formatted });
-      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      response.headers.set('Cache-Control', 'no-store');
       return response;
     }
 
@@ -71,7 +84,7 @@ export async function GET(
         .orderBy(desc(ppdbRegistrations.id));
       
       const response = NextResponse.json({ success: true, data: registrations });
-      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      response.headers.set('Cache-Control', 'no-store');
       return response;
     }
 
@@ -88,7 +101,15 @@ export async function GET(
             `.mapWith(Number)
         })
         .from(students)
-        .leftJoin(classrooms, eq(students.classroomId, classrooms.id))
+        .leftJoin(
+          studentEnrollments,
+          and(
+            eq(studentEnrollments.studentId, students.id),
+            targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+            isNull(studentEnrollments.deletedAt)
+          )
+        )
+        .leftJoin(classrooms, eq(studentEnrollments.classroomId, classrooms.id))
         .leftJoin(studentSavings, and(
             eq(students.id, studentSavings.studentId),
             eq(studentSavings.status, "active"),
@@ -109,7 +130,7 @@ export async function GET(
       }));
 
       const response = NextResponse.json({ success: true, data: formatted });
-      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      response.headers.set('Cache-Control', 'no-store');
       return response;
     }
 
@@ -156,7 +177,7 @@ export async function GET(
         success: true,
         data: { total_income, total_expense, balance: total_income - total_expense, transactions: formatted },
       });
-      response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+      response.headers.set('Cache-Control', 'no-store');
       return response;
     }
 

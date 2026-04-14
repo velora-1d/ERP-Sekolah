@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { reRegistrations, students, classrooms, registrationPayments, academicYears } from "@/db/schema";
+import { reRegistrations, students, classrooms, registrationPayments, academicYears, studentEnrollments } from "@/db/schema";
 import { eq, and, isNull, desc, inArray } from "drizzle-orm";
 
 export async function GET(request: Request) {
@@ -27,12 +27,20 @@ export async function GET(request: Request) {
         student: {
           id: students.id,
           name: students.name,
-          classroomId: students.classroomId,
+          classroomId: studentEnrollments.classroomId,
           gender: students.gender,
         }
       })
       .from(reRegistrations)
       .innerJoin(students, eq(reRegistrations.studentId, students.id)) // Hilangkan orphaned records
+      .leftJoin(
+        studentEnrollments,
+        and(
+          eq(studentEnrollments.studentId, students.id),
+          targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+          isNull(studentEnrollments.deletedAt)
+        )
+      )
       .where(
         and(
           isNull(reRegistrations.deletedAt),
@@ -113,11 +121,7 @@ export async function GET(request: Request) {
       not_registered,
     });
 
-    // Optimasi: Cache data daftar ulang di Edge selama 30 detik
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=30, stale-while-revalidate=60'
-    );
+    response.headers.set('Cache-Control', 'no-store');
 
     return response;
   } catch (error) {

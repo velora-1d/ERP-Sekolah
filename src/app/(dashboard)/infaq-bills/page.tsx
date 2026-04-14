@@ -98,8 +98,8 @@ function InfaqBillsContent() {
 
   useEffect(() => {
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
-    fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
-    fetch("/api/academic-years").then(r => r.json()).then(j => { if (j.success) setAcademicYears(j.data || []); }).catch(() => {});
+    fetch("/api/classrooms?limit=1000").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
+    fetch("/api/academic-years?limit=1000").then(r => r.json()).then(j => { if (j.success) setAcademicYears(j.data || []); }).catch(() => {});
   }, []);
 
   // === Generate Tagihan ===
@@ -323,7 +323,7 @@ function InfaqBillsContent() {
         setShowBulkUpdate(false);
         setBulkClassIds([]);
         setBulkNominal("");
-        fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
+    fetch("/api/classrooms?limit=1000").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
       } else {
         showToast(json.message, "error");
       }

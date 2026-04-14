@@ -117,7 +117,7 @@ export default function PpdbPage({
 
   async function loadClassrooms() {
     try {
-      const res = await fetch("/api/classrooms");
+      const res = await fetch("/api/classrooms?limit=1000");
       const json = await res.json();
       if (json.success) setClassrooms(json.data);
     } catch (e) { console.error(e); }

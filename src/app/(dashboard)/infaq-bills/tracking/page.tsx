@@ -40,7 +40,7 @@ export default function TrackingPerKelasPage() {
   };
 
   useEffect(() => {
-    fetch("/api/classrooms").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data); });
+    fetch("/api/classrooms?limit=1000").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data); });
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data); });
   }, []);
 

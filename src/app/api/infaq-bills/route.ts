@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { infaqBills, students, academicYears, classrooms, infaqPayments } from "@/db/schema";
+import { infaqBills, students, academicYears, classrooms, infaqPayments, studentEnrollments } from "@/db/schema";
 import { isNull, and, eq, ilike, asc, desc, sql, inArray } from "drizzle-orm";
 
 export async function GET(request: Request) {
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
 
     // 2. Build where clause
-    const conditions = [isNull(infaqBills.deletedAt)];
+    const conditions = [isNull(infaqBills.deletedAt), isNull(students.deletedAt), isNull(studentEnrollments.deletedAt)];
     if (targetAcademicYearId) conditions.push(eq(infaqBills.academicYearId, targetAcademicYearId));
     if (month) conditions.push(eq(infaqBills.month, month));
     if (statusFilter) conditions.push(eq(infaqBills.status, statusFilter as any));
@@ -41,11 +41,11 @@ export async function GET(request: Request) {
 
     // Filter Relasi Siswa
     if (search) conditions.push(ilike(students.name, `%${search}%`));
-    if (classroomId) conditions.push(eq(students.classroomId, Number(classroomId)));
+    if (classroomId) conditions.push(eq(studentEnrollments.classroomId, Number(classroomId)));
 
     const whereClause = and(...conditions);
 
-    let [rawBills, [{ total }]] = await Promise.all([
+    const [rawBills, [{ total }]] = await Promise.all([
       db.select({
         id: infaqBills.id,
         studentId: infaqBills.studentId,
@@ -57,11 +57,19 @@ export async function GET(request: Request) {
         studentName: students.name,
         studentNisn: students.nisn,
         studentGender: students.gender,
-        studentClassroomId: students.classroomId,
+        studentClassroomId: studentEnrollments.classroomId,
         academicYearName: academicYears.year,
       })
       .from(infaqBills)
       .leftJoin(students, eq(infaqBills.studentId, students.id))
+      .leftJoin(
+        studentEnrollments,
+        and(
+          eq(studentEnrollments.studentId, infaqBills.studentId),
+          eq(studentEnrollments.academicYearId, infaqBills.academicYearId),
+          isNull(studentEnrollments.deletedAt)
+        )
+      )
       .leftJoin(academicYears, eq(infaqBills.academicYearId, academicYears.id))
       .where(whereClause)
       .orderBy(desc(infaqBills.createdAt))
@@ -70,17 +78,17 @@ export async function GET(request: Request) {
 
       db.select({ total: sql<number>`count(*)`.mapWith(Number) })
       .from(infaqBills)
-      .where(and(...conditions.filter(c => !c.toString().includes('students.id')))),
+      .leftJoin(students, eq(infaqBills.studentId, students.id))
+      .leftJoin(
+        studentEnrollments,
+        and(
+          eq(studentEnrollments.studentId, infaqBills.studentId),
+          eq(studentEnrollments.academicYearId, infaqBills.academicYearId),
+          isNull(studentEnrollments.deletedAt)
+        )
+      )
+      .where(whereClause),
     ]);
-
-    // Optimasi: Jika ada filter pencarian nama, gunakan join pada count. Jika tidak, hapus join agar lebih cepat.
-    if (search) {
-      const [{ total: searchTotal }] = await db.select({ total: sql<number>`count(*)`.mapWith(Number) })
-        .from(infaqBills)
-        .leftJoin(students, eq(infaqBills.studentId, students.id))
-        .where(whereClause);
-      total = searchTotal;
-    }
 
     // Ambil total pembayaran per bill
     const billIds = rawBills.map(b => b.id);
@@ -134,11 +142,7 @@ export async function GET(request: Request) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
 
-    // Optimasi: Cache penagihan di Edge selama 30 detik
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=30, stale-while-revalidate=60'
-    );
+    response.headers.set('Cache-Control', 'no-store');
 
     return response;
   } catch (error) {

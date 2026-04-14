@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { counselingRecords, students, employees, classrooms } from "@/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { counselingRecords, students, employees, classrooms, studentEnrollments, academicYears } from "@/db/schema";
+import { eq, and, desc, sql, isNull } from "drizzle-orm";
 
 // GET /api/counseling?studentId=X&category=X&status=X
 export async function GET(req: Request) {
@@ -13,6 +13,16 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
+    const academicYearId = searchParams.get("academicYearId");
+
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    if (!targetAcademicYearId) {
+      const [activeYear] = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYear?.id || null;
+    }
 
     const conditions = [];
     if (studentId) conditions.push(eq(counselingRecords.studentId, parseInt(studentId)));
@@ -42,7 +52,15 @@ export async function GET(req: Request) {
       })
       .from(counselingRecords)
       .leftJoin(students, eq(counselingRecords.studentId, students.id))
-      .leftJoin(classrooms, eq(students.classroomId, classrooms.id))
+      .leftJoin(
+        studentEnrollments,
+        and(
+          eq(studentEnrollments.studentId, students.id),
+          targetAcademicYearId ? eq(studentEnrollments.academicYearId, targetAcademicYearId) : undefined,
+          isNull(studentEnrollments.deletedAt)
+        )
+      )
+      .leftJoin(classrooms, eq(studentEnrollments.classroomId, classrooms.id))
       .leftJoin(employees, eq(counselingRecords.counselorId, employees.id))
       .where(whereClause)
       .orderBy(desc(counselingRecords.createdAt))
