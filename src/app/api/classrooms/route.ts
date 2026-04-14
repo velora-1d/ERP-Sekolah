@@ -32,14 +32,15 @@ export async function GET(req: NextRequest) {
         waliKelasId: classrooms.waliKelasId,
         waliKelas: employees.name,
         infaqNominal: classrooms.infaqNominal,
-        student_count: sql<number>`count(distinct ${students.id})`.mapWith(Number),
+        student_count: sql<number>`count(distinct ${studentEnrollments.studentId})`.mapWith(Number),
       })
       .from(classrooms)
       .leftJoin(academicYears, eq(classrooms.academicYearId, academicYears.id))
       .leftJoin(employees, eq(classrooms.waliKelasId, employees.id))
-      .leftJoin(students, and(
-        eq(classrooms.id, students.classroomId),
-        isNull(students.deletedAt)
+      .leftJoin(studentEnrollments, and(
+        eq(classrooms.id, studentEnrollments.classroomId),
+        eq(classrooms.academicYearId, studentEnrollments.academicYearId),
+        isNull(studentEnrollments.deletedAt)
       ))
       .where(whereClause)
       .groupBy(

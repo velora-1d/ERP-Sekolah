@@ -257,9 +257,16 @@ export default function ClassroomsClient({
                                     <option value="6" ${c.level === 6 ? 'selected' : ''}>Tingkat 6</option>
                                   </select>
                                 </div>
-                                <div style="text-align: left;">
+                                <div style="text-align: left; margin-bottom: 10px;">
                                   <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
                                   <input id="swal-edit-classroom-infaq" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
+                                </div>
+                                <div style="text-align: left;">
+                                  <label style="font-size: 14px; font-weight: 600;">Wali Kelas</label>
+                                  <select id="swal-edit-classroom-walikelas" class="swal2-input" style="margin-top: 5px; width: 100%;">
+                                    <option value="null">-- Belum Ada --</option>
+                                    ${teachers.map((t: any) => `<option value="${t.id}" ${t.id === c.waliKelasId ? 'selected' : ''}>${t.name}</option>`).join('')}
+                                  </select>
                                 </div>
                               `,
                               focusConfirm: false,
@@ -273,24 +280,30 @@ export default function ClassroomsClient({
                                 return {
                                   newName: input1 ? input1.value : '',
                                   newLevel: inputLevel ? inputLevel.value : '1',
-                                  newInfaq: input2 ? input2.value : '0'
+                                  newInfaq: input2 ? input2.value : '0',
+                                  newWaliKelasId: (document.getElementById('swal-edit-classroom-walikelas') as HTMLSelectElement)?.value
                                 }
                               }
                             });
 
                             if (!result.isConfirmed) return;
                             
-                            const { newName, newLevel, newInfaq } = result.value || {};
-                            if (!newName) {
-                              Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
-                              return;
-                            }
-
-                            try {
-                              const res = await fetch(`/api/classrooms/${c.id}`, {
-                                method: "PUT", headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ name: newName, level: Number(newLevel), infaqNominal: Number(newInfaq) }),
-                              });
+                                const { newName, newLevel, newInfaq, newWaliKelasId } = result.value || {};
+                                if (!newName) {
+                                  Swal.fire("Error", "Nama kelas tidak boleh kosong", "error");
+                                  return;
+                                }
+  
+                                try {
+                                  const res = await fetch(`/api/classrooms/${c.id}`, {
+                                    method: "PUT", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ 
+                                      name: newName, 
+                                      level: Number(newLevel), 
+                                      infaqNominal: Number(newInfaq),
+                                      waliKelasId: newWaliKelasId === "null" ? null : Number(newWaliKelasId)
+                                    }),
+                                  });
                               if (!res.ok) {
                                 const err = await res.json().catch(() => ({}));
                                 throw new Error(err.message || "Gagal menghubungi server");
