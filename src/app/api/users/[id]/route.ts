@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { eq, and, ne, isNull } from "drizzle-orm";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -48,7 +48,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     if (role) updateData.role = role;
     if (status) updateData.status = status;
     if (password && password.trim() !== "") {
-      updateData.password = await bcrypt.hash(password, 10);
+      updateData.password = bcrypt.hashSync(password, 10);
     }
     updateData.updatedAt = new Date();
 

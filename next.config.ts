@@ -1,18 +1,13 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
-  // Optimasi performa untuk serverless (Vercel)
-  
-  // Menggunakan output standalone untuk bundle yang lebih kecil
-  // (mengurangi cold start karena ukuran deployment lebih kecil)
-  output: "standalone",
-
-  // Optimasi gambar
   images: {
     formats: ["image/avif", "image/webp"],
   },
 
-  // Header caching untuk aset statis
+  serverExternalPackages: ["pg", "jsonwebtoken", "cloudinary"],
+
   async headers() {
     return [
       {
@@ -27,5 +22,7 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+initOpenNextCloudflareForDev();
 
 export default nextConfig;

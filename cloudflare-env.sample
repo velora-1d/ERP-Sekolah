@@ -1,0 +1,16 @@
+# Set these in Cloudflare (Workers / Pages project → Settings → Variables and Secrets).
+# For `wrangler dev` / `npm run preview`, copy to .dev.vars (gitignored).
+#
+# DATABASE_URL — required for `next dev` and for Next.js build (SSG); at runtime on Workers prefer Hyperdrive (see wrangler.jsonc).
+# JWT_SECRET — required in production (see src/lib/auth.ts).
+# Cloudinary / AI / optional seed flags — same as on Vercel.
+
+DATABASE_URL=
+JWT_SECRET=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+SUMOPOD_AI_KEY=
+SUMOPOD_AI_BASE_URL=
+ALLOW_SEED=
+NEXTJS_ENV=development

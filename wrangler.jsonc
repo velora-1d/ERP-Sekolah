@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "erp-sekolah",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-14",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "erp-sekolah"
+    }
+  ]
+  // After creating a Hyperdrive config (Dashboard → Hyperdrive, or `wrangler hyperdrive create`),
+  // add a binding so production Workers use the pooler:
+  // "hyperdrive": [
+  //   { "binding": "HYPERDRIVE", "id": "<your-hyperdrive-config-id>" }
+  // ]
+}

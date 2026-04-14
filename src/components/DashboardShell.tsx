@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import PageTransition from "@/components/PageTransition";
@@ -14,12 +14,16 @@ import HelpDrawer from "@/components/HelpDrawer";
 import HelpFAB from "@/components/HelpFAB";
 
 export default function DashboardShell({ user, children }: DashboardShellProps) {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sidebar-collapsed") === "true";
+  const [collapsed, setCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setCollapsed(saved === "true");
     }
-    return false;
-  });
+  }, []);
 
   function handleToggle() {
     setCollapsed((prev) => {

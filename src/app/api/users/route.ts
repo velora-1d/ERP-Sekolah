@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { isNull, eq, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       }
 
       // 2. Restore Logic: Jika user terhapus, aktifkan kembali
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = bcrypt.hashSync(password, 10);
       const [restoredUser] = await db.update(users).set({
         name,
         role: role as any,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Create New User
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
     const [newUser] = await db.insert(users).values({
       name,
