@@ -63,7 +63,11 @@ const getInitialRegistrations = unstable_cache(
       .where(and(eq(registrationPayments.payableType, "ppdb"), inArray(registrationPayments.payableId, regIds), isNull(registrationPayments.deletedAt)));
     }
 
-    const dataWithPayments = list.map(r => ({ ...r, payments: payments.filter(p => p.payableId === r.id) }));
+    const dataWithPayments = list.map(r => ({ 
+      ...r, 
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+      payments: payments.filter(p => p.payableId === r.id) 
+    }));
     
     const [{ pending }, { diterima }, { ditolak }, { totalAll }] = await Promise.all([
       db.select({ pending: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), or(eq(ppdbRegistrations.status, "menunggu" as string), eq(ppdbRegistrations.status, "pending" as string)))).then(r => r[0]),
