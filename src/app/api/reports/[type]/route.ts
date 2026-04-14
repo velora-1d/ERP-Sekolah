@@ -23,47 +23,44 @@ export async function GET(
     const { type } = params;
 
     if (type === "infaq") {
-      const bills = await db
+      // Optimasi: Gunakan LEFT JOIN + SUM untuk menghindari N+1 Query
+      const results = await db
         .select({
           id: infaqBills.id,
           month: infaqBills.month,
           year: infaqBills.year,
           nominal: infaqBills.nominal,
-          student: {
-            id: students.id,
-            name: students.name
-          }
+          studentName: students.name,
+          totalPaid: sql<number>`coalesce(sum(${infaqPayments.amountPaid}), 0)`.mapWith(Number),
         })
         .from(infaqBills)
         .leftJoin(students, eq(infaqBills.studentId, students.id))
-        .where(isNull(infaqBills.deletedAt));
+        .leftJoin(infaqPayments, and(
+          eq(infaqBills.id, infaqPayments.billId),
+          isNull(infaqPayments.deletedAt)
+        ))
+        .where(isNull(infaqBills.deletedAt))
+        .groupBy(infaqBills.id, students.name)
+        .orderBy(desc(infaqBills.createdAt));
 
-      const result = await Promise.all(bills.map(async (bill) => {
-        const payments = await db
-            .select({ amountPaid: infaqPayments.amountPaid })
-            .from(infaqPayments)
-            .where(
-                and(
-                    eq(infaqPayments.billId, bill.id),
-                    isNull(infaqPayments.deletedAt)
-                )
-            );
-        
-        const paid = payments.reduce((sum, p) => sum + p.amountPaid, 0);
-        const amount = bill.nominal || 0;
-        const remaining = amount - paid;
+      const formatted = results.map((b) => {
+        const amount = b.nominal || 0;
+        const paid = b.totalPaid || 0;
+        const remaining = Math.max(0, amount - paid);
         return {
-          id: bill.id,
-          student_name: bill.student?.name || "Anonim",
-          month: bill.month + " " + bill.year,
+          id: b.id,
+          student_name: b.studentName || "Anonim",
+          month: b.month + " " + b.year,
           amount,
           paid,
-          remaining: remaining > 0 ? remaining : 0,
+          remaining,
           status: remaining <= 0 ? "paid" : "unpaid",
         };
-      }));
+      });
 
-      return NextResponse.json({ success: true, data: result });
+      const response = NextResponse.json({ success: true, data: formatted });
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      return response;
     }
 
     if (type === "pendaftaran") {
@@ -72,50 +69,48 @@ export async function GET(
         .from(ppdbRegistrations)
         .where(isNull(ppdbRegistrations.deletedAt))
         .orderBy(desc(ppdbRegistrations.id));
-      return NextResponse.json({ success: true, data: registrations });
+      
+      const response = NextResponse.json({ success: true, data: registrations });
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      return response;
     }
 
     if (type === "tabungan") {
-      const activeStudents = await db
+      // Optimasi: Gunakan SUM & GROUP BY untuk menghitung saldo seluruh siswa dalam SATU query
+      const savingsBalances = await db
         .select({
-          id: students.id,
-          name: students.name,
-          classroomName: classrooms.name
+            studentId: students.id,
+            studentName: students.name,
+            classroomName: classrooms.name,
+            balance: sql<number>`
+                coalesce(sum(case when ${studentSavings.type} = 'setor' then ${studentSavings.amount} else 0 end), 0) -
+                coalesce(sum(case when ${studentSavings.type} = 'tarik' then ${studentSavings.amount} else 0 end), 0)
+            `.mapWith(Number)
         })
         .from(students)
         .leftJoin(classrooms, eq(students.classroomId, classrooms.id))
-        .where(isNull(students.deletedAt));
+        .leftJoin(studentSavings, and(
+            eq(students.id, studentSavings.studentId),
+            eq(studentSavings.status, "active"),
+            isNull(studentSavings.deletedAt)
+        ))
+        .where(isNull(students.deletedAt))
+        .groupBy(students.id, classrooms.name)
+        .having(sql`abs(
+            coalesce(sum(case when ${studentSavings.type} = 'setor' then ${studentSavings.amount} else 0 end), 0) -
+            coalesce(sum(case when ${studentSavings.type} = 'tarik' then ${studentSavings.amount} else 0 end), 0)
+        ) > 0`);
 
-      const result = [];
-      for (const s of activeStudents) {
-          const savingsData = await db
-            .select({ type: studentSavings.type, amount: studentSavings.amount })
-            .from(studentSavings)
-            .where(
-                and(
-                    eq(studentSavings.studentId, s.id),
-                    eq(studentSavings.status, "active"),
-                    isNull(studentSavings.deletedAt)
-                )
-            );
-          
-          let balance = 0;
-          savingsData.forEach((sv) => {
-            if (sv.type === "setor") balance += sv.amount;
-            else if (sv.type === "tarik") balance -= sv.amount;
-          });
+      const formatted = savingsBalances.map(s => ({
+          student_id: s.studentId,
+          student_name: s.studentName,
+          classroom: s.classroomName || "-",
+          balance: s.balance,
+      }));
 
-          if (balance !== 0) {
-              result.push({
-                student_id: s.id,
-                student_name: s.name,
-                classroom: s.classroomName || "-",
-                balance,
-              });
-          }
-      }
-
-      return NextResponse.json({ success: true, data: result });
+      const response = NextResponse.json({ success: true, data: formatted });
+      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      return response;
     }
 
     if (type === "aruskas") {
@@ -157,10 +152,12 @@ export async function GET(
         };
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         data: { total_income, total_expense, balance: total_income - total_expense, transactions: formatted },
       });
+      response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+      return response;
     }
 
     return NextResponse.json({ success: false, message: "Tipe laporan tidak dikenali" }, { status: 400 });

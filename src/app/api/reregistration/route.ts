@@ -51,10 +51,15 @@ export async function GET(request: Request) {
 
     // Map payments
     const reregIds = reregList.map(r => r.id);
-    let payments: (typeof registrationPayments.$inferSelect)[] = [];
+    let payments: any[] = [];
     if (reregIds.length > 0) {
       payments = await db
-        .select()
+        .select({
+          id: registrationPayments.id,
+          payableId: registrationPayments.payableId,
+          paymentType: registrationPayments.paymentType,
+          isPaid: registrationPayments.isPaid,
+        })
         .from(registrationPayments)
         .where(
           and(
@@ -100,13 +105,21 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data,
       total: data.length,
       confirmed,
       pending,
       not_registered,
     });
+
+    // Optimasi: Cache data daftar ulang di Edge selama 30 detik
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error) {
     console.error("Reregistration GET error:", error);
     return NextResponse.json(

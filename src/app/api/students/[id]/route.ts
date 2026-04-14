@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq, and, isNull, desc, asc, sql, ne, or } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -189,6 +190,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return [updatedStudent];
     });
 
+    revalidateTag("students", "page");
+
     return NextResponse.json({ success: true, message: "Data siswa berhasil diupdate", data: student });
   } catch (error: unknown) {
     console.error("Error updating student:", error);
@@ -212,6 +215,8 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
       })
       .where(eq(students.id, parseInt(params.id)));
       
+    revalidateTag("students", "page");
+
     return NextResponse.json({ success: true, message: "Data siswa berhasil dihapus" });
   } catch (error: unknown) {
     console.error("Error deleting student:", error);

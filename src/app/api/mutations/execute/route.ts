@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { students, studentEnrollments, academicYears } from "@/db/schema";
 import { inArray, eq, isNull, and } from "drizzle-orm";
 import { requireAuth, AuthError } from "@/lib/rbac";
+import { revalidateTag } from "next/cache";
 
 /**
  * POST /api/mutations/execute — Execute mutasi batch (pindah kelas / naik kelas / lulus)
@@ -68,8 +69,8 @@ export async function POST(request: Request) {
       return { count: updated.length };
     });
     
-    // I need to import 'and' - wait, I forgot to import it.
-    // Let me fix the imports in the write_to_file call below.
+    // Invalidate cache agar daftar siswa langsung terupdate
+    revalidateTag("students", "page");
 
     const action = newStatus
       ? `Status ${result.count} siswa diubah ke "${newStatus}"`

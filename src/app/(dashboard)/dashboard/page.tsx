@@ -6,10 +6,10 @@ import {
   transactionCategories
 } from "@/db/schema";
 import { getAuthUser, JwtPayload } from "@/lib/auth";
-import DashboardCharts from "@/components/DashboardCharts";
 import FilterBar from "@/components/FilterBar";
 import DashboardTabs from "@/components/DashboardTabs";
 import { Suspense } from "react";
+import DashboardCharts from "@/components/DashboardCharts";
 import { and, eq, ilike, gte, lte, isNull, inArray, not, sql } from "drizzle-orm";
 
 // ISR: revalidate setiap 60 detik agar lebih ringan dan mengurangi SSR time (bottleneck LCP).
@@ -262,7 +262,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
   }
 
   // Gunakan key kombinasi tab dan filter agar skeleton muncul saat filter/tab berubah
-  const suspenseKey = `${activeTab}-${JSON.stringify(searchParams)}`;
+  // Optimasi: Hindari JSON.stringify yang berat di server render
+  const suspenseKey = `${activeTab}-${searchParams.academicYearId || 'all'}-${searchParams.month || 'all'}-${searchParams.classroomId || 'all'}`;
 
   return (
     <div className="space-y-6">

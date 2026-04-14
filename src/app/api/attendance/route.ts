@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { attendances, students } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, asc, sql } from "drizzle-orm";
 
-// GET: Fetch attendance untuk kelas dan tanggal tertentu
+// GET: Fetch attendance untuk kelas dan tanggal tertentu (Optimized: Join Students)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,24 +16,48 @@ export async function GET(request: Request) {
 
     const dateStr = new Date(dateQuery).toISOString().split("T")[0];
 
+    // Optimasi: Ambil ALL students di kelas tsb, lalu LEFT JOIN ke attendance pada tanggal tsb
+    // Dengan ini, client cukup panggil SATU API ini saja untuk daftar abensi
     const rows = await db
       .select({
-        id: attendances.id,
-        studentId: attendances.studentId,
-        classroomId: attendances.classroomId,
-        date: attendances.date,
+        studentId: students.id,
+        studentName: students.name,
+        nisn: students.nisn,
+        attendanceId: attendances.id,
         status: attendances.status,
         note: attendances.note,
-        createdAt: attendances.createdAt,
-        updatedAt: attendances.updatedAt,
         isNotified: attendances.isNotified,
-        student: { name: students.name, nisn: students.nisn },
       })
-      .from(attendances)
-      .leftJoin(students, eq(attendances.studentId, students.id))
-      .where(and(eq(attendances.classroomId, parseInt(classroomId)), eq(attendances.date, dateStr)));
+      .from(students)
+      .leftJoin(
+        attendances,
+        and(
+          eq(attendances.studentId, students.id),
+          eq(attendances.date, dateStr)
+        )
+      )
+      .where(
+        and(
+          eq(students.classroomId, parseInt(classroomId)),
+          isNull(students.deletedAt)
+        )
+      )
+      .orderBy(asc(students.name));
 
-    return NextResponse.json({ success: true, data: rows });
+    const response = NextResponse.json({ 
+      success: true, 
+      data: rows.map(r => ({
+        id: r.attendanceId,
+        studentId: r.studentId,
+        status: r.status || "hadir", // Default frontend logic
+        note: r.note || "",
+        student: { name: r.studentName, nisn: r.nisn }
+      })) 
+    });
+
+    // Cache pendek untuk meredam spam refresh saat input
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

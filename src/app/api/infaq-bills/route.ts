@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
     const whereClause = and(...conditions);
 
-    const [rawBills, [{ total }]] = await Promise.all([
+    let [rawBills, [{ total }]] = await Promise.all([
       db.select({
         id: infaqBills.id,
         studentId: infaqBills.studentId,
@@ -70,9 +70,17 @@ export async function GET(request: Request) {
 
       db.select({ total: sql<number>`count(*)`.mapWith(Number) })
       .from(infaqBills)
-      .leftJoin(students, eq(infaqBills.studentId, students.id))
-      .where(whereClause)
+      .where(and(...conditions.filter(c => !c.toString().includes('students.id')))),
     ]);
+
+    // Optimasi: Jika ada filter pencarian nama, gunakan join pada count. Jika tidak, hapus join agar lebih cepat.
+    if (search) {
+      const [{ total: searchTotal }] = await db.select({ total: sql<number>`count(*)`.mapWith(Number) })
+        .from(infaqBills)
+        .leftJoin(students, eq(infaqBills.studentId, students.id))
+        .where(whereClause);
+      total = searchTotal;
+    }
 
     // Ambil total pembayaran per bill
     const billIds = rawBills.map(b => b.id);
@@ -120,11 +128,19 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: formattedBills,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
+
+    // Optimasi: Cache penagihan di Edge selama 30 detik
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error) {
     console.error("Infaq bills GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { finalGrades, students, curriculums, subjects, gradeComponents, studentGrades } from "@/db/schema";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { eq, and, asc, inArray, sql } from "drizzle-orm";
 import { hitungNilaiAkhir, hitungPredikat, generateDeskripsi } from "@/lib/grade-engine";
 
 export async function GET(req: Request) {
@@ -108,8 +108,9 @@ export async function POST(req: Request) {
       studentGradesMap[g.studentId].push(g);
     });
 
-    // 3. Kalkulasi per siswa
-    const results = [];
+    // 3. Kalkulasi per siswa dan kumpulkan untuk Bulk Upsert
+    const upsertData: any[] = [];
+    
     for (const [sId, sGrades] of Object.entries(studentGradesMap)) {
       const studentId = Number(sId);
       const studentName = sGrades[0]?.studentName || "Siswa";
@@ -123,52 +124,43 @@ export async function POST(req: Request) {
       const predikat = hitungPredikat(finalScore, cur.type as any);
       const deskripsi = generateDeskripsi(studentName, subject?.name || "", finalScore, predikat, cur.type as any);
 
-      // Upsert manual with Drizzle
-      const [existing] = await db.select().from(finalGrades).where(
-          and(
-              eq(finalGrades.curriculumId, Number(curriculumId)),
-              eq(finalGrades.studentId, studentId),
-              eq(finalGrades.subjectId, Number(subjectId))
-          )
-      ).limit(1);
-
-      if (existing) {
-          const [updated] = await db
-            .update(finalGrades)
-            .set({
-                classroomId: Number(classroomId),
-                nilaiPengetahuan: finalScore,
-                nilaiKeterampilan: finalScore,
-                nilaiAkhir: finalScore,
-                predikat,
-                deskripsi,
-                isLocked: false,
-                updatedAt: new Date(),
-            })
-            .where(eq(finalGrades.id, existing.id))
-            .returning();
-          results.push(updated);
-      } else {
-          const [created] = await db
-            .insert(finalGrades)
-            .values({
-                curriculumId: Number(curriculumId),
-                studentId: studentId,
-                subjectId: Number(subjectId),
-                classroomId: Number(classroomId),
-                nilaiPengetahuan: finalScore,
-                nilaiKeterampilan: finalScore,
-                nilaiAkhir: finalScore,
-                predikat,
-                deskripsi,
-                isLocked: false,
-            })
-            .returning();
-          results.push(created);
-      }
+      upsertData.push({
+        curriculumId: Number(curriculumId),
+        studentId: studentId,
+        subjectId: Number(subjectId),
+        classroomId: Number(classroomId),
+        nilaiPengetahuan: finalScore,
+        nilaiKeterampilan: finalScore,
+        nilaiAkhir: finalScore,
+        predikat,
+        deskripsi,
+        isLocked: false,
+      });
     }
 
-    return NextResponse.json({ success: true, count: results.length });
+    // 4. Jalankan Bulk Upsert (Satu Kueri untuk Seluruh Siswa)
+    if (upsertData.length > 0) {
+      await db
+        .insert(finalGrades)
+        .values(upsertData)
+        .onConflictDoUpdate({
+          target: [finalGrades.curriculumId, finalGrades.studentId, finalGrades.subjectId],
+          set: {
+            classroomId: sql`excluded.classroom_id`,
+            nilaiPengetahuan: sql`excluded.nilai_pengetahuan`,
+            nilaiKeterampilan: sql`excluded.nilai_keterampilan`,
+            nilaiAkhir: sql`excluded.nilai_akhir`,
+            predikat: sql`excluded.predikat`,
+            deskripsi: sql`excluded.deskripsi`,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag("grades", "page");
+
+    return NextResponse.json({ success: true, count: upsertData.length });
   } catch (error) {
     console.error("Error calculating final grades:", error);
     return NextResponse.json(

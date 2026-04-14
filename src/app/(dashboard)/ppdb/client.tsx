@@ -13,9 +13,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 export default function PpdbPage({
   initialClassrooms = [],
   initialCashAccounts = [],
+  initialResult = null,
 }: {
   initialClassrooms?: any[];
   initialCashAccounts?: any[];
+  initialResult?: any;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();

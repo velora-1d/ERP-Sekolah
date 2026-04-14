@@ -141,12 +141,16 @@ export async function GET(request: Request) {
       balance: balanceMap[s.id] || 0,
     }));
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data,
       totalBalance: globalTotalBalance,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
+
+    // Cache pendek untuk meredam pemuatan berulang saat navigasi cepat
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    return response;
   } catch (error) {
     console.error("Tabungan GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });

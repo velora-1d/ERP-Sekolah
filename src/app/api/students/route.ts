@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, studentEnrollments, classrooms, academicYears } from "@/db/schema";
 import { and, eq, ilike, or, gte, lte, isNull, asc, sql } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 
 /**
  * Mengekstrak field Dapodik dari body request.
@@ -196,11 +197,19 @@ export async function GET(request: Request) {
 
     const total = totalRes[0].count;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: resultStudents,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
+
+    // Optimasi: Tambahkan cache header untuk mengurangi beban DB pada request repetitif
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=30, stale-while-revalidate=60'
+    );
+
+    return response;
   } catch (error: unknown) {
     console.error("GET Students error:", error);
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
@@ -320,6 +329,8 @@ export async function POST(request: Request) {
 
       return inserted;
     });
+
+    revalidateTag("students", "page");
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: newStudent });
   } catch (error: unknown) {

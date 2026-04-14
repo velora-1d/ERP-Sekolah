@@ -112,34 +112,26 @@ export default function AttendancePage({
 
     setLoadingInput(true);
     try {
-      // 1. Ambil murid di kelas target
-      const muridRes = await fetch(`/api/students?classroomId=${selectedClassroom}`);
-      const muridJson = await muridRes.json();
-      
-      if (!muridJson.success) {
-        throw new Error(muridJson.error || "Gagal memuat siswa");
-      }
-
-      const students: Student[] = muridJson.data || [];
-
-      // 2. Ambil absensi hari tersebut di kelas tsb
+      // Optimasi: Sekali panggil API /api/attendance sudah dapat daftar siswa & statusnya
       const attRes = await fetch(`/api/attendance?classroomId=${selectedClassroom}&date=${selectedDate}`);
       const attJson = await attRes.json();
-      const existingAtts = (attJson.data || []) as any[];
+      
+      if (!attJson.success) {
+        throw new Error(attJson.error || "Gagal memuat data absensi");
+      }
 
-      // 3. Merge data
-      const merged: AttendanceRecord[] = students.map(student => {
-        const exist = existingAtts.find(a => a.studentId === student.id);
-        return {
-          id: exist?.id,
-          studentId: student.id,
-          student: { name: student.name, nisn: student.nisn },
-          status: exist?.status || "hadir",
-          notes: exist?.note || ""
-        };
-      });
+      const rows = (attJson.data || []) as any[];
 
-      setAttendances(merged);
+      // Format data untuk state
+      const formatted: AttendanceRecord[] = rows.map(r => ({
+        id: r.id,
+        studentId: r.studentId,
+        student: r.student,
+        status: r.status,
+        notes: r.note || ""
+      }));
+
+      setAttendances(formatted);
     } catch (error: any) {
       Swal.fire("Error", error.message || "Terjadi kesalahan", "error");
     } finally {
