@@ -293,7 +293,7 @@ export default function PpdbPage({
     } catch { showToast("Gagal reset status", "error"); }
   }
 
-  const filtered = statusFilter ? data.filter(d => d.status === statusFilter) : data;
+  const filtered = data;
 
   const thS: React.CSSProperties = { padding: "0.875rem 1rem", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1.5px solid #e2e8f0" };
 
@@ -464,7 +464,7 @@ export default function PpdbPage({
           </div>
           <div style={{ minWidth: 140 }}>
             <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+              <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
               <option value="">Semua</option>
               <option value="menunggu">Menunggu</option>
               <option value="pending">Pending</option>

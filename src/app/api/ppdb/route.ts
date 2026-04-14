@@ -6,6 +6,7 @@ import { isNull, and, eq, or, ilike, desc, inArray, sql } from "drizzle-orm";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("q") || "";
+  const status = searchParams.get("status") || "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
 
@@ -19,12 +20,17 @@ export async function GET(request: Request) {
         ilike(ppdbRegistrations.formNo, `%${search}%`),
       )!);
     }
+    if (status) {
+      conditions.push(eq(ppdbRegistrations.status, status));
+    }
 
     const [list, [{ total }]] = await Promise.all([
       db.select({
         id: ppdbRegistrations.id,
         formNo: ppdbRegistrations.formNo,
         name: ppdbRegistrations.name,
+        fatherName: ppdbRegistrations.fatherName,
+        motherName: ppdbRegistrations.motherName,
         gender: ppdbRegistrations.gender,
         phone: ppdbRegistrations.phone,
         status: ppdbRegistrations.status,
@@ -41,11 +47,12 @@ export async function GET(request: Request) {
     ]);
 
     const regIds = list.map(r => r.id);
-    let payments: { id: number, payableId: number | null, nominal: number, isPaid: boolean }[] = [];
+    let payments: { id: number, payableId: number | null, paymentType: string, nominal: number, isPaid: boolean }[] = [];
     if (regIds.length > 0) {
       payments = await db.select({
         id: registrationPayments.id,
         payableId: registrationPayments.payableId,
+        paymentType: registrationPayments.paymentType,
         nominal: registrationPayments.nominal,
         isPaid: registrationPayments.isPaid,
       })

@@ -46,6 +46,9 @@ export async function GET(req: Request) {
           date: letters.date,
           status: letters.status,
           fileUrl: letters.fileUrl,
+          academicYearId: letters.academicYearId,
+          semester: letters.semester,
+          month: letters.month,
         })
         .from(letters)
         .where(combinedWhere)

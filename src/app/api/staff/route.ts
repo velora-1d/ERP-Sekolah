@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
   const search = searchParams.get("q") || "";
+  const status = searchParams.get("status") || "";
 
   try {
     let whereClause = and(eq(employees.type, "staf"), isNull(employees.deletedAt));
@@ -20,6 +21,9 @@ export async function GET(request: Request) {
           ilike(employees.nip, `%${search}%`)
         )
       );
+    }
+    if (status) {
+      whereClause = and(whereClause, eq(employees.status, status as "aktif" | "nonaktif"));
     }
 
     const [staff, [{ total }]] = await Promise.all([

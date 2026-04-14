@@ -30,9 +30,12 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
   const { data: result, isLoading } = useQuery({
-    queryKey: ["staff"],
+    queryKey: ["staff", search, statusFilter],
     queryFn: async () => {
-      const res = await fetch("/api/staff?limit=500");
+      const params = new URLSearchParams({ limit: "500" });
+      if (search) params.set("q", search);
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await fetch(`/api/staff?${params.toString()}`);
       return res.json();
     },
     staleTime: 1000 * 60 * 5,
@@ -43,14 +46,7 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
   const data: any[] = result?.data || [];
   const refreshStaff = () => queryClient.invalidateQueries({ queryKey: ["staff"] });
 
-  const filteredData = data.filter((s) => {
-    const matchSearch =
-      (s.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.nip || "").toLowerCase().includes(search.toLowerCase()) ||
-      (s.position || "").toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter ? s.status === statusFilter : true;
-    return matchSearch && matchStatus;
-  });
+  const filteredData = data;
 
   const totalPages = Math.ceil(filteredData.length / limit) || 1;
   const paginatedData = filteredData.slice((page - 1) * limit, page * limit);
@@ -115,13 +111,13 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Cari nama, nik, jabatan..."
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-48 transition-all"
             />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50 cursor-pointer transition-all"
             >
               <option value="">Semua Status</option>
