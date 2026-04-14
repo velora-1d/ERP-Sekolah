@@ -32,6 +32,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-initOpenNextCloudflareForDev();
+// Hanya untuk lokal + `next dev`. Jangan jalan saat `next build` (Vercel/CI): itu memuat workerd
+// (GLIBC baru) dan memicu error seperti "GLIBC_2.35 not found" / EPIPE.
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev();
+}
 
 export default nextConfig;
