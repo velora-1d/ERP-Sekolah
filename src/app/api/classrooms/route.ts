@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 
 export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
-import { classrooms, academicYears, employees, students } from "@/db/schema";
+import { classrooms, academicYears, employees, students, studentEnrollments } from "@/db/schema";
 import { eq, or, and, isNull, asc, ilike, sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
