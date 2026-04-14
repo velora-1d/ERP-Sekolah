@@ -187,6 +187,7 @@ export async function GET(request: Request) {
     // Transform agar format output tetap sama dengan yang diharapkan frontend (List of Students)
     const resultStudents = enrollmentsRes.map(e => ({
       ...e.student,
+      birthDate: e.student.birthDate ? (typeof e.student.birthDate === 'string' ? e.student.birthDate : new Date(e.student.birthDate).toISOString()) : null,
       classroom: e.classroom,
       enrollment: {
         id: e.enrollmentId,

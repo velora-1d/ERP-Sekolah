@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
     const entries = transactions.map(tx => ({
       id: tx.id,
-      date: tx.transactionDate || tx.createdAt?.toISOString(),
+      date: tx.transactionDate ? (typeof tx.transactionDate === 'string' ? tx.transactionDate : new Date(tx.transactionDate).toISOString()) : (tx.createdAt ? new Date(tx.createdAt).toISOString() : null),
       description: tx.description,
       type: tx.type,
       amount: tx.amount,
