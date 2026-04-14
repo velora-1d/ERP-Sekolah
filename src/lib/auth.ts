@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import crypto from "crypto";
 
 const JWT_SECRET: string = process.env.JWT_SECRET || "";
 
@@ -34,7 +35,6 @@ export function verifyPassword(password: string, hash: string): boolean {
   // Support legacy hash format dari Apps Script (SHA256)
   if (hash && !hash.startsWith("$2")) {
     // Legacy: simple SHA256 comparison (dari GAS)
-    const crypto = require("crypto");
     const legacyHash = crypto
       .createHash("sha256")
       .update(password + (hash.includes("@") ? "" : ""))
