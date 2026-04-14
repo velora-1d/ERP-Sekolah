@@ -24,6 +24,7 @@ import {
 
 import Pagination from "@/components/Pagination";
 import Modal from "@/components/ui/Modal";
+import { ensureHttpsUrl } from "@/lib/url";
 
 interface Classroom { id: number; name: string; }
 interface Curriculum { id: number; type: string; semester: string; academicYear?: { year: string }; }
@@ -109,7 +110,7 @@ export default function ReportCardsPage({
       .then((d) => setSignatureSettings({
         headmasterSignature: d?.headmaster_signature || "",
         homeroomSignature: d?.homeroom_signature || "",
-        reportLogo: d?.report_logo || "",
+        reportLogo: ensureHttpsUrl(d?.report_logo || ""),
         reportLogoPosition: d?.report_logo_position || "left",
         reportLogoSize: d?.report_logo_size || "medium",
       }))
@@ -757,7 +758,7 @@ export default function ReportCardsPage({
                     {signatureSettings.headmasterSignature && (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={signatureSettings.headmasterSignature} alt="Tanda tangan kepala sekolah" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                        <img src={ensureHttpsUrl(signatureSettings.headmasterSignature)} alt="Tanda tangan kepala sekolah" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
                       </>
                     )}
                   </div>
@@ -776,7 +777,7 @@ export default function ReportCardsPage({
                     {signatureSettings.homeroomSignature && (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={signatureSettings.homeroomSignature} alt="Tanda tangan wali kelas" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                        <img src={ensureHttpsUrl(signatureSettings.homeroomSignature)} alt="Tanda tangan wali kelas" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
                       </>
                     )}
                   </div>
@@ -813,7 +814,7 @@ export default function ReportCardsPage({
                     {signatureSettings.reportLogo && (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={signatureSettings.reportLogo} alt="Logo Rapor" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
+                        <img src={ensureHttpsUrl(signatureSettings.reportLogo)} alt="Logo Rapor" className="mt-2 h-16 object-contain border border-slate-200 rounded-md bg-white w-full" />
                       </>
                     )}
                   </div>

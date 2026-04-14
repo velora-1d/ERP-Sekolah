@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { Settings, UserPlus, Save, RefreshCw, Trash2, Database, Download } from "lucide-react";
+import { ensureHttpsUrl } from "@/lib/url";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profil');
@@ -29,7 +30,7 @@ export default function SettingsPage() {
           name: data.name || "",
           phone: data.phone || "",
           email: data.email || "",
-          logo: data.logo || "",
+          logo: ensureHttpsUrl(data.logo || ""),
           address: data.address || "",
           headmaster_name: data.headmaster_name || "",
           headmaster_nip: data.headmaster_nip || ""
@@ -472,7 +473,7 @@ export default function SettingsPage() {
               <div className="shrink-0 flex flex-col items-center gap-2">
                 <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden relative">
                   {profile.logo ? (
-                    <img src={profile.logo} alt="Logo Madrasah" className="w-full h-full object-contain" />
+                    <img src={ensureHttpsUrl(profile.logo)} alt="Logo Madrasah" className="w-full h-full object-contain" />
                   ) : (
                     <span className="text-slate-400 text-xs font-bold text-center px-2">Belum ada logo</span>
                   )}

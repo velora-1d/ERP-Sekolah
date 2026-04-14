@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { SIDEBAR_PERMISSIONS, type Role } from "@/lib/rbac-permissions";
+import { ensureHttpsUrl } from "@/lib/url";
 
 const menuItems = [
   { group: "UTAMA", items: [
@@ -83,7 +84,7 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
   useEffect(() => {
     fetch("/api/settings/profile")
       .then(res => res.json())
-      .then(data => setProfile({ name: data.name, logo: data.logo }))
+      .then(data => setProfile({ name: data.name, logo: ensureHttpsUrl(data.logo) }))
       .catch(console.error);
   }, []);
 
@@ -102,7 +103,7 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
       <div className={`flex items-center shrink-0 ${collapsed ? "px-3 py-5 justify-center" : "px-5 py-5"}`} style={{ borderBottom: "1px solid rgba(99,102,241,0.15)" }}>
         {profile?.logo ? (
           <div className="shrink-0 w-10 h-10 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center p-0.5" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-            <Image src={profile.logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain rounded-lg" />
+            <Image src={ensureHttpsUrl(profile.logo)} alt="Logo" width={40} height={40} className="w-full h-full object-contain rounded-lg" />
           </div>
         ) : (
           <div className="shrink-0" style={{ padding: 7, background: "linear-gradient(135deg, #f59e0b, #f97316)", borderRadius: 10, boxShadow: "0 4px 12px rgba(245,158,11,0.3)" }}>

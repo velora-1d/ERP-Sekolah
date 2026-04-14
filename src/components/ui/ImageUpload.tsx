@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { ensureHttpsUrl } from "@/lib/url";
 
 interface ImageUploadProps {
   name: string;
@@ -10,7 +11,7 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({ name, defaultValue, placeholder, onUploadSuccess }: ImageUploadProps) {
-  const [url, setUrl] = useState<string>(defaultValue || "");
+  const [url, setUrl] = useState<string>(ensureHttpsUrl(defaultValue || ""));
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,8 +32,9 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
       if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
-      setUrl(data.url);
-      if (onUploadSuccess) onUploadSuccess(data.url);
+      const normalizedUrl = ensureHttpsUrl(data.url);
+      setUrl(normalizedUrl);
+      if (onUploadSuccess) onUploadSuccess(normalizedUrl);
     } catch (error) {
       console.error("Upload Error:", error);
       alert("Gagal mengunggah gambar");
@@ -49,7 +51,7 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
       {url && (
         <div className="relative w-full max-w-[200px] aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="Uploaded preview" className="object-cover w-full h-full" />
+          <img src={ensureHttpsUrl(url)} alt="Uploaded preview" className="object-cover w-full h-full" />
         </div>
       )}
       
@@ -98,7 +100,7 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
         <input 
           type="text" 
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => setUrl(ensureHttpsUrl(e.target.value))}
           placeholder={placeholder || "https://..."} 
           className="w-full h-11 border border-slate-300 rounded-xl px-4 focus:ring-2 focus:ring-indigo-500 outline-none text-sm shadow-sm"
         />

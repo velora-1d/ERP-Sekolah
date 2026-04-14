@@ -6,6 +6,7 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { getHeroes, saveHero, deleteHero } from '@/app/actions/cms-actions';
+import { ensureHttpsUrl } from '@/lib/url';
 
 import Image from 'next/image';
 
@@ -93,7 +94,7 @@ export default function HeroesCMS() {
           <div key={hero.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-500">
             <div className="relative aspect-video bg-slate-900">
               <Image 
-                src={(hero.mediaUrl || hero.image_url) || 'https://via.placeholder.com/1280x720'} 
+                src={ensureHttpsUrl((hero.mediaUrl || hero.image_url) || 'https://via.placeholder.com/1280x720')} 
                 alt={hero.title} 
                 fill
                 className="object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" 

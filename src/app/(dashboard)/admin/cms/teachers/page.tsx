@@ -6,6 +6,7 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { getTeachers, saveTeacher, deleteTeacher, type TeacherData } from '@/app/actions/cms-actions';
+import { ensureHttpsUrl } from '@/lib/url';
 
 import Image from 'next/image';
 
@@ -88,7 +89,7 @@ export default function TeachersCMS() {
           <div key={teacher.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300">
             <div className="aspect-square bg-slate-100 overflow-hidden relative">
               <Image 
-                src={(teacher.photoUrl || teacher.photo_url) || 'https://via.placeholder.com/400'} 
+                src={ensureHttpsUrl((teacher.photoUrl || teacher.photo_url) || 'https://via.placeholder.com/400')} 
                 alt={teacher.name} 
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-500" 

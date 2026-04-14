@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { getFacilities, saveFacility, deleteFacility } from '@/app/actions/cms-actions';
+import { ensureHttpsUrl } from '@/lib/url';
 
 import Image from 'next/image';
 
@@ -121,7 +122,7 @@ export default function FacilitiesCMS() {
           <div key={fac.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300">
             <div className="h-48 bg-slate-100 overflow-hidden relative">
               <Image 
-                src={(fac.imageUrl || fac.image_url) || 'https://via.placeholder.com/600x400'} 
+                src={ensureHttpsUrl((fac.imageUrl || fac.image_url) || 'https://via.placeholder.com/600x400')} 
                 alt={fac.name} 
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-500" 
