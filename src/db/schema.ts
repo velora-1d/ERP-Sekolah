@@ -114,6 +114,9 @@ export const students = pgTable('students', {
   index('students_deleted_at_idx').on(t.deletedAt),
   index('students_status_idx').on(t.status),
   index('students_nisn_idx').on(t.nisn),
+  uniqueIndex('students_nisn_unique_idx').on(t.nisn),
+  uniqueIndex('students_nis_unique_idx').on(t.nis),
+  uniqueIndex('students_nik_unique_idx').on(t.nik),
 ]);
 
 // ─── PPDB REGISTRATIONS ────────────────────────────────────────────────────
@@ -361,6 +364,7 @@ export const employees = pgTable('employees', {
 }, (t) => [
   index('employees_type_deleted_idx').on(t.type, t.deletedAt),
   index('employees_status_idx').on(t.status),
+  uniqueIndex('employees_nip_unique_idx').on(t.nip),
 ]);
 
 // ─── SALARY COMPONENTS ─────────────────────────────────────────────────────
@@ -437,7 +441,9 @@ export const inventories = pgTable('inventories', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
-});
+}, (t) => [
+  uniqueIndex('inventories_code_unique_idx').on(t.code),
+]);
 
 // ─── INVENTORY LOGS ────────────────────────────────────────────────────────
 export const inventoryLogs = pgTable('inventory_logs', {
@@ -502,6 +508,7 @@ export const subjects = pgTable('subjects', {
 }, (t) => [
   index('subjects_type_idx').on(t.type),
   index('subjects_status_deleted_idx').on(t.status, t.deletedAt),
+  uniqueIndex('subjects_code_unique_idx').on(t.code),
 ]);
 
 // ─── TEACHING ASSIGNMENTS ──────────────────────────────────────────────────
@@ -765,6 +772,7 @@ export const letters = pgTable('letters', {
   academicYearId: integer('academic_year_id'),
   semester: text('semester'),
   month: text('month'),
+  unitId: text('unit_id').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [
@@ -772,6 +780,7 @@ export const letters = pgTable('letters', {
   index('letters_academic_year_idx').on(t.academicYearId),
   index('letters_semester_idx').on(t.semester),
   index('letters_month_idx').on(t.month),
+  uniqueIndex('letters_number_unique_idx').on(t.number),
 ]);
 
 // ─── ANNOUNCEMENTS ─────────────────────────────────────────────────────────

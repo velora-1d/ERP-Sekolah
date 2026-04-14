@@ -36,7 +36,17 @@ export async function GET(req: Request) {
 
     const [data, totalResult] = await Promise.all([
       db
-        .select()
+        .select({
+          id: letters.id,
+          type: letters.type,
+          number: letters.number,
+          subject: letters.subject,
+          sender: letters.sender,
+          receiver: letters.receiver,
+          date: letters.date,
+          status: letters.status,
+          fileUrl: letters.fileUrl,
+        })
         .from(letters)
         .where(combinedWhere)
         .orderBy(desc(letters.createdAt))
@@ -86,6 +96,14 @@ export async function POST(req: Request) {
       const count = countResult?.count || 0;
       const now = new Date();
       number = `${String(count + 1).padStart(3, "0")}/SM/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+    }
+
+    // Cek duplikasi nomor surat manual sebagai pre-validation
+    if (number) {
+      const existing = await db.select().from(letters).where(eq(letters.number, number.trim())).limit(1);
+      if (existing.length > 0) {
+        return NextResponse.json({ error: "Nomor surat sudah terdaftar. Gunakan nomor lain." }, { status: 400 });
+      }
     }
 
     const [data] = await db

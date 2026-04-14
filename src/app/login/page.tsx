@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import anime from "animejs";
+import { animate, stagger } from "animejs";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,29 +24,26 @@ export default function LoginPage() {
     animatedRef.current = true;
 
     // Floating 3D-style icons
-    anime({
-      targets: ".float-icon",
+    animate(".float-icon", {
       translateY: [-10, 10],
       duration: 2800,
       easing: "easeInOutSine",
       loop: true,
       direction: "alternate",
-      delay: anime.stagger(350),
+      delay: stagger(350),
     });
 
     // Feature card entrance stagger
-    anime({
-      targets: ".feat-card",
+    animate(".feat-card", {
       opacity: [0, 1],
       translateY: [25, 0],
       duration: 650,
       easing: "easeOutCubic",
-      delay: anime.stagger(90, { start: 500 }),
+      delay: stagger(90, { start: 500 }),
     });
 
     // Main illustration entrance
-    anime({
-      targets: ".main-illust",
+    animate(".main-illust", {
       opacity: [0, 1],
       scale: [0.88, 1],
       duration: 800,
@@ -56,8 +53,7 @@ export default function LoginPage() {
 
 
     // Login card slide-in
-    anime({
-      targets: ".login-card",
+    animate(".login-card", {
       opacity: [0, 1],
       translateX: [35, 0],
       duration: 750,
@@ -66,8 +62,7 @@ export default function LoginPage() {
     });
 
     // Slow geometric rotation
-    anime({
-      targets: ".geo-rotate",
+    animate(".geo-rotate", {
       rotate: [0, 360],
       duration: 90000,
       easing: "linear",
@@ -75,8 +70,7 @@ export default function LoginPage() {
     });
 
     // Particle dots float
-    anime({
-      targets: ".particle",
+    animate(".particle", {
       translateY: [-8, 8],
       translateX: [-4, 4],
       opacity: [0.3, 0.7],
@@ -84,7 +78,7 @@ export default function LoginPage() {
       easing: "easeInOutSine",
       loop: true,
       direction: "alternate",
-      delay: anime.stagger(200),
+      delay: stagger(200),
     });
   }, []);
 

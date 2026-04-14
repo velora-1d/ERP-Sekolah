@@ -19,6 +19,9 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
         ...(body.status !== undefined && { status: body.status }),
         ...(body.number !== undefined && { number: body.number }),
         ...(body.fileUrl !== undefined && { fileUrl: body.fileUrl }),
+        ...(body.academicYearId !== undefined && { academicYearId: body.academicYearId ? parseInt(String(body.academicYearId)) : null }),
+        ...(body.semester !== undefined && { semester: body.semester }),
+        ...(body.month !== undefined && { month: body.month }),
         updatedAt: new Date(),
       })
       .where(eq(letters.id, parseInt(id)))

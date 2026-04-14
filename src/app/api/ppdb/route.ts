@@ -21,23 +21,44 @@ export async function GET(request: Request) {
     }
 
     const [list, [{ total }]] = await Promise.all([
-      db.select().from(ppdbRegistrations).where(and(...conditions)).orderBy(desc(ppdbRegistrations.createdAt)).limit(limit).offset((page - 1) * limit),
+      db.select({
+        id: ppdbRegistrations.id,
+        formNo: ppdbRegistrations.formNo,
+        name: ppdbRegistrations.name,
+        gender: ppdbRegistrations.gender,
+        phone: ppdbRegistrations.phone,
+        status: ppdbRegistrations.status,
+        targetClassroom: ppdbRegistrations.targetClassroom,
+        createdAt: ppdbRegistrations.createdAt,
+      })
+      .from(ppdbRegistrations)
+      .where(and(...conditions))
+      .orderBy(desc(ppdbRegistrations.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit),
+
       db.select({ total: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(...conditions)),
     ]);
 
     const regIds = list.map(r => r.id);
-    let payments: any[] = [];
+    let payments: { id: number, payableId: number | null, nominal: number, isPaid: boolean }[] = [];
     if (regIds.length > 0) {
-      payments = await db.select().from(registrationPayments)
-        .where(and(eq(registrationPayments.payableType, "ppdb"), inArray(registrationPayments.payableId, regIds), isNull(registrationPayments.deletedAt)));
+      payments = await db.select({
+        id: registrationPayments.id,
+        payableId: registrationPayments.payableId,
+        nominal: registrationPayments.nominal,
+        isPaid: registrationPayments.isPaid,
+      })
+      .from(registrationPayments)
+      .where(and(eq(registrationPayments.payableType, "ppdb"), inArray(registrationPayments.payableId, regIds), isNull(registrationPayments.deletedAt)));
     }
 
     const dataWithPayments = list.map(r => ({ ...r, payments: payments.filter(p => p.payableId === r.id) }));
 
     const [{ pending }, { diterima }, { ditolak }, { totalAll }] = await Promise.all([
-      db.select({ pending: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), or(eq(ppdbRegistrations.status, "menunggu" as any), eq(ppdbRegistrations.status, "pending" as any)))).then(r => r[0]),
-      db.select({ diterima: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "diterima" as any))).then(r => r[0]),
-      db.select({ ditolak: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "ditolak" as any))).then(r => r[0]),
+      db.select({ pending: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), or(eq(ppdbRegistrations.status, "menunggu" as string), eq(ppdbRegistrations.status, "pending" as string)))).then(r => r[0]),
+      db.select({ diterima: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "diterima" as string))).then(r => r[0]),
+      db.select({ ditolak: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "ditolak" as string))).then(r => r[0]),
       db.select({ totalAll: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)).then(r => r[0]),
     ]);
 
@@ -85,7 +106,7 @@ export async function POST(request: Request) {
 
         // 2. Restore Logic: Jika data terhapus, aktifkan kembali
         // Sesuai permintaan user: Gunakan nomor formulir yang LAMA
-        const updateData: any = {
+        const updateData = {
           name: name,
           gender: body.gender || "L",
           birthPlace: body.birthPlace || body.tempat_lahir || "",
@@ -97,7 +118,7 @@ export async function POST(request: Request) {
           address: body.address || body.alamat || "",
           previousSchool: body.previousSchool || body.asal_sekolah || "",
           targetClassroom: body.targetClassroom || body.kelas_tujuan || "",
-          status: "pending",
+          status: "pending" as string,
           registrationSource: "offline",
           notes: body.notes || "",
           familyStatus: body.familyStatus || "",
@@ -171,7 +192,7 @@ export async function POST(request: Request) {
       address: body.address || body.alamat || "",
       previousSchool: body.previousSchool || body.asal_sekolah || "",
       targetClassroom: body.targetClassroom || body.kelas_tujuan || "",
-      status: "pending" as any,
+      status: "pending" as string,
       registrationSource: "offline",
       notes: body.notes || "",
       familyStatus: body.familyStatus || "",

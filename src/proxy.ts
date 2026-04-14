@@ -62,16 +62,15 @@ export function proxy(request: NextRequest) {
   // =============================================
   // 2. Halaman — redirect ke login jika belum auth
   // =============================================
-  const publicPages = ["/login"];
-  const isPublicPage = publicPages.some((p) => pathname.startsWith(p));
+  const isLoginPage = pathname === "/login";
 
   // Belum login → redirect ke /login
-  if (!token && !isPublicPage) {
+  if (!token && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Sudah login tapi buka /login → redirect ke /dashboard
-  if (token && pathname === "/login") {
+  if (token && isLoginPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

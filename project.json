@@ -2,7 +2,7 @@
   "name": "erp-sekolah",
   "description": "Enterprise Resource Planning for Schools",
   "version": "1.0.0",
-  "lastUpdated": "2026-03-XX",
+  "lastUpdated": "2026-04-14",
 
   "stack": {
     "frontend": "next.js-16",
@@ -36,5 +36,5 @@
     "drizzle-orm"
   ],
 
-  "notes": "Debugging Penugasan Guru"
+  "notes": "Implementasi dashboard dinamis, perbaikan Cloudflare runtime, dan penguatan validasi duplikasi data."
 }

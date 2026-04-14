@@ -17,8 +17,8 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const conditions = [isNull(subjects.deletedAt)];
-    if (type) conditions.push(eq(subjects.type, type as any));
-    if (status) conditions.push(eq(subjects.status, status as any));
+    if (type) conditions.push(eq(subjects.type, type as string));
+    if (status) conditions.push(eq(subjects.status, status as string));
     if (unitId) conditions.push(eq(subjects.unitId, unitId));
     if (q) {
       conditions.push(or(
@@ -62,7 +62,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Nama mata pelajaran wajib diisi" }, { status: 400 });
     }
 
-    // 1. Cek duplikasi (termasuk yang di-soft delete)
+    // Cek duplikasi kode manual
+    if (code) {
+      const existingCode = await db.select()
+        .from(subjects)
+        .where(and(eq(subjects.code, code.trim()), isNull(subjects.deletedAt)))
+        .limit(1);
+      
+      if (existingCode.length > 0) {
+        return NextResponse.json({ success: false, message: `Mata pelajaran dengan kode "${code}" sudah ada.` }, { status: 400 });
+      }
+    }
+
+    // 1. Cek duplikasi nama (termasuk yang di-soft delete)
     const existing = await db.select()
       .from(subjects)
       .where(ilike(subjects.name, name))
@@ -83,7 +95,7 @@ export async function POST(request: Request) {
       const [restored] = await db.update(subjects)
         .set({
           code: code || record.code,
-          type: (type as any) || record.type,
+          type: (type as string) || record.type,
           tingkatKelas: tingkatKelas || record.tingkatKelas,
           unitId: unitId || record.unitId,
           status: 'aktif',
@@ -105,7 +117,7 @@ export async function POST(request: Request) {
     const [newSubject] = await db.insert(subjects).values({
       name,
       code: code || '',
-      type: (type as any) || 'wajib',
+      type: (type as string) || 'wajib',
       tingkatKelas: tingkatKelas || '',
       unitId: unitId || '',
       status: 'aktif',

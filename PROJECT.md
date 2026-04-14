@@ -45,8 +45,11 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 - Integrasi RBAC melalui middleware dan permission registry.
 
 ## Progress Terakhir
-- Debugging fitur Penugasan Guru (Edit & Hapus).
-- Audit API Route Handlers untuk Teaching Assignments.
+- Implementasi metrik dashboard dinamis (KPI trend & charts).
+- Perbaikan error Cloudflare Edge Runtime.
+- Migrasi middleware ke proxy logic.
+- Penambahan integrasi Database Unique Constraints dan validasi duplikasi pada CRUD Surat, Siswa, Pegawai, dan Inventaris.
+- Sinkronisasi penyimpanan field Surat (Tahun Ajaran/Semester) pada operasi Update.
 
 ## Last Updated
-2026-03-XX
+2026-04-14

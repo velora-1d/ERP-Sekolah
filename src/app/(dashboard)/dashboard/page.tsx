@@ -15,253 +15,227 @@ import { and, eq, ilike, gte, lte, isNull, inArray, not, sql } from "drizzle-orm
 // ISR: revalidate setiap 60 detik agar lebih ringan dan mengurangi SSR time (bottleneck LCP).
 export const revalidate = 60;
 
-async function getDashboardData(searchParams: { [key: string]: string | undefined }) {
-  const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
-  const semester = searchParams.semester;
-  const month = searchParams.month;
-  const classroomId = searchParams.classroomId ? Number(searchParams.classroomId) : null;
-  const gender = searchParams.gender;
+import { unstable_cache } from "next/cache";
 
-  // 1. Tentukan Tahun Ajaran Target
-  let targetAcademicYearId = academicYearId;
-  if (!targetAcademicYearId) {
-    const activeYearRes = await db.select({ id: academicYears.id })
-      .from(academicYears)
-      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
-      .limit(1);
-    targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
-  }
+const getCachedDashboardData = unstable_cache(
+  async (searchParams: { [key: string]: string | undefined }) => {
+    const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
+    const semester = searchParams.semester;
+    const month = searchParams.month;
+    const classroomId = searchParams.classroomId ? Number(searchParams.classroomId) : null;
+    const gender = searchParams.gender;
 
-  // 2. Rentang Waktu Keuangan
-  const now = new Date();
-  let dateStart: string, dateEnd: string;
-  
-  if (month) {
-    const monthMap: Record<string, number> = {
-      "Januari": 0, "Februari": 1, "Maret": 2, "April": 3, "Mei": 4, "Juni": 5,
-      "Juli": 6, "Agustus": 7, "September": 8, "Oktober": 9, "November": 10, "Desember": 11
-    };
-    const mIdx = monthMap[month] ?? now.getMonth();
-    dateStart = new Date(now.getFullYear(), mIdx, 1).toISOString();
-    dateEnd = new Date(now.getFullYear(), mIdx + 1, 0, 23, 59, 59).toISOString();
-  } else {
-    dateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-  }
+    // 1. Tentukan Tahun Ajaran Target (Pencarian default ke tahun aktif)
+    let targetAcademicYearId = academicYearId;
+    if (!targetAcademicYearId) {
+      const activeYearRes = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
+    }
 
-  // 3. Filter Query untuk Enrollment
-  const enrollmentConds = [isNull(studentEnrollments.deletedAt)];
-  if (targetAcademicYearId) enrollmentConds.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
-  if (classroomId) enrollmentConds.push(eq(studentEnrollments.classroomId, classroomId));
-  const enrollmentWhere = and(...enrollmentConds);
+    // 2. Rentang Waktu Keuangan
+    const now = new Date();
+    let dateStart: string, dateEnd: string;
+    
+    if (month) {
+      const monthMap: Record<string, number> = {
+        "Januari": 0, "Februari": 1, "Maret": 2, "April": 3, "Mei": 4, "Juni": 5,
+        "Juli": 6, "Agustus": 7, "September": 8, "Oktober": 9, "November": 10, "Desember": 11
+      };
+      const mIdx = monthMap[month] ?? now.getMonth();
+      dateStart = new Date(now.getFullYear(), mIdx, 1).toISOString();
+      dateEnd = new Date(now.getFullYear(), mIdx + 1, 0, 23, 59, 59).toISOString();
+    } else {
+      dateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    }
 
-  // Helper untuk Subquery join dengan students untuk filter gender di enrollment
-  const getEnrollmentBaseQuery = () => {
-    const finalWhere = gender ? and(enrollmentWhere, eq(students.gender, gender)) : enrollmentWhere;
-    return db.select({ id: studentEnrollments.id, gender: students.gender })
+    // 3. Filter Query untuk Enrollment
+    const enrollmentConds = [isNull(studentEnrollments.deletedAt)];
+    if (targetAcademicYearId) enrollmentConds.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
+    if (classroomId) enrollmentConds.push(eq(studentEnrollments.classroomId, classroomId));
+    const enrollmentWhere = and(...enrollmentConds);
+
+    // 4. Filter Query untuk Infaq Bills
+    const billConds = [eq(infaqBills.status, "belum_lunas"), isNull(infaqBills.deletedAt)];
+    if (targetAcademicYearId) billConds.push(eq(infaqBills.academicYearId, targetAcademicYearId));
+    if (month) billConds.push(eq(infaqBills.month, month));
+    
+    if (semester) {
+      const ganjilMonths = ["Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      const genapMonths = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
+      billConds.push(inArray(infaqBills.month, semester.toLowerCase() === "ganjil" ? ganjilMonths : genapMonths));
+    }
+    const billWhere = and(...billConds);
+
+    // --- EKSEKUSI SEMUA AGREGASI PARALEL ---
+    
+    // Optimasi: Gunakan query count/sum SQL untuk mengurangi beban komputasi di serverless (CPU saving)
+    const [
+      enrollmentCounts,
+      employeesGroup,
+      classroomsCountRes,
+      ppdbGroup,
+      incomePeriodeRes,
+      expensePeriodeRes,
+      savingsAggRes,
+      billAggRes,
+      wakafAggRes,
+      coopTrxAggRes,
+      coopCreditAggRes,
+      counselingCountRes,
+      announcementsCountRes,
+      lettersCountRes,
+    ] = await Promise.all([
+      // Enrollment counts
+      db.select({ 
+        total: sql<number>`count(*)`.mapWith(Number),
+        putra: sql<number>`count(case when ${students.gender} = 'L' then 1 end)`.mapWith(Number),
+        putri: sql<number>`count(case when ${students.gender} = 'P' then 1 end)`.mapWith(Number)
+      })
       .from(studentEnrollments)
       .leftJoin(students, eq(studentEnrollments.studentId, students.id))
-      .where(finalWhere);
-  };
+      .where(gender ? and(enrollmentWhere, eq(students.gender, gender)) : enrollmentWhere),
 
-  // 4. Filter Query untuk Infaq Bills
-  const billConds = [eq(infaqBills.status, "belum_lunas"), isNull(infaqBills.deletedAt)];
-  if (targetAcademicYearId) billConds.push(eq(infaqBills.academicYearId, targetAcademicYearId));
-  if (month) billConds.push(eq(infaqBills.month, month));
-  
-  if (semester) {
-    const ganjilMonths = ["Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const genapMonths = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
-    billConds.push(inArray(infaqBills.month, semester.toLowerCase() === "ganjil" ? ganjilMonths : genapMonths));
-  }
-  const billWhere = and(...billConds);
+      db.select({ type: employees.type, count: sql<number>`count(*)`.mapWith(Number) })
+        .from(employees)
+        .where(and(isNull(employees.deletedAt), eq(employees.status, "aktif")))
+        .groupBy(employees.type),
 
-  const getBillBaseQuery = () => {
-    const extraConds = [];
-    if (classroomId) extraConds.push(eq(students.classroomId, classroomId));
-    if (gender) extraConds.push(eq(students.gender, gender));
+      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(classrooms)
+        .where(and(
+          isNull(classrooms.deletedAt), 
+          targetAcademicYearId ? eq(classrooms.academicYearId, targetAcademicYearId) : undefined
+        )),
 
-    const finalWhere = extraConds.length > 0 ? and(billWhere, ...extraConds) : billWhere;
+      db.select({ status: ppdbRegistrations.status, count: sql<number>`count(*)`.mapWith(Number) })
+        .from(ppdbRegistrations)
+        .where(and(
+          isNull(ppdbRegistrations.deletedAt), 
+          gender ? eq(ppdbRegistrations.gender, gender) : undefined
+        ))
+        .groupBy(ppdbRegistrations.status),
 
-    return db.select({ 
-      id: infaqBills.id, 
-      nominal: infaqBills.nominal,
-      studentId: infaqBills.studentId,
-      gender: students.gender 
-    })
-    .from(infaqBills)
-    .leftJoin(students, eq(infaqBills.studentId, students.id))
-    .where(finalWhere);
-  };
+      db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
+        .from(generalTransactions)
+        .where(and(
+          eq(generalTransactions.type, "in"), 
+          eq(generalTransactions.status, "valid"), 
+          isNull(generalTransactions.deletedAt), 
+          gte(generalTransactions.createdAt, new Date(dateStart)), 
+          lte(generalTransactions.createdAt, new Date(dateEnd))
+        )),
 
-  // --- EKSEKUSI SEMUA AGREGASI PARALEL ---
-  
-  const enrollmentData = await getEnrollmentBaseQuery();
-  const totalSiswa = enrollmentData.length;
-  const totalSiswaPa = enrollmentData.filter(e => e.gender === "L").length;
-  const totalSiswaPi = enrollmentData.filter(e => e.gender === "P").length;
+      db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
+        .from(generalTransactions)
+        .where(and(
+          eq(generalTransactions.type, "out"), 
+          eq(generalTransactions.status, "valid"), 
+          isNull(generalTransactions.deletedAt), 
+          gte(generalTransactions.createdAt, new Date(dateStart)), 
+          lte(generalTransactions.createdAt, new Date(dateEnd))
+        )),
 
-  const [
-    employeesGroup,
-    classroomsCountRes,
-    ppdbGroup,
-    incomePeriodeRes,
-    expensePeriodeRes,
-    savingsAggRes,
-    billData,
-    wakafAggRes,
-    coopTrxAggRes,
-    coopCreditAggRes,
-    counselingCountRes,
-    announcementsCountRes,
-    lettersCountRes,
-  ] = await Promise.all([
-    db.select({ type: employees.type, count: sql<number>`count(*)`.mapWith(Number) })
-      .from(employees)
-      .where(and(isNull(employees.deletedAt), eq(employees.status, "aktif")))
-      .groupBy(employees.type),
+      db.select({ sum: sql<number>`sum(${studentSavings.amount})`.mapWith(Number) })
+        .from(studentSavings)
+        .leftJoin(students, eq(studentSavings.studentId, students.id))
+        .where(and(
+          isNull(studentSavings.deletedAt),
+          gender ? eq(students.gender, gender) : undefined
+        )),
 
-    db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(classrooms)
-      .where(and(
-        isNull(classrooms.deletedAt), 
-        targetAcademicYearId ? eq(classrooms.academicYearId, targetAcademicYearId) : undefined
-      )),
-
-    db.select({ status: ppdbRegistrations.status, count: sql<number>`count(*)`.mapWith(Number) })
-      .from(ppdbRegistrations)
-      .where(and(
-        isNull(ppdbRegistrations.deletedAt), 
-        gender ? eq(ppdbRegistrations.gender, gender) : undefined
-      ))
-      .groupBy(ppdbRegistrations.status),
-
-    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
-      .from(generalTransactions)
-      .where(and(
-        eq(generalTransactions.type, "in"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd))
-      )),
-
-    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
-      .from(generalTransactions)
-      .where(and(
-        eq(generalTransactions.type, "out"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd))
-      )),
-
-    // Savings aggregate with conditional gender join
-    db.select({ sum: sql<number>`sum(${studentSavings.amount})`.mapWith(Number) })
-      .from(studentSavings)
-      .leftJoin(students, eq(studentSavings.studentId, students.id))
-      .where(and(
-        isNull(studentSavings.deletedAt),
-        gender ? eq(students.gender, gender) : undefined
-      )),
-
-    // Ambill semua data tagihan yang sesuai kriteria untuk diolah di JS array (lebih efisien drpd multiple query count)
-    getBillBaseQuery(),
-
-    // Wakaf (Kategori LIKE '%wakaf%')
-    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
-      .from(generalTransactions)
-      .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
-      .where(and(
-        eq(generalTransactions.type, "in"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd)),
-        ilike(transactionCategories.name, "%wakaf%")
-      )),
-
-    db.select({ 
-        sum: sql<number>`sum(${coopTransactions.total})`.mapWith(Number),
-        count: sql<number>`count(*)`.mapWith(Number) 
+      // Bill aggregates
+      db.select({ 
+        totalNominal: sql<number>`sum(${infaqBills.nominal})`.mapWith(Number),
+        count: sql<number>`count(*)`.mapWith(Number),
+        pa: sql<number>`count(case when ${students.gender} = 'L' then 1 end)`.mapWith(Number),
+        pi: sql<number>`count(case when ${students.gender} = 'P' then 1 end)`.mapWith(Number),
+        uniqSiswa: sql<number>`count(distinct ${infaqBills.studentId})`.mapWith(Number)
       })
-      .from(coopTransactions)
-      .where(and(
-        gte(coopTransactions.createdAt, new Date(dateStart)), 
-        lte(coopTransactions.createdAt, new Date(dateEnd))
-      )),
+      .from(infaqBills)
+      .leftJoin(students, eq(infaqBills.studentId, students.id))
+      .where(classroomId ? and(billWhere, eq(students.classroomId, classroomId)) : billWhere),
 
-    db.select({ 
-        sumAmount: sql<number>`sum(${studentCredits.amount})`.mapWith(Number),
-        sumPaid: sql<number>`sum(${studentCredits.paidAmount})`.mapWith(Number)
-      })
-      .from(studentCredits)
-      .where(not(eq(studentCredits.status, "lunas"))),
+      db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
+        .from(generalTransactions)
+        .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
+        .where(and(
+          eq(generalTransactions.type, "in"), 
+          eq(generalTransactions.status, "valid"), 
+          isNull(generalTransactions.deletedAt), 
+          gte(generalTransactions.createdAt, new Date(dateStart)), 
+          lte(generalTransactions.createdAt, new Date(dateEnd)),
+          ilike(transactionCategories.name, "%wakaf%")
+        )),
 
-    db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(counselingRecords)
-      .where(gte(counselingRecords.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString())),
+      db.select({ 
+          sumValue: sql<number>`sum(${coopTransactions.total})`.mapWith(Number),
+          count: sql<number>`count(*)`.mapWith(Number) 
+        })
+        .from(coopTransactions)
+        .where(and(
+          gte(coopTransactions.createdAt, new Date(dateStart)), 
+          lte(coopTransactions.createdAt, new Date(dateEnd))
+        )),
 
-    db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(announcements)
-      .where(eq(announcements.status, "aktif")),
+      db.select({ 
+          sumAmount: sql<number>`sum(${studentCredits.amount})`.mapWith(Number),
+          sumPaid: sql<number>`sum(${studentCredits.paidAmount})`.mapWith(Number)
+        })
+        .from(studentCredits)
+        .where(not(eq(studentCredits.status, "lunas"))),
 
-    db.select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(letters)
-      .where(gte(letters.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])),
-  ]);
+      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(counselingRecords)
+        .where(gte(counselingRecords.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString())),
 
-  // Aggregate in-memory results
-  const totalGuru = employeesGroup.find(e => e.type === "guru")?.count || 0;
-  const totalStaff = employeesGroup.find(e => e.type === "staf")?.count || 0;
-  const classroomsCount = classroomsCountRes[0]?.count || 0;
-  
-  const ppdbPending = ppdbGroup.find(p => p.status === "pending" || p.status === "menunggu")?.count || 0;
-  const ppdbDiterima = ppdbGroup.find(p => p.status === "diterima")?.count || 0;
+      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(announcements)
+        .where(eq(announcements.status, "aktif")),
 
-  const tunggakanCount = billData.length;
-  const tunggakanTotalNominal = billData.reduce((acc, curr) => acc + (curr.nominal || 0), 0);
-  const tunggakanPa = billData.filter(b => b.gender === "L").length;
-  const tunggakanPi = billData.filter(b => b.gender === "P").length;
-  const tunggakanSiswaUniq = new Set(billData.map(b => b.studentId)).size;
+      db.select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(letters)
+        .where(gte(letters.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])),
+    ]);
 
-  const lunasCount = totalSiswa - tunggakanSiswaUniq;
-  const complianceRate = totalSiswa > 0 ? Math.round((lunasCount / totalSiswa) * 100) : 0;
+    const stats = enrollmentCounts[0];
+    const totalSiswa = stats.total || 0;
+    const billStats = billAggRes[0];
 
-  const coopTotal = coopTrxAggRes[0]?.sum || 0;
-  const coopCount = coopTrxAggRes[0]?.count || 0;
-  const piutangKoperasi = (coopCreditAggRes[0]?.sumAmount || 0) - (coopCreditAggRes[0]?.sumPaid || 0);
-
-  return {
-    totalSiswa,
-    totalSiswaPa,
-    totalSiswaPi,
-    totalGuru,
-    totalStaff,
-    totalKelas: classroomsCount,
-    ppdbPending,
-    ppdbDiterima,
-    pemasukanPeriode: incomePeriodeRes[0]?.sum || 0,
-    pengeluaranPeriode: expensePeriodeRes[0]?.sum || 0,
-    // Alias agar kompatibel dengan DashboardCharts
-    pemasukanBulanIni: incomePeriodeRes[0]?.sum || 0,
-    pengeluaranBulanIni: expensePeriodeRes[0]?.sum || 0,
-    saldoTabungan: savingsAggRes[0]?.sum || 0,
-    totalWakaf: wakafAggRes[0]?.sum || 0,
-    tunggakanTotal: tunggakanCount,
-    tunggakanTotalNominal,
-    tunggakanPa,
-    tunggakanPi,
-    complianceRate,
-    // Modul Baru
-    coopTotal,
-    coopCount,
-    piutangKoperasi,
-    counselingCount: counselingCountRes[0]?.count || 0,
-    announcementsCount: announcementsCountRes[0]?.count || 0,
-    lettersCount: lettersCountRes[0]?.count || 0,
-  };
-}
+    return {
+      totalSiswa,
+      totalSiswaPa: stats.putra || 0,
+      totalSiswaPi: stats.putri || 0,
+      totalGuru: employeesGroup.find(e => e.type === "guru")?.count || 0,
+      totalStaff: employeesGroup.find(e => e.type === "staf")?.count || 0,
+      totalKelas: classroomsCountRes[0]?.count || 0,
+      ppdbPending: ppdbGroup.find(p => p.status === "pending" || p.status === "menunggu")?.count || 0,
+      ppdbDiterima: ppdbGroup.find(p => p.status === "diterima")?.count || 0,
+      pemasukanBulanIni: incomePeriodeRes[0]?.sum || 0,
+      pengeluaranBulanIni: expensePeriodeRes[0]?.sum || 0,
+      pemasukanPeriode: incomePeriodeRes[0]?.sum || 0,
+      pengeluaranPeriode: expensePeriodeRes[0]?.sum || 0,
+      saldoTabungan: savingsAggRes[0]?.sum || 0,
+      totalWakaf: wakafAggRes[0]?.sum || 0,
+      tunggakanTotal: billStats.count || 0,
+      tunggakanTotalNominal: billStats.totalNominal || 0,
+      tunggakanPa: billStats.pa || 0,
+      tunggakanPi: billStats.pi || 0,
+      complianceRate: totalSiswa > 0 ? Math.round(((totalSiswa - (billStats.uniqSiswa || 0)) / totalSiswa) * 100) : 0,
+      coopTotal: coopTrxAggRes[0]?.sumValue || 0,
+      coopCount: coopTrxAggRes[0]?.count || 0,
+      piutangKoperasi: (coopCreditAggRes[0]?.sumAmount || 0) - (coopCreditAggRes[0]?.sumPaid || 0),
+      counselingCount: counselingCountRes[0]?.count || 0,
+      announcementsCount: announcementsCountRes[0]?.count || 0,
+      lettersCount: lettersCountRes[0]?.count || 0,
+    };
+  },
+  ["dashboard-metrics"],
+  { revalidate: 60, tags: ["dashboard"] }
+);
 
 function fmtRp(n: number) {
   return "Rp " + (n || 0).toLocaleString("id-ID");
@@ -330,7 +304,7 @@ function DashboardContentLoading() {
 }
 
 async function DashboardContent({ searchParams, activeTab, user }: { searchParams: { [key: string]: string | undefined }, activeTab: string, user: JwtPayload | null }) {
-  const data = await getDashboardData(searchParams);
+  const data = await getCachedDashboardData(searchParams);
 
   return (
     <div className="space-y-6">
