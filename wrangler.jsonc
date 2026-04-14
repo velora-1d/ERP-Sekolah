@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "erp-sekolah",
-  "pages_build_output_dir": ".open-next/assets",
+  "pages_build_output_dir": ".open-next",
   "compatibility_date": "2025-04-14",
   "compatibility_flags": [
     "nodejs_compat",
