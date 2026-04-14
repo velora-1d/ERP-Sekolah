@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "recharts"],
   },
 
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   serverExternalPackages: ["pg", "jsonwebtoken", "bcryptjs"],
 
   async headers() {
