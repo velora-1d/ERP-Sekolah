@@ -27,9 +27,9 @@ const globalPool = (() => {
   }
   return new Pool({
     connectionString: normalizeConnectionString(url),
-    max: 3,                    // Maksimal 3 koneksi aktif per instance
+    max: 5,                    // 5 koneksi aktif — cukup untuk beberapa user bersamaan
     idleTimeoutMillis: 10000,  // Lepas koneksi idle setelah 10 detik
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000, // Tunggu hingga 10 detik sebelum throw error
     ssl: { rejectUnauthorized: false },
   });
 })();
