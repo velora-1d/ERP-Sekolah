@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { canAccess, isPublicApiPath } from "@/lib/rbac-permissions";
 
 /**
- * Decode JWT payload tanpa verifikasi signature (cukup untuk middleware).
+ * Decode JWT payload tanpa verifikasi signature (cukup untuk proxy).
  * Verifikasi signature tetap dilakukan di API route via getAuthUser().
  *
  * Di Edge Runtime, kita tidak bisa pakai modul `jsonwebtoken` (Node.js only).
- * Middleware hanya perlu membaca payload untuk routing dan RBAC check.
+ * Proxy hanya perlu membaca payload untuk routing dan RBAC check.
  */
 function decodeJwtPayload(token: string): { userId: number; name: string; email: string; role: string } | null {
   try {
@@ -22,7 +22,7 @@ function decodeJwtPayload(token: string): { userId: number; name: string; email:
   }
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get("erp_token")?.value;
   const { pathname } = request.nextUrl;
 
@@ -86,4 +86,3 @@ export const config = {
     "/(academic-years|admin|announcements|attendance|calendar|classrooms|coop|counseling|curriculum|dashboard|employee-attendance|extracurricular|grades|infaq-bills|inventory|journal|letters|mutations|payroll|ppdb|profile|re-registration|report-cards|reports|schedules|school-profile|settings|staff|students|subjects|tabungan|teachers|teaching-assignments|transaction-categories|wakaf)/:path*",
   ],
 };
-

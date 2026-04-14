@@ -14,6 +14,16 @@ function fmtRp(n: number) {
 }
 
 export default function DashboardCharts({ data, tab = "overview" }: { data: any; tab?: string }) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="h-64 bg-slate-50/50 rounded-xl animate-pulse" />;
+  }
+
   const genderData = [
     { name: "Putra", value: data.totalSiswaPa },
     { name: "Putri", value: data.totalSiswaPi },

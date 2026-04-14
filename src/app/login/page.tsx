@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { animate, stagger } from "animejs";
+import anime from "animejs";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,61 +24,67 @@ export default function LoginPage() {
     animatedRef.current = true;
 
     // Floating 3D-style icons
-    animate(".float-icon", {
+    anime({
+      targets: ".float-icon",
       translateY: [-10, 10],
       duration: 2800,
-      ease: "inOutSine",
+      easing: "easeInOutSine",
       loop: true,
-      alternate: true,
-      delay: stagger(350),
+      direction: "alternate",
+      delay: anime.stagger(350),
     });
 
     // Feature card entrance stagger
-    animate(".feat-card", {
+    anime({
+      targets: ".feat-card",
       opacity: [0, 1],
       translateY: [25, 0],
       duration: 650,
-      ease: "outCubic",
-      delay: stagger(90, { start: 500 }),
+      easing: "easeOutCubic",
+      delay: anime.stagger(90, { start: 500 }),
     });
 
     // Main illustration entrance
-    animate(".main-illust", {
+    anime({
+      targets: ".main-illust",
       opacity: [0, 1],
       scale: [0.88, 1],
       duration: 800,
-      ease: "outCubic",
+      easing: "easeOutCubic",
       delay: 250,
     });
 
 
     // Login card slide-in
-    animate(".login-card", {
+    anime({
+      targets: ".login-card",
       opacity: [0, 1],
       translateX: [35, 0],
       duration: 750,
-      ease: "outCubic",
+      easing: "easeOutCubic",
       delay: 450,
     });
 
     // Slow geometric rotation
-    animate(".geo-rotate", {
+    anime({
+      targets: ".geo-rotate",
       rotate: [0, 360],
       duration: 90000,
-      ease: "linear",
+      easing: "linear",
       loop: true,
     });
 
     // Particle dots float
-    animate(".particle", {
+    anime({
+      targets: ".particle",
       translateY: [-8, 8],
       translateX: [-4, 4],
       opacity: [0.3, 0.7],
       duration: 3500,
-      ease: "inOutSine",
+      easing: "easeInOutSine",
       loop: true,
-      alternate: true,
-      delay: stagger(200),
+      direction: "alternate",
+      delay: anime.stagger(200),
     });
   }, []);
 

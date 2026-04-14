@@ -6,13 +6,27 @@ import * as schema from "@/db/schema";
 
 type DbSchema = typeof schema;
 
+function normalizeConnectionString(url: string): string {
+  const parsed = new URL(url);
+  const sslmode = parsed.searchParams.get("sslmode");
+  const needsCompatFlag = sslmode === "prefer" || sslmode === "require" || sslmode === "verify-ca";
+
+  // pg warns that these sslmode values will change semantics in a future major.
+  // Preserve current behavior explicitly so build/runtime logs stay clean on Vercel.
+  if (needsCompatFlag && !parsed.searchParams.has("uselibpqcompat")) {
+    parsed.searchParams.set("uselibpqcompat", "true");
+  }
+
+  return parsed.toString();
+}
+
 function createPool(): Pool {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("Database URL missing: set DATABASE_URL (e.g. in Vercel project env or .env.local).");
   }
   return new Pool({
-    connectionString: url,
+    connectionString: normalizeConnectionString(url),
     maxUses: 1,
     ssl: { rejectUnauthorized: false },
   });
