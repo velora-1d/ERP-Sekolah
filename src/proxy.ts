@@ -22,7 +22,7 @@ function decodeJwtPayload(token: string): { userId: number; name: string; email:
   }
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get("erp_token")?.value;
   const { pathname } = request.nextUrl;
 
