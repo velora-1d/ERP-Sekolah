@@ -37,7 +37,7 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 
 ## Hosting & Infra
 - Development: Local
-- Production: Vercel
+- Production: Cloudflare Pages (opennextjs-cloudflare)
 
 ## Catatan Khusus
 - Menggunakan soft delete (`deletedAt`) di sebagian besar tabel.
