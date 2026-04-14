@@ -5,86 +5,78 @@ import { ppdbRegistrations, registrationPayments } from "@/db/schema";
 import { unstable_cache } from "next/cache";
 import PpdbClient from "./client";
 
-const getPpdbReferenceData = unstable_cache(
-  async () => {
-    return await Promise.all([
-      db
-        .select({ id: classrooms.id, name: classrooms.name, level: classrooms.level })
-        .from(classrooms)
-        .where(isNull(classrooms.deletedAt))
-        .orderBy(asc(classrooms.name))
-        .limit(200),
-      db
-        .select({ id: cashAccounts.id, name: cashAccounts.name, balance: cashAccounts.balance })
-        .from(cashAccounts)
-        .where(isNull(cashAccounts.deletedAt))
-        .orderBy(asc(cashAccounts.name))
-        .limit(50),
-    ]);
-  },
-  ["ppdb-reference-data"],
-  { revalidate: 300, tags: ["ppdb"] }
-);
+const getPpdbReferenceData = async () => {
+  return await Promise.all([
+    db
+      .select({ id: classrooms.id, name: classrooms.name, level: classrooms.level })
+      .from(classrooms)
+      .where(isNull(classrooms.deletedAt))
+      .orderBy(asc(classrooms.name))
+      .limit(200),
+    db
+      .select({ id: cashAccounts.id, name: cashAccounts.name, balance: cashAccounts.balance })
+      .from(cashAccounts)
+      .where(isNull(cashAccounts.deletedAt))
+      .orderBy(asc(cashAccounts.name))
+      .limit(50),
+  ]);
+};
 
-const getInitialRegistrations = unstable_cache(
-  async () => {
-    const limit = 20;
-    const conditions = [isNull(ppdbRegistrations.deletedAt)];
-    
-    const [list, [{ total }]] = await Promise.all([
-      db.select({
-        id: ppdbRegistrations.id,
-        formNo: ppdbRegistrations.formNo,
-        name: ppdbRegistrations.name,
-        gender: ppdbRegistrations.gender,
-        phone: ppdbRegistrations.phone,
-        status: ppdbRegistrations.status,
-        targetClassroom: ppdbRegistrations.targetClassroom,
-        createdAt: ppdbRegistrations.createdAt,
-      })
-      .from(ppdbRegistrations)
-      .where(and(...conditions))
-      .orderBy(desc(ppdbRegistrations.createdAt))
-      .limit(limit)
-      .offset(0),
-      db.select({ total: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(...conditions)),
-    ]);
+const getInitialRegistrations = async () => {
+  const limit = 20;
+  const conditions = [isNull(ppdbRegistrations.deletedAt)];
+  
+  const [list, [{ total }]] = await Promise.all([
+    db.select({
+      id: ppdbRegistrations.id,
+      formNo: ppdbRegistrations.formNo,
+      name: ppdbRegistrations.name,
+      gender: ppdbRegistrations.gender,
+      phone: ppdbRegistrations.phone,
+      status: ppdbRegistrations.status,
+      targetClassroom: ppdbRegistrations.targetClassroom,
+      createdAt: ppdbRegistrations.createdAt,
+    })
+    .from(ppdbRegistrations)
+    .where(and(...conditions))
+    .orderBy(desc(ppdbRegistrations.createdAt))
+    .limit(limit)
+    .offset(0),
+    db.select({ total: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(...conditions)),
+  ]);
 
-    const regIds = list.map(r => r.id);
-    let payments: any[] = [];
-    if (regIds.length > 0) {
-      payments = await db.select({
-        id: registrationPayments.id,
-        payableId: registrationPayments.payableId,
-        nominal: registrationPayments.nominal,
-        isPaid: registrationPayments.isPaid,
-      })
-      .from(registrationPayments)
-      .where(and(eq(registrationPayments.payableType, "ppdb"), inArray(registrationPayments.payableId, regIds), isNull(registrationPayments.deletedAt)));
-    }
+  const regIds = list.map(r => r.id);
+  let payments: any[] = [];
+  if (regIds.length > 0) {
+    payments = await db.select({
+      id: registrationPayments.id,
+      payableId: registrationPayments.payableId,
+      nominal: registrationPayments.nominal,
+      isPaid: registrationPayments.isPaid,
+    })
+    .from(registrationPayments)
+    .where(and(eq(registrationPayments.payableType, "ppdb"), inArray(registrationPayments.payableId, regIds), isNull(registrationPayments.deletedAt)));
+  }
 
-    const dataWithPayments = list.map(r => ({ 
-      ...r, 
-      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
-      payments: payments.filter(p => p.payableId === r.id) 
-    }));
-    
-    const [{ pending }, { diterima }, { ditolak }, { totalAll }] = await Promise.all([
-      db.select({ pending: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), or(eq(ppdbRegistrations.status, "menunggu" as string), eq(ppdbRegistrations.status, "pending" as string)))).then(r => r[0]),
-      db.select({ diterima: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "diterima" as string))).then(r => r[0]),
-      db.select({ ditolak: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "ditolak" as string))).then(r => r[0]),
-      db.select({ totalAll: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)).then(r => r[0]),
-    ]);
+  const dataWithPayments = list.map(r => ({ 
+    ...r, 
+    createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+    payments: payments.filter(p => p.payableId === r.id) 
+  }));
+  
+  const [{ pending }, { diterima }, { ditolak }, { totalAll }] = await Promise.all([
+    db.select({ pending: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), or(eq(ppdbRegistrations.status, "menunggu" as string), eq(ppdbRegistrations.status, "pending" as string)))).then(r => r[0]),
+    db.select({ diterima: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "diterima" as string))).then(r => r[0]),
+    db.select({ ditolak: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(and(isNull(ppdbRegistrations.deletedAt), eq(ppdbRegistrations.status, "ditolak" as string))).then(r => r[0]),
+    db.select({ totalAll: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)).then(r => r[0]),
+  ]);
 
-    return {
-      data: dataWithPayments,
-      stats: { total: totalAll, pending, diterima, ditolak },
-      pagination: { page: 1, limit, total, totalPages: Math.ceil(total / limit) }
-    };
-  },
-  ["ppdb-initial-registrations"],
-  { revalidate: 60, tags: ["ppdb"] }
-);
+  return {
+    data: dataWithPayments,
+    stats: { total: totalAll, pending, diterima, ditolak },
+    pagination: { page: 1, limit, total, totalPages: Math.ceil(total / limit) }
+  };
+};
 
 export default async function PpdbPage() {
   const [[allClassrooms, allCashAccounts], initialResult] = await Promise.all([
