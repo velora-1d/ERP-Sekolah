@@ -634,7 +634,7 @@ export default function LoginPage() {
 
           {/* Footer copyright */}
           <p style={{ textAlign: "center", fontSize: "0.625rem", color: "#94a3b8", marginTop: "1rem", fontWeight: 500 }}>
-            © {currentYear || "2026"} {schoolName || "Management Digital"} - Seluruh hak cipta dilindungi.
+            Â© {currentYear || "2026"} {schoolName || "Management Digital"} - Seluruh hak cipta dilindungi.
           </p>
         </div>
       </div>
