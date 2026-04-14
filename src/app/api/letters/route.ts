@@ -123,10 +123,16 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    return NextResponse.json(data, { status: 201 });
+    const responseData = {
+      ...data,
+      createdAt: data.createdAt.toISOString(),
+      updatedAt: data.updatedAt.toISOString(),
+    };
+
+    return NextResponse.json({ success: true, data: responseData }, { status: 201 });
   } catch (error: unknown) {
     console.error("Letters POST error:", error);
     const msg = error instanceof Error ? error.message : "Gagal menambah surat";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }

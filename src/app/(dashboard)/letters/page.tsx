@@ -144,7 +144,10 @@ export default function LettersPage() {
         body: JSON.stringify(payload) 
       });
 
-      if (!response.ok) throw new Error("Gagal menyimpan surat");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error || "Gagal menyimpan surat");
+      }
 
       setShowModal(false); 
       setEditItem(null);
@@ -169,8 +172,8 @@ export default function LettersPage() {
         timer: 1500,
         showConfirmButton: false
       });
-    } catch {
-      Swal.fire("Error", "Gagal menyimpan surat. Silakan coba lagi.", "error");
+    } catch (error: any) {
+      Swal.fire("Error", error.message || "Gagal menyimpan surat. Silakan coba lagi.", "error");
     }
   };
 
