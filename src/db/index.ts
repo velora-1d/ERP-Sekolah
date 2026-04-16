@@ -6,15 +6,13 @@ import * as schema from "@/db/schema";
 type DbSchema = typeof schema;
 
 function normalizeConnectionString(url: string): string {
-  const parsed = new URL(url);
-  const sslmode = parsed.searchParams.get("sslmode");
-  const needsCompatFlag = sslmode === "prefer" || sslmode === "require" || sslmode === "verify-ca";
-
-  if (needsCompatFlag && !parsed.searchParams.has("uselibpqcompat")) {
-    parsed.searchParams.set("uselibpqcompat", "true");
+  // Hanya pastikan URL valid, tidak perlu menambahkan uselibpqcompat yang spesifik Xata
+  try {
+    const parsed = new URL(url);
+    return parsed.toString();
+  } catch (e) {
+    return url;
   }
-
-  return parsed.toString();
 }
 
 // Pool GLOBAL — dibuat SEKALI saat module di-load, digunakan bersama
@@ -27,10 +25,10 @@ const globalPool = (() => {
   }
   return new Pool({
     connectionString: normalizeConnectionString(url),
-    max: 5,                    // 5 koneksi aktif — cukup untuk beberapa user bersamaan
-    idleTimeoutMillis: 10000,  // Lepas koneksi idle setelah 10 detik
-    connectionTimeoutMillis: 10000, // Tunggu hingga 10 detik sebelum throw error
-    ssl: { rejectUnauthorized: false },
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+    ssl: url.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
   });
 })();
 

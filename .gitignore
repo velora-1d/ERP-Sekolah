@@ -57,3 +57,7 @@ seed_final.ts
 update-profile.ts
 
 /src/generated/prisma
+
+# SSH Keys
+id_rsa_vps
+id_rsa_vps.pub

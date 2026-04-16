@@ -6,7 +6,7 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 ## Stack Teknologi
 - Frontend: Next.js 16.1.6 (App Router)
 - Backend: Next.js API Routes (Route Handlers)
-- Database: PostgreSQL (Node-Postgres)
+- Database: PostgreSQL (Regular/Standard)
 - ORM: Drizzle ORM
 - UI/UX: Tailwind CSS v4, SweetAlert2, Lucide React
 - State Management: TanStack Query (React Query) v5
