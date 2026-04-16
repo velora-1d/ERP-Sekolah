@@ -15,6 +15,13 @@
       "when": 1775262610484,
       "tag": "0001_add_cms_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776308818687,
+      "tag": "0002_supreme_magus",
+      "breakpoints": true
     }
   ]
 }
