@@ -7,6 +7,10 @@ import { requireAuth } from "@/lib/rbac";
 type CoopPaymentMethod = typeof coopTransactions.$inferSelect.paymentMethod;
 type GeneralTransactionStatus = typeof generalTransactions.$inferSelect.status;
 
+function isMissingColumnError(error: unknown): error is { code: string } {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "42703";
+}
+
 // GET /api/coop/transactions?date=YYYY-MM-DD&month=3&year=2026&paymentMethod=tunai
 export async function GET(req: Request) {
   try {
@@ -32,42 +36,99 @@ export async function GET(req: Request) {
 
     const whereClause = and(...conditions);
 
-    const [data, [{ total }]] = await Promise.all([
-      db.select({
-        id: coopTransactions.id,
-        studentId: coopTransactions.studentId,
-        items: coopTransactions.items,
-        total: coopTransactions.total,
-        paymentMethod: coopTransactions.paymentMethod,
-        date: coopTransactions.date,
-        status: coopTransactions.status,
-        createdAt: coopTransactions.createdAt,
-        updatedAt: coopTransactions.updatedAt,
-        student: {
-          id: students.id,
-          name: students.name,
-          nis: students.nis,
-        }
-      })
-      .from(coopTransactions)
-      .leftJoin(students, eq(coopTransactions.studentId, students.id))
-      .where(whereClause)
-      .orderBy(desc(coopTransactions.createdAt))
-      .limit(limit)
-      .offset(skip),
-      
-      db.select({ total: sql<number>`count(*)`.mapWith(Number) })
-      .from(coopTransactions)
-      .where(whereClause)
-    ]);
+    try {
+      const [data, [{ total }]] = await Promise.all([
+        db.select({
+          id: coopTransactions.id,
+          studentId: coopTransactions.studentId,
+          items: coopTransactions.items,
+          total: coopTransactions.total,
+          paymentMethod: coopTransactions.paymentMethod,
+          date: coopTransactions.date,
+          status: coopTransactions.status,
+          createdAt: coopTransactions.createdAt,
+          updatedAt: coopTransactions.updatedAt,
+          student: {
+            id: students.id,
+            name: students.name,
+            nis: students.nis,
+          }
+        })
+        .from(coopTransactions)
+        .leftJoin(students, eq(coopTransactions.studentId, students.id))
+        .where(whereClause)
+        .orderBy(desc(coopTransactions.createdAt))
+        .limit(limit)
+        .offset(skip),
+        
+        db.select({ total: sql<number>`count(*)`.mapWith(Number) })
+        .from(coopTransactions)
+        .where(whereClause)
+      ]);
 
-    return NextResponse.json({
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
+      return NextResponse.json({
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (error) {
+      if (!isMissingColumnError(error)) {
+        throw error;
+      }
+
+      // Fallback for older databases that do not yet have `status`/`deleted_at`.
+      const legacyConditions = [];
+      if (date) {
+        legacyConditions.push(like(coopTransactions.date, `${date}%`));
+      } else if (month && year) {
+        const prefix = `${year}-${String(parseInt(month)).padStart(2, "0")}`;
+        legacyConditions.push(like(coopTransactions.date, `${prefix}%`));
+      }
+      if (paymentMethod) {
+        legacyConditions.push(eq(coopTransactions.paymentMethod, paymentMethod as CoopPaymentMethod));
+      }
+
+      const legacyWhereClause = legacyConditions.length > 0 ? and(...legacyConditions) : undefined;
+
+      const [data, [{ total }]] = await Promise.all([
+        db.select({
+          id: coopTransactions.id,
+          studentId: coopTransactions.studentId,
+          items: coopTransactions.items,
+          total: coopTransactions.total,
+          paymentMethod: coopTransactions.paymentMethod,
+          date: coopTransactions.date,
+          status: sql<string>`'valid'`,
+          createdAt: coopTransactions.createdAt,
+          updatedAt: coopTransactions.updatedAt,
+          student: {
+            id: students.id,
+            name: students.name,
+            nis: students.nis,
+          }
+        })
+        .from(coopTransactions)
+        .leftJoin(students, eq(coopTransactions.studentId, students.id))
+        .where(legacyWhereClause)
+        .orderBy(desc(coopTransactions.createdAt))
+        .limit(limit)
+        .offset(skip),
+
+        db.select({ total: sql<number>`count(*)`.mapWith(Number) })
+        .from(coopTransactions)
+        .where(legacyWhereClause)
+      ]);
+
+      return NextResponse.json({
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Gagal memuat transaksi";
     return NextResponse.json({ error: msg }, { status: 500 });
