@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students, studentEnrollments, classrooms, academicYears } from "@/db/schema";
-import { and, eq, ilike, or, gte, lte, isNull, asc, sql } from "drizzle-orm";
+import { students, studentEnrollments, academicYears } from "@/db/schema";
+import { and, eq, ilike, or, isNull } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { getStudentsList } from "@/lib/students";
 

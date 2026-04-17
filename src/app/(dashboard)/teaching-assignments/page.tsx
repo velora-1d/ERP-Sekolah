@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { teachingAssignments, employees, subjects, classrooms, academicYears } from "@/db/schema";
 import { isNull, eq, desc, sql } from "drizzle-orm";
 import TeachingAssignmentsClient from "./client";
+import type { ComponentProps } from "react";
 
 export default async function TeachingAssignmentsPage() {
   const limit = 10;
@@ -40,9 +41,8 @@ export default async function TeachingAssignmentsPage() {
       db.select({ id: academicYears.id, year: academicYears.year, isActive: academicYears.isActive }).from(academicYears).where(isNull(academicYears.deletedAt)).limit(50),
     ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialResult = {
-    data: initialData as any[],
+  const initialResult: NonNullable<ComponentProps<typeof TeachingAssignmentsClient>["initialResult"]> = {
+    data: initialData,
     pagination: { page: 1, limit, total, totalPages: Math.ceil(total / limit) },
   };
 

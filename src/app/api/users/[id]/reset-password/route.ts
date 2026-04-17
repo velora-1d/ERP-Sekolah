@@ -21,7 +21,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     await db.update(users).set({ password: hashedPassword, updatedAt: new Date() }).where(eq(users.id, id));
 
     return NextResponse.json({ success: true, message: "Password berhasil direset", new_password: newPassword });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal me-reset password" }, { status: 500 });
   }
 }

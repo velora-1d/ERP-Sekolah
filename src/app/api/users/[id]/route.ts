@@ -14,7 +14,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     if (!user) return NextResponse.json({ error: "Pengguna tidak ditemukan" }, { status: 404 });
 
     return NextResponse.json({ id: user.id, name: user.name, username: user.email, role: user.role, status: user.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal mengambil data pengguna" }, { status: 500 });
   }
 }
@@ -28,7 +28,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     const body = await request.json();
     const { name, username, password, role, status } = body;
 
-    const updateData: Record<string, any> = {};
+    const updateData: Partial<typeof users.$inferInsert> = {};
     if (name) updateData.name = name;
     if (username) {
       const email = username.toLowerCase();
@@ -73,7 +73,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     // Untuk saat ini kita implementasikan standard soft-delete dulu
     await db.update(users).set({ 
       deletedAt: new Date(),
-      status: 'dihapus' as any
+      status: 'dihapus'
     }).where(eq(users.id, id));
 
     return NextResponse.json({ success: true, message: `Pengguna ${user.name} berhasil dihapus` });

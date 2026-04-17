@@ -48,10 +48,10 @@ export default function ScheduleClient({
   const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
 
   // Metadata didapat dari server — tidak ada API call saat load pertama
-  const [classrooms, setClassrooms] = useState<Option[]>(initialClassrooms);
-  const [academicYears, setAcademicYears] = useState<Option[]>(initialAcademicYears);
-  const [subjects, setSubjects] = useState<Option[]>(initialSubjects);
-  const [employees, setEmployees] = useState<Option[]>(initialEmployees);
+  const [classrooms] = useState<Option[]>(initialClassrooms);
+  const [academicYears] = useState<Option[]>(initialAcademicYears);
+  const [subjects] = useState<Option[]>(initialSubjects);
+  const [employees] = useState<Option[]>(initialEmployees);
 
   // Format array untuk grid (Hari 1-6 Senin-Sabtu)
   const days = [
@@ -97,7 +97,7 @@ export default function ScheduleClient({
       } else {
         Swal.fire("Error", json.error || "Gagal mengambil data", "error");
       }
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Terjadi kesalahan koneksi", "error");
     } finally {
       setLoading(false);
@@ -222,7 +222,7 @@ export default function ScheduleClient({
           } else {
             Swal.fire("Gagal", data.error, "error");
           }
-        } catch (error) {
+        } catch {
           Swal.fire("Error", "Gagal menghubungi server", "error");
         }
       }
@@ -251,7 +251,7 @@ export default function ScheduleClient({
         } else {
           Swal.fire("Gagal", data.error, "error");
         }
-      } catch (error) {
+      } catch {
         Swal.fire("Error", "Gagal menghapus data", "error");
       }
     }

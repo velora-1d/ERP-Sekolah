@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -43,7 +43,7 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
     initialData: initialData.length > 0 ? { success: true, data: initialData } : undefined,
   });
 
-  const data: any[] = result?.data || [];
+  const data: StaffItem[] = result?.data || [];
   const refreshStaff = () => queryClient.invalidateQueries({ queryKey: ["staff"] });
 
   const filteredData = data;
@@ -53,11 +53,11 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
 
 
 
-  const handleEdit = (s: any) => {
+  const handleEdit = (s: StaffItem) => {
     router.push(`/staff/${s.id}/edit`);
   };
 
-  const handleDelete = (s: any) => {
+  const handleDelete = (s: StaffItem) => {
     Swal.fire({
       title: "Hapus Data Staf?",
       html: `<p style="font-size:0.875rem;color:#475569;">Data <strong>"${s.name}"</strong> akan dihapus.</p>`,
@@ -141,7 +141,7 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
                 { header: "No. Telepon", key: "phone", width: 18 },
                 { header: "Status", key: "status", width: 12, align: "center", format: (v: string) => v === 'aktif' ? 'Aktif' : 'Non-Aktif' },
               ],
-              data: filteredData.map((s: any, i: number) => ({
+              data: filteredData.map((s: StaffItem, i: number) => ({
                 ...s,
                 _no: i + 1,
                 nip: s.nip || '-',
@@ -208,7 +208,7 @@ export default function StaffClient({ initialData = [] }: { initialData?: StaffI
                         <button 
                           onClick={(ev) => { 
                             ev.stopPropagation(); 
-                            (ev.nativeEvent as any).stopImmediatePropagation();
+                            ev.nativeEvent.stopImmediatePropagation();
                             setOpenActionId(openActionId === s.id ? null : s.id); 
                           }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}

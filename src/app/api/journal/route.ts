@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       isNull(generalTransactions.deletedAt),
       eq(generalTransactions.status, "valid")
     ];
-    if (typeFilter) conditions.push(eq(generalTransactions.type, typeFilter as any));
+    if (typeFilter) conditions.push(eq(generalTransactions.type, typeFilter));
 
     const now = new Date();
     const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -43,16 +43,16 @@ export async function GET(request: Request) {
       db.select().from(transactionCategories).where(isNull(transactionCategories.deletedAt)),
 
       db.select({ totalIn: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "in" as any))),
+        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "in"))),
 
       db.select({ totalOut: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "out" as any))),
+        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "out"))),
 
       db.select({ thisMonthIn: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "in" as any), like(generalTransactions.transactionDate, `${currentMonthPrefix}%`))),
+        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "in"), like(generalTransactions.transactionDate, `${currentMonthPrefix}%`))),
 
       db.select({ thisMonthOut: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
-        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "out" as any), like(generalTransactions.transactionDate, `${currentMonthPrefix}%`))),
+        .from(generalTransactions).where(and(isNull(generalTransactions.deletedAt), eq(generalTransactions.status, "valid"), eq(generalTransactions.type, "out"), like(generalTransactions.transactionDate, `${currentMonthPrefix}%`))),
     ]);
 
     const entries = transactions.map(tx => ({

@@ -1,9 +1,15 @@
 import { db } from "@/db";
 import { classrooms, cashAccounts } from "@/db/schema";
-import { isNull, and, eq, or, ilike, desc, inArray, sql, asc } from "drizzle-orm";
+import { isNull, and, eq, or, desc, inArray, sql, asc } from "drizzle-orm";
 import { ppdbRegistrations, registrationPayments } from "@/db/schema";
-import { unstable_cache } from "next/cache";
 import PpdbClient from "./client";
+
+interface RegistrationPaymentItem {
+  id: number;
+  payableId: number;
+  nominal: number;
+  isPaid: boolean;
+}
 
 const getPpdbReferenceData = async () => {
   return await Promise.all([
@@ -46,7 +52,7 @@ const getInitialRegistrations = async () => {
   ]);
 
   const regIds = list.map(r => r.id);
-  let payments: any[] = [];
+  let payments: RegistrationPaymentItem[] = [];
   if (regIds.length > 0) {
     payments = await db.select({
       id: registrationPayments.id,

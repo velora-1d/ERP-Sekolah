@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
 
     const conditions = [isNull(generalTransactions.deletedAt)];
-    if (type) conditions.push(eq(generalTransactions.type, type as any));
+    if (type) conditions.push(eq(generalTransactions.type, type));
 
     const entries = await db.select({
       id: generalTransactions.id,

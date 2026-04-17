@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
-import { exportCSV } from "@/lib/csv-export";
 import { ExportButtons } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Pagination from "@/components/Pagination";
 import { 
   Plus, 
-  Download, 
   MessageSquare, 
   Search, 
   Filter, 
@@ -298,7 +296,7 @@ export default function CounselingPage() {
                       <CornerDownRight className="w-4 h-4 text-slate-400 mt-0.5" />
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tindak Lanjut</p>
-                        <p className="text-sm text-slate-600 leading-relaxed italic">"{item.followUp}"</p>
+                        <p className="text-sm text-slate-600 leading-relaxed italic">&quot;{item.followUp}&quot;</p>
                       </div>
                     </div>
                   )}

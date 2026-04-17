@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { classrooms, students, infaqBills, infaqPayments, studentEnrollments, academicYears } from "@/db/schema";
 import { eq, and, isNull, inArray, asc, sql } from "drizzle-orm";
 
+type InfaqBillRow = typeof infaqBills.$inferSelect;
+
 /**
  * GET /api/infaq-bills/tracking?classroomId=X&year=Y&semester=1|2|full
  */
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
     };
 
     const studentIds = studentList.map(s => s.id);
-    let bills: any[] = [];
+    let bills: InfaqBillRow[] = [];
     if (studentIds.length > 0) {
       bills = await db.select()
         .from(infaqBills)
@@ -68,8 +70,8 @@ export async function GET(request: Request) {
     }
 
     // Get payments for these bills
-    const billIds = bills.map((b: any) => b.id);
-    let paymentMap: Record<number, number> = {};
+    const billIds = bills.map((b) => b.id);
+    const paymentMap: Record<number, number> = {};
     if (billIds.length > 0) {
       const paymentSums = await db.select({
         billId: infaqPayments.billId,
@@ -84,7 +86,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const billMap = new Map<string, any>();
+    const billMap = new Map<string, InfaqBillRow>();
     for (const b of bills) {
       billMap.set(`${b.studentId}-${b.month}`, b);
     }

@@ -40,8 +40,9 @@ export default function SchoolProfileClient({ initialData }: { initialData: Reco
     setLoading(false);
   }, []);
 
-  // Menghapus useEffect karena data sudah disuntikkan secara SSR dari page.tsx
-  // useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
   const handleSave = async () => {
     setSaving(true);

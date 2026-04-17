@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { employees } from "@/db/schema";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import TeachersClient from "./client";
+import type { ComponentProps } from "react";
 
 export default async function TeachersPage() {
   const teachers = await db
@@ -20,13 +21,10 @@ export default async function TeachersPage() {
     .orderBy(desc(employees.createdAt))
     .limit(500);
 
-  // Parse tanggal agar aman dikirim ke Client Component (Date object tidak serializable)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serializedTeachers = teachers.map((t) => ({
+  const serializedTeachers: ComponentProps<typeof TeachersClient>["initialData"] = teachers.map((t) => ({
     ...t,
     createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : null,
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <TeachersClient initialData={serializedTeachers as any} />;
+  return <TeachersClient initialData={serializedTeachers} />;
 }

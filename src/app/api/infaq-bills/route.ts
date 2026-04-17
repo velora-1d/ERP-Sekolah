@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { infaqBills, students, academicYears, classrooms, infaqPayments, studentEnrollments } from "@/db/schema";
-import { isNull, and, eq, ilike, asc, desc, sql, inArray } from "drizzle-orm";
+import { isNull, and, eq, ilike, desc, sql, inArray } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const conditions = [isNull(infaqBills.deletedAt), isNull(students.deletedAt), isNull(studentEnrollments.deletedAt)];
     if (targetAcademicYearId) conditions.push(eq(infaqBills.academicYearId, targetAcademicYearId));
     if (month) conditions.push(eq(infaqBills.month, month));
-    if (statusFilter) conditions.push(eq(infaqBills.status, statusFilter as any));
+    if (statusFilter) conditions.push(eq(infaqBills.status, statusFilter));
 
     // Filter Semester
     if (semester) {
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
     // Ambil total pembayaran per bill
     const billIds = rawBills.map(b => b.id);
-    let paymentMap: Record<number, number> = {};
+    const paymentMap: Record<number, number> = {};
     if (billIds.length > 0) {
       const paymentSums = await db.select({
         billId: infaqPayments.billId,
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
 
     // Ambil nama kelas
     const classIds = [...new Set(rawBills.map(b => b.studentClassroomId).filter((id): id is number => id != null))];
-    let classMap: Record<number, string> = {};
+    const classMap: Record<number, string> = {};
     if (classIds.length > 0) {
       const cls = await db.select({ id: classrooms.id, name: classrooms.name }).from(classrooms).where(inArray(classrooms.id, classIds));
       cls.forEach(c => { classMap[c.id] = c.name; });

@@ -178,9 +178,6 @@ export default function LoginPage() {
     }
   }
 
-  const initials = schoolName
-    ? schoolName.split(" ").filter(w => w.length > 1).map(w => w[0]).join("").toUpperCase().slice(0, 3)
-    : "MD";
   const greetingTheme = getGreetingTheme(currentHour);
 
   const features = [

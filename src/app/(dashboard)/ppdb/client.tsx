@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,14 +10,78 @@ import Card from "@/components/ui/Card";
 import { UserPlus, Plus, Wrench } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+type RegistrationStatus = "menunggu" | "pending" | "diterima" | "ditolak" | "converted";
+type Gender = "L" | "P";
+type PaymentType = "daftar" | "buku" | "seragam" | string;
+
+interface ClassroomItem {
+  id: number;
+  name: string;
+}
+
+interface CashAccountItem {
+  id: number;
+  name: string;
+  balance: number;
+}
+
+interface QuickPaymentItem {
+  id: number;
+  paymentType: PaymentType;
+  nominal: number;
+  payableId: number;
+  isPaid: boolean;
+}
+
+interface PpdbRegistrationItem {
+  id: number;
+  formNo?: string | null;
+  name: string;
+  gender: Gender;
+  fatherName?: string | null;
+  motherName?: string | null;
+  status: RegistrationStatus;
+  payments?: QuickPaymentItem[];
+}
+
+interface PaymentStatBucket {
+  total: number;
+  count: number;
+}
+
+interface PaymentStats {
+  daftar?: PaymentStatBucket;
+  buku?: PaymentStatBucket;
+  seragam?: PaymentStatBucket;
+  grandTotal?: number;
+}
+
+interface PpdbStats {
+  total: number;
+  pending: number;
+  diterima: number;
+  ditolak: number;
+}
+
+interface QueryPagination {
+  totalPages: number;
+  total: number;
+}
+
+interface PpdbQueryResult {
+  data?: PpdbRegistrationItem[];
+  stats?: PpdbStats | null;
+  pagination?: QueryPagination;
+}
+
 export default function PpdbPage({
   initialClassrooms = [],
   initialCashAccounts = [],
   initialResult = null,
 }: {
-  initialClassrooms?: any[];
-  initialCashAccounts?: any[];
-  initialResult?: any;
+  initialClassrooms?: ClassroomItem[];
+  initialCashAccounts?: CashAccountItem[];
+  initialResult?: PpdbQueryResult | null;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -44,10 +108,10 @@ export default function PpdbPage({
   // Settings biaya PPDB
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ppdbSettings, setPpdbSettings] = useState({ daftar: 0, buku: 0, seragam: 0 });
-  const [paymentStats, setPaymentStats] = useState<any>(null);
-  const [cashAccounts, setCashAccounts] = useState<any[]>(initialCashAccounts);
+  const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
+  const [cashAccounts, setCashAccounts] = useState<CashAccountItem[]>(initialCashAccounts);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [payTarget, setPayTarget] = useState<any>(null);
+  const [payTarget, setPayTarget] = useState<QuickPaymentItem | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payCashId, setPayCashId] = useState("");
   const [payLoading, setPayLoading] = useState(false);
@@ -76,23 +140,23 @@ export default function PpdbPage({
       const json = await res.json();
       if (json.success) showToast("Biaya PPDB berhasil disimpan.");
       else showToast(json.message || "Gagal menyimpan", "error");
-    } catch (e) { showToast("Gagal menghubungi server", "error"); }
+    } catch { showToast("Gagal menghubungi server", "error"); }
   };
 
   // Modal konversi
   const [showConvert, setShowConvert] = useState(false);
-  const [convertReg, setConvertReg] = useState<any>(null);
+  const [convertReg, setConvertReg] = useState<PpdbRegistrationItem | null>(null);
   const [convertClassroom, setConvertClassroom] = useState("");
   const [convertInfaq, setConvertInfaq] = useState("");
   const [convertLoading, setConvertLoading] = useState(false);
-  const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<ClassroomItem[]>(initialClassrooms);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const { data: queryResult, isLoading } = useQuery({
+  const { data: queryResult, isLoading } = useQuery<PpdbQueryResult>({
     queryKey: ["ppdb", search, page, limit, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -106,9 +170,10 @@ export default function PpdbPage({
     },
     staleTime: 1000 * 60 * 5,
     placeholderData: (prev) => prev,
+    initialData: initialResult ?? undefined,
   });
 
-  const data: any[] = queryResult?.data || [];
+  const data: PpdbRegistrationItem[] = queryResult?.data || [];
   const stats = queryResult?.stats || null;
   const totalPages = queryResult?.pagination?.totalPages || 1;
   const total = queryResult?.pagination?.total || 0;
@@ -141,7 +206,6 @@ export default function PpdbPage({
 
   useEffect(() => { loadClassrooms(); loadCashAccounts(); loadPaymentStats(); }, []);
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value;
     setSearch(q);
@@ -149,7 +213,7 @@ export default function PpdbPage({
   }
 
   // === Terima  ===
-  async function handleApprove(reg: any) {
+  async function handleApprove(reg: PpdbRegistrationItem) {
     const result = await Swal.fire({
       title: "Terima Pendaftar?",
       text: `Terima ${reg.name}? Payment items akan dibuat otomatis.`,
@@ -169,7 +233,7 @@ export default function PpdbPage({
   }
 
   // === Tolak ===
-  async function handleReject(reg: any) {
+  async function handleReject(reg: PpdbRegistrationItem) {
     const result = await Swal.fire({
       title: "Tolak Pendaftar?",
       text: `Tolak ${reg.name}?`,
@@ -189,7 +253,7 @@ export default function PpdbPage({
   }
 
   // === Konversi ===
-  function openConvert(reg: any) {
+  function openConvert(reg: PpdbRegistrationItem) {
     setConvertReg(reg);
     setConvertClassroom("");
     setConvertInfaq("");
@@ -222,7 +286,7 @@ export default function PpdbPage({
   }
 
   // === Toggle Payment (dengan modal) ===
-  async function openPayModal(payment: any) {
+  async function openPayModal(payment: QuickPaymentItem) {
     if (payment.isPaid) {
       // Revert langsung dengan konfirmasi
       const result = await Swal.fire({
@@ -274,7 +338,7 @@ export default function PpdbPage({
   }
 
   // === Reset / Batalkan ===
-  async function handleReset(reg: any) {
+  async function handleReset(reg: PpdbRegistrationItem) {
     const result = await Swal.fire({
       title: "Batalkan Status?",
       text: `Batalkan status "${reg.status}" untuk ${reg.name}? Status akan kembali ke Menunggu.`,
@@ -499,7 +563,7 @@ export default function PpdbPage({
                 { header: "Nama Ibu", key: "motherName", width: 20 },
                 { header: "Status", key: "_status", width: 12, align: "center" },
               ],
-              data: filtered.map((r: any, i: number) => ({
+              data: filtered.map((r, i: number) => ({
                 ...r,
                 _no: i + 1,
                 _formNo: r.formNo || `#${r.id}`,
@@ -536,7 +600,7 @@ export default function PpdbPage({
                     <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Pendaftar</p>
                   </div>
                 </td></tr>
-              ) : filtered.map((reg: any, i: number) => {
+              ) : filtered.map((reg, i: number) => {
                 const genderBadge = reg.gender === "L"
                   ? <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: 999, color: "#6366f1", background: "#eef2ff" }}>Putra</span>
                   : <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: 999, color: "#ec4899", background: "#fdf2f8" }}>Putri</span>;
@@ -560,7 +624,7 @@ export default function PpdbPage({
                     <td style={{ padding: "1rem", textAlign: "center" }}>{genderBadge}</td>
                     <td style={{ padding: "1rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center", flexWrap: "wrap" }}>
-                        {(reg.payments && reg.payments.length > 0) ? Array.from(new Map(reg.payments.map((p: any) => [p.paymentType, p])).values()).map((p: any) => (
+                        {(reg.payments && reg.payments.length > 0) ? Array.from(new Map(reg.payments.map((p) => [p.paymentType, p])).values()).map((p) => (
                           <button key={p.id} onClick={() => openPayModal(p)}
                             title={`${p.paymentType}: Rp ${Number(p.nominal).toLocaleString('id-ID')} — klik untuk ${p.isPaid ? 'revert' : 'bayar'}`}
                             style={{ padding: "0.2rem 0.5rem", fontSize: "0.625rem", fontWeight: 700, borderRadius: 999, border: "none", cursor: "pointer",
@@ -575,7 +639,7 @@ export default function PpdbPage({
                       <button 
                         onClick={(ev) => { 
                           ev.stopPropagation(); 
-                          (ev.nativeEvent as any).stopImmediatePropagation();
+                          ev.nativeEvent.stopImmediatePropagation();
                           setOpenActionId(openActionId === reg.id ? null : reg.id); 
                         }}
                         style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
@@ -682,7 +746,7 @@ export default function PpdbPage({
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Kelas Tujuan</label>
               <select value={convertClassroom} onChange={e => setConvertClassroom(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
                 <option value="">— Belum Ditentukan —</option>
-                {classrooms.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {classrooms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
@@ -720,7 +784,7 @@ export default function PpdbPage({
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Akun Kas</label>
               <select value={payCashId} onChange={e => setPayCashId(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
                 <option value="">— Tanpa Akun Kas —</option>
-                {cashAccounts.map((ca: any) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
+                {cashAccounts.map((ca) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
               </select>
             </div>
 

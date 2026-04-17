@@ -34,10 +34,10 @@ export default function TeachingAssignmentsClient({
   );
 
   // States for dropdowns — langsung diisi dari server-side props
-  const [employees, setEmployees] = useState<DropdownItem[]>(initialTeachers);
-  const [subjects, setSubjects] = useState<DropdownItem[]>(initialSubjects);
-  const [classrooms, setClassrooms] = useState<DropdownItem[]>(initialClassrooms);
-  const [academicYears, setAcademicYears] = useState<DropdownItem[]>(initialAcademicYears);
+  const [employees] = useState<DropdownItem[]>(initialTeachers);
+  const [subjects] = useState<DropdownItem[]>(initialSubjects);
+  const [classrooms] = useState<DropdownItem[]>(initialClassrooms);
+  const [academicYears] = useState<DropdownItem[]>(initialAcademicYears);
 
   // Filter state
   const [filterYear, setFilterYear] = useState("");

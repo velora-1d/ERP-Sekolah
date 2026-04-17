@@ -4,6 +4,9 @@ import { coopTransactions, students, products, studentCredits, generalTransactio
 import { eq, like, desc, and, sql, isNull } from "drizzle-orm";
 import { requireAuth } from "@/lib/rbac";
 
+type CoopPaymentMethod = typeof coopTransactions.$inferSelect.paymentMethod;
+type GeneralTransactionStatus = typeof generalTransactions.$inferSelect.status;
+
 // GET /api/coop/transactions?date=YYYY-MM-DD&month=3&year=2026&paymentMethod=tunai
 export async function GET(req: Request) {
   try {
@@ -24,7 +27,7 @@ export async function GET(req: Request) {
       conditions.push(like(coopTransactions.date, `${prefix}%`));
     }
     if (paymentMethod) {
-      conditions.push(eq(coopTransactions.paymentMethod, paymentMethod as any));
+      conditions.push(eq(coopTransactions.paymentMethod, paymentMethod as CoopPaymentMethod));
     }
 
     const whereClause = and(...conditions);
@@ -155,7 +158,7 @@ export async function POST(req: Request) {
 // DELETE /api/coop/transactions — Batal (Void) Transaksi
 export async function DELETE(req: Request) {
   try {
-    const user = await requireAuth();
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -188,7 +191,7 @@ export async function DELETE(req: Request) {
         
         if (gt) {
           await tx.update(generalTransactions)
-            .set({ status: "void" as any, deletedAt: new Date() })
+            .set({ status: "void" as GeneralTransactionStatus, deletedAt: new Date() })
             .where(eq(generalTransactions.id, gt.id));
 
           if (gt.cashAccountId) {
@@ -201,7 +204,7 @@ export async function DELETE(req: Request) {
 
       // 5. Update status transaksi koperasi
       await tx.update(coopTransactions)
-        .set({ status: "void", updatedAt: new Date() as any }) // We use status instead of hard delete for audit
+        .set({ status: "void", updatedAt: new Date() })
         .where(eq(coopTransactions.id, t.id));
 
       return { success: true };

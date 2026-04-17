@@ -3,6 +3,13 @@ import { db } from "@/db";
 import { reRegistrations, students, classrooms, registrationPayments, academicYears, studentEnrollments } from "@/db/schema";
 import { eq, and, isNull, desc, inArray } from "drizzle-orm";
 
+interface RegistrationPaymentRow {
+  id: number;
+  payableId: number;
+  paymentType: string;
+  isPaid: boolean;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -59,7 +66,7 @@ export async function GET(request: Request) {
 
     // Map payments
     const reregIds = reregList.map(r => r.id);
-    let payments: any[] = [];
+    let payments: RegistrationPaymentRow[] = [];
     if (reregIds.length > 0) {
       payments = await db
         .select({

@@ -48,11 +48,21 @@ interface ReportConfig {
   verificationUrl?: string;
 }
 
+type JsPdfWithPlugins = jsPDF & {
+  GState: new (options: { opacity: number }) => unknown;
+  lastAutoTable?: { finalY: number };
+};
+
+function getAutoTableFinalY(doc: jsPDF): number {
+  return (doc as JsPdfWithPlugins).lastAutoTable?.finalY ?? 0;
+}
+
 export async function generateReportCardPDF(
   studentData: StudentReportData,
   config: ReportConfig
 ): Promise<jsPDF> {
   const doc = new jsPDF("p", "mm", "a4");
+  const docWithPlugins = doc as JsPdfWithPlugins;
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -63,8 +73,7 @@ export async function generateReportCardPDF(
   // Watermark "DRAFT"
   if (config.isDraft) {
     doc.saveGraphicsState();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    doc.setGState(new (doc as any).GState({ opacity: 0.1 }));
+    doc.setGState(new docWithPlugins.GState({ opacity: 0.1 }));
     doc.setFont("helvetica", "bold");
     doc.setFontSize(80);
     doc.setTextColor(255, 0, 0); // Red color for visibility
@@ -197,8 +206,7 @@ export async function generateReportCardPDF(
     theme: "grid",
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = getAutoTableFinalY(doc) + 8;
 
   // Cek apakah cukup ruang, jika tidak pindah halaman
   if (y > 230) {
@@ -231,8 +239,7 @@ export async function generateReportCardPDF(
       theme: "grid",
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = getAutoTableFinalY(doc) + 8;
   }
 
   if (y > 230) {
@@ -264,8 +271,7 @@ export async function generateReportCardPDF(
     theme: "grid",
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = getAutoTableFinalY(doc) + 8;
 
   // === KETIDAKHADIRAN ===
   doc.setFont("helvetica", "bold");
@@ -289,8 +295,7 @@ export async function generateReportCardPDF(
     tableWidth: contentWidth * 0.5,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = getAutoTableFinalY(doc) + 8;
 
   if (y > 240) {
     doc.addPage();

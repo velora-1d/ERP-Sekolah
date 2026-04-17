@@ -30,13 +30,35 @@ interface Classroom { id: number; name: string; }
 interface Curriculum { id: number; type: string; semester: string; academicYear?: { year: string }; }
 interface Student { id: number; name: string; nisn: string; nis: string; }
 interface FinalGradeCheck { subjectName: string; isLocked: boolean; }
+interface GeneratedGrade {
+  subjectName: string;
+  nilaiAkhir?: number | string;
+  predikat?: string;
+}
+interface AttendanceSummary {
+  sakit?: number;
+  izin?: number;
+  alpha?: number;
+}
+interface GeneratedStudentData {
+  student: Student;
+  finalGrades?: GeneratedGrade[];
+  attendanceSummary?: AttendanceSummary;
+  teacherNote?: string;
+  [key: string]: unknown;
+}
+interface GeneratedReportData {
+  students?: GeneratedStudentData[];
+  school: Record<string, string>;
+  curriculum?: { type?: string; semester?: string };
+  classroom?: { name?: string };
+}
 interface ReportCard { 
   id: number; 
   studentId: number; 
   status: string; 
   student: Student; 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  snapshotData?: any; 
+  snapshotData?: GeneratedStudentData; 
 }
 
 interface NoteItem { studentId: number; studentName: string; note: string; }
@@ -47,9 +69,6 @@ interface SignatureSettings {
   reportLogoPosition: string;
   reportLogoSize: string;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ReportGenerateResult = any;
 
 const steps = [
   { id: 1, label: "Cek Kelengkapan", icon: ClipboardList },
@@ -65,8 +84,8 @@ export default function ReportCardsPage({
   initialCurriculums?: Curriculum[];
 }) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [classrooms, setClassrooms] = useState<Classroom[]>(initialClassrooms);
-  const [curriculums, setCurriculums] = useState<Curriculum[]>(initialCurriculums);
+  const [classrooms] = useState<Classroom[]>(initialClassrooms);
+  const [curriculums] = useState<Curriculum[]>(initialCurriculums);
   const [selectedClassroom, setSelectedClassroom] = useState("");
   const [selectedCurriculum, setSelectedCurriculum] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("ganjil");
@@ -89,7 +108,7 @@ export default function ReportCardsPage({
 
 
   // Step 3 state
-  const [generatedData, setGeneratedData] = useState<ReportGenerateResult | null>(null);
+  const [generatedData, setGeneratedData] = useState<GeneratedReportData | null>(null);
   const [generating, setGenerating] = useState(false);
   const [signatureSettings, setSignatureSettings] = useState<SignatureSettings>({
     headmasterSignature: "",
@@ -856,12 +875,12 @@ export default function ReportCardsPage({
                     onChange={(e) => setPreviewStudentIndex(Number(e.target.value))}
                     className="text-xs border border-slate-200 rounded-lg px-2 py-1.5"
                   >
-                    {(generatedData?.students || students).map((s: ReportGenerateResult, idx: number) => (
+                    {(generatedData?.students || []).map((s, idx: number) => (
                       <option key={idx} value={idx}>
                         {s?.student?.name || s?.name || `Siswa ${idx + 1}`}
                       </option>
                     ))}
-                    {(generatedData?.students?.length || students.length) === 0 && <option value={0}>Belum ada siswa</option>}
+                    {(generatedData?.students?.length || 0) === 0 && <option value={0}>Belum ada siswa</option>}
                   </select>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3 text-xs">
@@ -879,7 +898,7 @@ export default function ReportCardsPage({
                         </tr>
                       </thead>
                       <tbody>
-                        {previewGrades.length > 0 ? previewGrades.slice(0, 4).map((g: ReportGenerateResult, i: number) => (
+                        {previewGrades.length > 0 ? previewGrades.slice(0, 4).map((g: GeneratedGrade, i: number) => (
                           <tr key={i} className="border-t border-slate-100">
                             <td className="px-2 py-1.5">{g.subjectName}</td>
                             <td className="px-2 py-1.5 text-center">{g.nilaiAkhir ?? "-"}</td>
@@ -931,7 +950,7 @@ export default function ReportCardsPage({
 
                 <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {generatedData.students?.map((sd: ReportGenerateResult, idx: number) => (
+                    {generatedData.students?.map((sd, idx: number) => (
                       <div key={idx} className="border border-slate-100 rounded-2xl p-4 hover:border-indigo-100 hover:bg-slate-50/50 transition-all flex items-center justify-between group">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-sm font-black text-indigo-700 group-hover:bg-indigo-100 transition-colors shadow-sm">{idx + 1}</div>

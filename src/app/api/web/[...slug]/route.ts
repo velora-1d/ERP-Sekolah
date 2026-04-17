@@ -6,7 +6,6 @@ import {
   webFacilities, 
   webTeachers, 
   webAchievements, 
-  webSettings,
   webPrograms,
   webStats
 } from "@/db/schema";
@@ -17,6 +16,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Terjadi kesalahan server";
+}
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -107,7 +110,7 @@ export async function GET(
     if (resource === "settings") {
       const settings = await db.query.webSettings.findMany();
       // Transform into object key-value
-      const settingsObj = settings.reduce((acc: any, curr) => {
+      const settingsObj = settings.reduce<Record<string, string>>((acc, curr) => {
         acc[curr.key] = curr.value;
         return acc;
       }, {});
@@ -115,8 +118,8 @@ export async function GET(
     }
 
     return NextResponse.json({ success: false, message: "Resource not found" }, { status: 404, headers: corsHeaders });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[API web/${resource}] Error:`, error);
-    return NextResponse.json({ success: false, message: "Terjadi kesalahan server" }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ success: false, message: getErrorMessage(error) }, { status: 500, headers: corsHeaders });
   }
 }

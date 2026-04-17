@@ -50,6 +50,10 @@ const statusLabels: Record<string, string> = {
   diarsip: "Diarsipkan" 
 };
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function LettersPage() {
   const searchParams = useSearchParams();
   const academicYearId = searchParams.get("academicYearId");
@@ -172,8 +176,8 @@ export default function LettersPage() {
         timer: 1500,
         showConfirmButton: false
       });
-    } catch (error: any) {
-      Swal.fire("Error", error.message || "Gagal menyimpan surat. Silakan coba lagi.", "error");
+    } catch (error: unknown) {
+      Swal.fire("Error", getErrorMessage(error, "Gagal menyimpan surat. Silakan coba lagi."), "error");
     }
   };
 

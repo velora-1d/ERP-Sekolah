@@ -34,10 +34,10 @@ export async function POST(request: Request) {
 
       // 2. Hitung saldo sekarang (ACID: Sum inside transaction)
       const [{ totalSetor }] = await tx.select({ totalSetor: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
-        .from(studentSavings).where(and(eq(studentSavings.studentId, student.id), eq(studentSavings.type, "setor" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+        .from(studentSavings).where(and(eq(studentSavings.studentId, student.id), eq(studentSavings.type, "setor"), eq(studentSavings.status, "active"), isNull(studentSavings.deletedAt)));
 
       const [{ totalTarik }] = await tx.select({ totalTarik: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
-        .from(studentSavings).where(and(eq(studentSavings.studentId, student.id), eq(studentSavings.type, "tarik" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+        .from(studentSavings).where(and(eq(studentSavings.studentId, student.id), eq(studentSavings.type, "tarik"), eq(studentSavings.status, "active"), isNull(studentSavings.deletedAt)));
 
       const currentBalance = totalSetor - totalTarik;
 
@@ -53,12 +53,12 @@ export async function POST(request: Request) {
       // 5. Buat record tabungan
       const [saving] = await tx.insert(studentSavings).values({
         studentId: student.id,
-        type: type as any,
+        type,
         amount: Number(amount),
         balanceAfter: newBalance,
         date: date || new Date().toISOString().split("T")[0],
         description: description || "",
-        status: "active" as any,
+        status: "active",
         unitId: user.unitId || "",
       }).returning();
 
@@ -74,13 +74,13 @@ export async function POST(request: Request) {
 
       if (selectedCashId) {
         await tx.insert(generalTransactions).values({
-          type: (type === "setor" ? "in" : "out") as any,
+          type: type === "setor" ? "in" : "out",
           amount: Number(amount),
           cashAccountId: selectedCashId,
           transactionCategoryId: transactionCategoryId ? Number(transactionCategoryId) : null,
           description: `Tabungan ${type} - ${student.name}${description ? ` (${description})` : ""}`,
           transactionDate: txDate, // FIXED MAPPING
-          status: "valid" as any,
+          status: "valid",
           referenceType: "student_saving",
           referenceId: String(saving.id),
           userId: user.userId,

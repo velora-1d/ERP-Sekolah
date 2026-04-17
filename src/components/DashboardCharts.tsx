@@ -44,6 +44,11 @@ interface ChartProps {
   data: DashboardMetrics;
 }
 
+interface TooltipItem {
+  name?: string;
+  value?: number | string;
+}
+
 function fmtRp(n: number) {
   return "Rp " + (n || 0).toLocaleString("id-ID");
 }
@@ -53,14 +58,14 @@ const titleStyle: React.CSSProperties = { fontSize: "0.75rem", fontWeight: 700, 
 
 // --- SUB-COMPONENTS (DECLARED OUTSIDE RENDER) ---
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipItem[]; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: "#1e293b", color: "#fff", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
       <p style={{ margin: 0, fontWeight: 700 }}>{payload[0].name || label}</p>
       <p style={{ margin: "2px 0 0", color: "#94a3b8" }}>
-        {typeof payload[0].value === "number" && payload[0].value > 999 
-          ? fmtRp(payload[0].value) 
+        {typeof payload[0].value === "number" && payload[0].value > 999
+          ? fmtRp(payload[0].value)
           : payload[0].value}
       </p>
     </div>

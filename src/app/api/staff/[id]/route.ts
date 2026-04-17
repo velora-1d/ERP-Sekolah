@@ -70,9 +70,9 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
     if (body.name !== undefined) updateData.name = body.name.trim();
     if (body.nip !== undefined) updateData.nip = (body.nip || "").trim();
-    if (body.type !== undefined) updateData.type = (body.type || "staf") as any;
+    if (body.type !== undefined) updateData.type = body.type || "staf";
     if (body.position !== undefined) updateData.position = body.position || "";
-    if (body.status !== undefined) updateData.status = (body.status || "aktif") as any;
+    if (body.status !== undefined) updateData.status = body.status || "aktif";
     if (body.phone !== undefined) updateData.phone = body.phone || "";
     if (body.address !== undefined) updateData.address = body.address || "";
     if (body.joinDate !== undefined) updateData.joinDate = body.joinDate || "";

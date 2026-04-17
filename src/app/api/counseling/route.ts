@@ -3,6 +3,9 @@ import { db } from "@/db";
 import { counselingRecords, students, employees, classrooms, studentEnrollments, academicYears } from "@/db/schema";
 import { eq, and, desc, sql, isNull } from "drizzle-orm";
 
+type CounselingCategory = typeof counselingRecords.$inferSelect.category;
+type CounselingStatus = typeof counselingRecords.$inferSelect.status;
+
 // GET /api/counseling?studentId=X&category=X&status=X
 export async function GET(req: Request) {
   try {
@@ -26,8 +29,8 @@ export async function GET(req: Request) {
 
     const conditions = [];
     if (studentId) conditions.push(eq(counselingRecords.studentId, parseInt(studentId)));
-    if (category) conditions.push(eq(counselingRecords.category, category as any));
-    if (status) conditions.push(eq(counselingRecords.status, status as any));
+    if (category) conditions.push(eq(counselingRecords.category, category as CounselingCategory));
+    if (status) conditions.push(eq(counselingRecords.status, status as CounselingStatus));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -117,10 +120,10 @@ export async function POST(req: Request) {
       studentId: parseInt(studentId),
       counselorId: counselorId ? parseInt(counselorId) : null,
       date: date || new Date().toISOString().split("T")[0],
-      category: category as any,
+      category: category as CounselingCategory,
       description: description || "",
       followUp: followUp || "",
-      status: (status as any) || "aktif",
+      status: (status as CounselingStatus) || "aktif",
     }).returning();
     
     return NextResponse.json(data, { status: 201 });

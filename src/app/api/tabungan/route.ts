@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       conditions.push(or(
         ilike(students.name, `%${query}%`),
         ilike(students.nisn, `%${query}%`)
-      ) as any);
+      )!);
     }
 
     const whereClause = and(...conditions);

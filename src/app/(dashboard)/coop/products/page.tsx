@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
-import { exportCSV } from "@/lib/csv-export";
 import { ExportButtons } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -166,7 +165,7 @@ export default function CoopProductsPage() {
                   <th className="py-3 px-4">Produk</th><th className="py-3 px-4">Kategori</th><th className="py-3 px-4 text-right">H. Beli</th><th className="py-3 px-4 text-right">H. Jual</th><th className="py-3 px-4 text-center">Stok</th><th className="py-3 px-4"></th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filtered.map((item, idx) => {
+                  {filtered.map((item) => {
                     const isLow = item.stok <= item.minStok && item.stok > 0;
                     const isOut = item.stok === 0;
                     return (

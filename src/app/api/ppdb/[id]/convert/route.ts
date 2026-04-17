@@ -33,7 +33,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
         name: reg.name,
         gender: reg.gender || "L",
         classroomId: classroomId ? Number(classroomId) : null,
-        status: "aktif" as any,
+        status: "aktif",
         entryDate: new Date().toISOString().split("T")[0],
         unitId: user.unitId || "",
         fatherName: reg.fatherName || "",
@@ -46,7 +46,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
         infaqNominal: infaqNominal || 0,
       }).returning();
 
-      await tx.update(ppdbRegistrations).set({ status: "converted" as any, updatedAt: new Date() }).where(eq(ppdbRegistrations.id, regId));
+      await tx.update(ppdbRegistrations).set({ status: "converted", updatedAt: new Date() }).where(eq(ppdbRegistrations.id, regId));
       return { student };
     });
 

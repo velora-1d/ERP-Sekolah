@@ -12,11 +12,7 @@ import {
   Search, 
   Download,
   ClipboardList,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  CheckCircle2
+  BarChart3
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { generateAttendancePDF } from "@/lib/attendance-report-template";
@@ -27,12 +23,32 @@ interface Option {
   name?: string;
   year?: string;
   isActive?: boolean;
+  level?: string;
 }
 
-interface Student {
-  id: number;
-  nisn: string;
-  name: string;
+type AttendanceStatus = AttendanceRecord["status"];
+
+interface AttendanceApiRow {
+  id?: number;
+  studentId: number;
+  student?: { name: string; nisn: string };
+  status: AttendanceStatus;
+  note?: string | null;
+}
+
+interface ApiErrorLike {
+  message?: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const maybeError = error as ApiErrorLike;
+    if (typeof maybeError.message === "string" && maybeError.message.trim()) {
+      return maybeError.message;
+    }
+  }
+  return fallback;
 }
 
 interface AttendanceRecord {
@@ -59,7 +75,6 @@ interface RecapRecord {
 
 export default function AttendancePage({
   initialClassrooms = [],
-  initialAcademicYears = [],
   initialActiveAY = null
 }: {
   initialClassrooms?: Option[];
@@ -69,8 +84,7 @@ export default function AttendancePage({
   const [activeTab, setActiveTab] = useState<"input" | "recap">("input");
   
   // Metadata
-  const [classrooms, setClassrooms] = useState<Option[]>(initialClassrooms);
-  const [academicYears, setAcademicYears] = useState<Option[]>(initialAcademicYears);
+  const [classrooms] = useState<Option[]>(initialClassrooms);
   const [activeAcademicYear, setActiveAcademicYear] = useState<Option | null>(initialActiveAY);
 
   // Filters Input
@@ -120,7 +134,7 @@ export default function AttendancePage({
         throw new Error(attJson.error || "Gagal memuat data absensi");
       }
 
-      const rows = (attJson.data || []) as any[];
+      const rows: AttendanceApiRow[] = Array.isArray(attJson.data) ? attJson.data : [];
 
       // Format data untuk state
       const formatted: AttendanceRecord[] = rows.map(r => ({
@@ -132,8 +146,8 @@ export default function AttendancePage({
       }));
 
       setAttendances(formatted);
-    } catch (error: any) {
-      Swal.fire("Error", error.message || "Terjadi kesalahan", "error");
+    } catch (error: unknown) {
+      Swal.fire("Error", getErrorMessage(error, "Terjadi kesalahan"), "error");
     } finally {
       setLoadingInput(false);
     }
@@ -193,8 +207,8 @@ export default function AttendancePage({
       } else {
         Swal.fire("Gagal", json.error || "Gagal menyimpan", "error");
       }
-    } catch (error: any) {
-      Swal.fire("Error", error.message || "Gagal menyimpan absensi", "error");
+    } catch (error: unknown) {
+      Swal.fire("Error", getErrorMessage(error, "Gagal menyimpan absensi"), "error");
     } finally {
       setSavingInput(false);
     }
@@ -226,8 +240,8 @@ export default function AttendancePage({
       } else {
         Swal.fire("Error", json.error || "Gagal mengambil rekap", "error");
       }
-    } catch (error: any) {
-      Swal.fire("Error", error.message || "Koneksi bermasalah", "error");
+    } catch (error: unknown) {
+      Swal.fire("Error", getErrorMessage(error, "Koneksi bermasalah"), "error");
     } finally {
       setLoadingRecap(false);
     }
@@ -242,7 +256,7 @@ export default function AttendancePage({
       const blob = await generateAttendancePDF({
         classroom: { 
           name: selectedClass?.name || "Unknown", 
-          level: (selectedClass as any)?.level || "-" 
+          level: selectedClass?.level || "-" 
         },
         academicYear: activeAcademicYear?.year || "-",
         startDate: recapStartDate,
@@ -263,7 +277,7 @@ export default function AttendancePage({
       link.href = url;
       link.download = `rekap_absensi_${recapClassroom}_${recapStartDate}.pdf`;
       link.click();
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Gagal membuat PDF", "error");
     }
   };
@@ -386,10 +400,10 @@ export default function AttendancePage({
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-2">
-                                  {["hadir", "sakit", "izin", "alpha"].map(statusValue => (
+                                  {(["hadir", "sakit", "izin", "alpha"] as AttendanceStatus[]).map(statusValue => (
                                     <button
                                       key={statusValue}
-                                      onClick={() => handleStatusChange(item.studentId, statusValue as any)}
+                                      onClick={() => handleStatusChange(item.studentId, statusValue)}
                                       className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors border ${
                                         item.status === statusValue 
                                           ? (statusValue === "hadir" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :

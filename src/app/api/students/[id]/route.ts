@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
-import { eq, and, isNull, desc, asc, sql, ne, or } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, ne, or } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
+
+type StudentSavingsStatus = "active";
+type StudentSavingsType = "setor" | "tarik";
 
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -32,7 +35,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 
     // Get savings
     const savings = await db.select().from(studentSavings)
-      .where(and(eq(studentSavings.studentId, id), isNull(studentSavings.deletedAt), eq(studentSavings.status, "active" as any)))
+      .where(and(eq(studentSavings.studentId, id), isNull(studentSavings.deletedAt), eq(studentSavings.status, "active" as StudentSavingsStatus)))
       .orderBy(desc(studentSavings.createdAt))
       .limit(10);
 
@@ -50,9 +53,9 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 
     // Hitung saldo tabungan
     const [{ totalSetor }] = await db.select({ totalSetor: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
-      .from(studentSavings).where(and(eq(studentSavings.studentId, id), eq(studentSavings.type, "setor" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+      .from(studentSavings).where(and(eq(studentSavings.studentId, id), eq(studentSavings.type, "setor" as StudentSavingsType), eq(studentSavings.status, "active" as StudentSavingsStatus), isNull(studentSavings.deletedAt)));
     const [{ totalTarik }] = await db.select({ totalTarik: sql<number>`coalesce(sum(${studentSavings.amount}), 0)`.mapWith(Number) })
-      .from(studentSavings).where(and(eq(studentSavings.studentId, id), eq(studentSavings.type, "tarik" as any), eq(studentSavings.status, "active" as any), isNull(studentSavings.deletedAt)));
+      .from(studentSavings).where(and(eq(studentSavings.studentId, id), eq(studentSavings.type, "tarik" as StudentSavingsType), eq(studentSavings.status, "active" as StudentSavingsStatus), isNull(studentSavings.deletedAt)));
 
     const savingsBalance = totalSetor - totalTarik;
     const tunggakan = bills.filter(b => b.status === "belum_lunas").length;
@@ -116,6 +119,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     const updateData: Partial<typeof students.$inferInsert> = {
       updatedAt: new Date(),
     };
+    const mutableUpdateData = updateData as Partial<typeof students.$inferInsert> & Record<string, unknown>;
 
     const keys = [
       "name", "nisn", "nis", "nik", "noKk", "gender", "religion", "category",
@@ -142,11 +146,11 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     for (const key of keys) {
       if (body[key] !== undefined) {
         if (["siblingCount", "childPosition", "height", "weight", "travelTime"].includes(key)) {
-           (updateData as any)[key] = body[key] ? Number(body[key]) : null;
+           mutableUpdateData[key] = body[key] ? Number(body[key]) : null;
         } else if (["classroomId", "infaqNominal"].includes(key)) {
-           (updateData as any)[key] = body[key] ? Number(body[key]) : (key === "infaqNominal" ? 0 : null);
+           mutableUpdateData[key] = body[key] ? Number(body[key]) : (key === "infaqNominal" ? 0 : null);
         } else {
-           (updateData as any)[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
+           mutableUpdateData[key] = typeof body[key] === 'string' ? body[key].trim() : body[key];
         }
       }
     }

@@ -24,7 +24,7 @@ export async function GET() {
     });
 
     return NextResponse.json(config);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Gagal mengambil pengaturan" },
       { status: 500 }

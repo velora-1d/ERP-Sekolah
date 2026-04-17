@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const conditions = [isNull(transactionCategories.deletedAt)];
-    if (type) conditions.push(eq(transactionCategories.type, type as any));
+    if (type) conditions.push(eq(transactionCategories.type, type));
     if (q) {
       conditions.push(or(
         ilike(transactionCategories.name, `%${q}%`),
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
     const [category] = await db.insert(transactionCategories).values({
       name,
-      type: type as any,
+      type,
       description,
     }).returning();
 
@@ -83,7 +83,7 @@ export async function PUT(req: Request) {
 
     const updateData: Partial<typeof transactionCategories.$inferInsert> = { updatedAt: new Date() };
     if (name !== undefined) updateData.name = name;
-    if (type !== undefined) updateData.type = type as any;
+    if (type !== undefined) updateData.type = type;
     if (description !== undefined) updateData.description = description;
 
     const [category] = await db.update(transactionCategories)

@@ -15,10 +15,8 @@ import HelpFAB from "@/components/HelpFAB";
 
 export default function DashboardShell({ user, children }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved !== null) {
       setCollapsed(saved === "true");

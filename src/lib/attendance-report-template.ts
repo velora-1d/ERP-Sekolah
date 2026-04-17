@@ -18,8 +18,15 @@ export interface AttendanceReportData {
   };
 }
 
+interface AutoTableDocument extends jsPDF {
+  lastAutoTable?: {
+    finalY: number;
+  };
+}
+
 export const generateAttendancePDF = async (data: AttendanceReportData) => {
   const doc = new jsPDF();
+  const tableDoc = doc as AutoTableDocument;
   const PAGE_WIDTH = doc.internal.pageSize.getWidth();
 
   // 1. Header (Kop Surat)
@@ -70,7 +77,7 @@ export const generateAttendancePDF = async (data: AttendanceReportData) => {
   });
 
   // 4. Footer / Signature
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  const finalY = (tableDoc.lastAutoTable?.finalY ?? 52) + 15;
   const today = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
   
   doc.text(`Dicetak pada: ${today}`, 15, finalY);

@@ -46,7 +46,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     await db.transaction(async (tx) => {
       await tx.update(ppdbRegistrations).set({ 
         deletedAt: new Date(),
-        status: 'dihapus' as any
+        status: 'dihapus'
       }).where(eq(ppdbRegistrations.id, regId));
       
       await tx.update(registrationPayments).set({ deletedAt: new Date() })

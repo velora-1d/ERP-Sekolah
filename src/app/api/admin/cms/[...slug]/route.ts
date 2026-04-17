@@ -8,6 +8,10 @@ import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Terjadi kesalahan server";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
@@ -35,9 +39,9 @@ export async function POST(
     revalidatePath(`/admin/cms/${resource}`);
     revalidatePath(`/api/web/${resource}`);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Admin CMS POST ${resource}] Error:`, error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -68,9 +72,9 @@ export async function PUT(
     revalidatePath(`/admin/cms/${resource}`);
     revalidatePath(`/api/web/${resource}`);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Admin CMS PUT ${resource}] Error:`, error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -104,8 +108,8 @@ export async function DELETE(
     revalidatePath(`/admin/cms/${resource}`);
     revalidatePath(`/api/web/${resource}`);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Admin CMS DELETE ${resource}] Error:`, error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: getErrorMessage(error) }, { status: 500 });
   }
 }

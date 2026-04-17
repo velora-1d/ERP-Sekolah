@@ -4,6 +4,12 @@ import { payrolls, employees, payrollDetails, generalTransactions, cashAccounts 
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/rbac";
 
+type PayrollDetailInsert = typeof payrollDetails.$inferInsert;
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 // GET /api/payroll/[id]
 export async function GET(
   request: Request,
@@ -105,7 +111,7 @@ export async function PUT(
       let totalEarning = 0;
       let totalDeduction = 0;
       let baseSalary = 0;
-      const detailsData: any[] = [];
+      const detailsData: PayrollDetailInsert[] = [];
 
       for (const item of body) {
         const amount = Number(item.amount) || 0;
@@ -187,7 +193,7 @@ export async function DELETE(
       .where(eq(payrolls.id, payrollId));
 
     return NextResponse.json({ success: true, message: "Slip gaji dihapus" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal menghapus slip gaji" }, { status: 500 });
   }
 }
@@ -261,8 +267,8 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true, data: result });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Payroll [id] PATCH error:", error);
-    return NextResponse.json({ error: error.message || "Gagal memproses pembayaran gaji" }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error, "Gagal memproses pembayaran gaji") }, { status: 500 });
   }
 }

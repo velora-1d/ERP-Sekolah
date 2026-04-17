@@ -21,7 +21,7 @@ export async function GET() {
 
     const formatted = userList.map(u => ({ ...u, username: u.email }));
     return NextResponse.json(formatted);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal mengambil data pengguna" }, { status: 500 });
   }
 }
@@ -53,9 +53,9 @@ export async function POST(request: Request) {
       const hashedPassword = bcrypt.hashSync(password, 10);
       const [restoredUser] = await db.update(users).set({
         name,
-        role: role as any,
+        role,
         password: hashedPassword,
-        status: "aktif" as any,
+        status: "aktif",
         deletedAt: null,
         updatedAt: new Date(),
       })
@@ -77,8 +77,8 @@ export async function POST(request: Request) {
       name,
       email: email,
       password: hashedPassword,
-      role: role as any,
-      status: "aktif" as any,
+      role,
+      status: "aktif",
     }).returning();
 
     return NextResponse.json({ success: true, user: { id: newUser.id, name: newUser.name } }, { status: 201 });

@@ -7,11 +7,50 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { UserCheck } from "lucide-react";
 
+type ReRegistrationStatus = "pending" | "confirmed" | "not_registered";
+type PaymentField = "is_fee_paid" | "is_books_paid" | "is_books_received";
+
+interface ReRegistrationPayment {
+  is_fee_paid?: boolean;
+  is_books_paid?: boolean;
+  is_books_received?: boolean;
+}
+
+interface ReRegistrationItem {
+  id: number;
+  student_name: string;
+  classroom: string;
+  gender: "L" | "P";
+  status: ReRegistrationStatus;
+  payment?: ReRegistrationPayment;
+}
+
+interface ReRegistrationStats {
+  total?: number;
+  confirmed?: number;
+  pending?: number;
+  not_registered?: number;
+}
+
+interface ReRegistrationPaymentStats {
+  total_fee?: number;
+  count_fee?: number;
+  total_books?: number;
+  count_books?: number;
+  grand_total?: number;
+}
+
+interface CashAccountItem {
+  id: number;
+  name: string;
+  balance: number;
+}
+
 export default function ReRegistrationPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<ReRegistrationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>({});
-  const [paymentStats, setPaymentStats] = useState<any>({});
+  const [stats, setStats] = useState<ReRegistrationStats>({});
+  const [paymentStats, setPaymentStats] = useState<ReRegistrationPaymentStats>({});
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -34,9 +73,9 @@ export default function ReRegistrationPage() {
     re_registration_fee: 0,
     books_fee: 0,
   });
-  const [cashAccounts, setCashAccounts] = useState<any[]>([]);
+  const [cashAccounts, setCashAccounts] = useState<CashAccountItem[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [payTarget, setPayTarget] = useState<{ regId: string; field: string; amount: number } | null>(null);
+  const [payTarget, setPayTarget] = useState<{ regId: string; field: PaymentField; amount: number } | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payCashId, setPayCashId] = useState("");
   const [payLoading, setPayLoading] = useState(false);
@@ -119,7 +158,7 @@ export default function ReRegistrationPage() {
         });
         loadData();
       }
-    } catch (e) {
+    } catch {
       Swal.fire("Error", "Gagal menyimpan pengaturan", "error");
     }
   };
@@ -146,14 +185,14 @@ export default function ReRegistrationPage() {
           } else {
             Swal.fire("Gagal", json.error || "Gagal generate data", "error");
           }
-        } catch (e) {
+        } catch {
           Swal.fire("Error", "Gagal menghubungi server", "error");
         }
       }
     });
   };
 
-  const updateStatus = (id: number, status: string) => {
+  const updateStatus = (id: number, status: ReRegistrationStatus) => {
     const label = status === "confirmed" ? "mengkonfirmasi" : status === "not_registered" ? "menolak daftar ulang" : "membatalkan status";
     Swal.fire({
       title: "Konfirmasi",
@@ -177,7 +216,7 @@ export default function ReRegistrationPage() {
           } else {
             Swal.fire("Gagal", json.error || "Error", "error");
           }
-        } catch (e) {
+        } catch {
           Swal.fire("Error", "Gagal menghubungi server", "error");
         }
       }
@@ -185,9 +224,7 @@ export default function ReRegistrationPage() {
   };
 
   // Field yang melibatkan uang (butuh modal konfirmasi)
-  const monetaryFields = ['is_fee_paid', 'is_books_paid'];
-
-  const openPayModal = (regId: string, field: string, amount: number) => {
+  const openPayModal = (regId: string, field: PaymentField, amount: number) => {
     // Cek apakah field ini sekarang true (mau revert)
     const item = data.find(d => d.id.toString() === regId);
     if (item?.payment?.[field]) {
@@ -226,7 +263,7 @@ export default function ReRegistrationPage() {
     setPayLoading(false);
   };
 
-  const togglePayment = async (regId: string, field: string, amount: number, cashAccountId?: number) => {
+  const togglePayment = async (regId: string, field: PaymentField, amount: number, cashAccountId?: number) => {
     try {
       const res = await fetch("/api/reregistration/payment", {
         method: "POST",
@@ -260,7 +297,7 @@ export default function ReRegistrationPage() {
           timer: 2000
         });
       }
-    } catch (e) {
+    } catch {
       Swal.fire("Error", "Gagal menyimpan pembayaran", "error");
     }
   };
@@ -411,7 +448,7 @@ export default function ReRegistrationPage() {
                 { header: "L/P", key: "gender", width: 8, align: "center" },
                 { header: "Status", key: "_status", width: 15, align: "center" },
               ],
-              data: data.map((item: any, i: number) => ({
+              data: data.map((item, i: number) => ({
                 ...item,
                 _no: i + 1,
                 _status: item.status === 'confirmed' ? 'Terkonfirmasi' : item.status === 'pending' ? 'Menunggu' : item.status === 'not_registered' ? 'Tidak Daftar' : item.status,
@@ -491,7 +528,7 @@ export default function ReRegistrationPage() {
                         <button 
                           onClick={(ev) => { 
                             ev.stopPropagation(); 
-                            (ev.nativeEvent as any).stopImmediatePropagation();
+                            ev.nativeEvent.stopImmediatePropagation();
                             setOpenActionId(openActionId === item.id.toString() ? null : item.id.toString()); 
                           }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
@@ -556,7 +593,7 @@ export default function ReRegistrationPage() {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Akun Kas</label>
               <select value={payCashId} onChange={e => setPayCashId(e.target.value)} className="w-full px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm outline-none focus:border-violet-400 transition-colors">
                 <option value="">— Tanpa Akun Kas —</option>
-                {cashAccounts.map((ca: any) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
+                {cashAccounts.map((ca) => <option key={ca.id} value={ca.id}>{ca.name} (Rp {Number(ca.balance).toLocaleString("id-ID")})</option>)}
               </select>
             </div>
 

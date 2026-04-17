@@ -20,7 +20,7 @@ export async function GET(
     }
 
     return NextResponse.json(inventory);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal mengambil detail inventaris" }, { status: 500 });
   }
 }
@@ -52,7 +52,7 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ success: true, message: "Data berhasil diperbarui", data: inventory });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal memperbarui data inventaris" }, { status: 500 });
   }
 }
@@ -72,7 +72,7 @@ export async function DELETE(
       .where(eq(inventories.id, id));
 
     return NextResponse.json({ success: true, message: "Data berhasil dihapus" });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Gagal menghapus data inventaris" }, { status: 500 });
   }
 }

@@ -38,9 +38,9 @@ export default function GradesPage({
 }) {
   const [activeTab, setActiveTab] = useState("input");
 
-  const [academicYears, setAcademicYears] = useState<Option[]>(initialAcademicYears);
-  const [classrooms, setClassrooms] = useState<Option[]>(initialClassrooms);
-  const [subjects, setSubjects] = useState<Option[]>(initialSubjects);
+  const [academicYears] = useState<Option[]>(initialAcademicYears);
+  const [classrooms] = useState<Option[]>(initialClassrooms);
+  const [subjects] = useState<Option[]>(initialSubjects);
   
   const [selectedYearId, setSelectedYearId] = useState(() => {
     const active = initialAcademicYears.find(y => y.isActive);

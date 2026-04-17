@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       for (const table of WIPE_ORDER) {
         try {
           await tx.execute(sql.raw(`DELETE FROM "${table}"`));
-        } catch (e) {
+        } catch {
           // Skip if table doesn't exist
         }
       }
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
           await tx.execute(
             sql.raw(`SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), COALESCE((SELECT MAX(id) FROM "${table}"), 0) + 1, false)`)
           );
-        } catch (e) {
+        } catch {
           // Skip
         }
       }

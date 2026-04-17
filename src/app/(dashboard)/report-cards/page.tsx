@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { classrooms, curriculums, academicYears } from "@/db/schema";
-import { isNull, asc, eq } from "drizzle-orm";
+import { classrooms, curriculums } from "@/db/schema";
+import { isNull, asc } from "drizzle-orm";
 import ReportCardsClient from "./client";
 
 export default async function ReportCardsPage() {

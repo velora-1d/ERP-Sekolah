@@ -6,14 +6,50 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { FileText } from "lucide-react";
 
+interface InfaqReportItem {
+  student_name?: string;
+  month?: string;
+  amount: number;
+  paid: number;
+  remaining: number;
+  status: "paid" | "unpaid" | string;
+}
+
+interface RegistrationReportItem {
+  name?: string;
+  registration_number?: string;
+  formNo?: string;
+  status?: "diterima" | "ditolak" | "pending" | string;
+}
+
+interface SavingReportItem {
+  student_name?: string;
+  classroom?: string;
+  balance: number;
+}
+
+interface CashflowTransaction {
+  date?: string;
+  description?: string;
+  category?: string;
+  type: "income" | "expense" | string;
+  amount: number;
+}
+
+interface CashflowReport {
+  total_income?: number;
+  total_expense?: number;
+  transactions?: CashflowTransaction[];
+}
+
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("infaq");
   
   // Data State
-  const [infaqData, setInfaqData] = useState<any[]>([]);
-  const [pendaftaranData, setPendaftaranData] = useState<any[]>([]);
-  const [tabunganData, setTabunganData] = useState<any[]>([]);
-  const [aruskasData, setAruskasData] = useState<any>(null);
+  const [infaqData, setInfaqData] = useState<InfaqReportItem[]>([]);
+  const [pendaftaranData, setPendaftaranData] = useState<RegistrationReportItem[]>([]);
+  const [tabunganData, setTabunganData] = useState<SavingReportItem[]>([]);
+  const [aruskasData, setAruskasData] = useState<CashflowReport | null>(null);
   
   const [loading, setLoading] = useState(false);
 
@@ -126,7 +162,7 @@ export default function ReportsPage() {
         { header: "Masuk", key: "_in", width: 30, align: "right", format: (_, r) => r.type === "income" ? fmtRupiah(r.amount) : "-" },
         { header: "Keluar", key: "_out", width: 30, align: "right", format: (_, r) => r.type === "expense" ? fmtRupiah(r.amount) : "-" },
       ],
-      data: txns.map((t: any, i: number) => ({ ...t, _no: i + 1 })),
+      data: txns.map((t, i: number) => ({ ...t, _no: i + 1 })),
       summaryRows: [
         { label: "Total Pemasukan", value: fmtRupiah(pemasukan) },
         { label: "Total Pengeluaran", value: fmtRupiah(pengeluaran) },
@@ -249,8 +285,8 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {pendaftaranData.map((d, i) => {
-                let stColor = d.status === 'diterima' ? 'text-emerald-700' : d.status === 'ditolak' ? 'text-rose-700' : 'text-amber-700';
-                let stBg = d.status === 'diterima' ? 'bg-emerald-100' : d.status === 'ditolak' ? 'bg-rose-100' : 'bg-amber-100';
+                const stColor = d.status === 'diterima' ? 'text-emerald-700' : d.status === 'ditolak' ? 'text-rose-700' : 'text-amber-700';
+                const stBg = d.status === 'diterima' ? 'bg-emerald-100' : d.status === 'ditolak' ? 'bg-rose-100' : 'bg-amber-100';
                 return (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="p-3 text-sm text-slate-400">{i + 1}</td>
@@ -361,7 +397,7 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {txns.map((t: any, i: number) => {
+                {txns.map((t, i: number) => {
                   const dt = t.date ? new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                   return (
                     <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">

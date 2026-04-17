@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { teachingAssignments, employees, subjects, classrooms, academicYears } from "@/db/schema";
-import { isNull, isNotNull, and, eq, desc, sql } from "drizzle-orm";
+import { isNull, and, eq, desc, sql } from "drizzle-orm";
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Terjadi kesalahan server";
+}
 
 export async function GET(request: Request) {
   try {
@@ -79,8 +83,8 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit)
       }
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -141,7 +145,7 @@ export async function POST(request: Request) {
     }).returning();
 
     return NextResponse.json({ success: true, data: newAssignment }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }

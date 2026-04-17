@@ -7,13 +7,34 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { Gift } from "lucide-react";
 
+interface WakafTransaction {
+  id: number;
+  date: string;
+  amount: number;
+  donor_name: string;
+  purpose_name: string;
+  status: string;
+}
+
+interface WakafDonor {
+  id: number;
+  name: string;
+  phone?: string;
+  address?: string;
+}
+
+interface WakafPurpose {
+  id: number;
+  name: string;
+  description?: string;
+}
+
 export default function WakafPage() {
   const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, donatur, tujuan
-  const [data, setData] = useState<any[]>([]);
-  const [donors, setDonors] = useState<any[]>([]);
-  const [purposes, setPurposes] = useState<any[]>([]);
+  const [data, setData] = useState<WakafTransaction[]>([]);
+  const [donors, setDonors] = useState<WakafDonor[]>([]);
+  const [purposes, setPurposes] = useState<WakafPurpose[]>([]);
   const [kpi, setKpi] = useState({ total: 0, monthly: 0, donorCount: 0, purposeCount: 0 });
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -38,7 +59,6 @@ export default function WakafPage() {
   }, [activeTab]);
 
   async function loadData() {
-    setLoading(true);
     try {
       const res = await fetch(`/api/wakaf`);
       const json = await res.json();
@@ -48,8 +68,6 @@ export default function WakafPage() {
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -304,7 +322,7 @@ export default function WakafPage() {
                     { header: "Nominal", key: "amount", width: 20, align: "right", format: (v: number) => fmtRupiah(v) },
                     { header: "Status", key: "_status", width: 10, align: "center" },
                   ],
-                  data: data.map((t: any, i: number) => ({
+                  data: data.map((t: WakafTransaction, i: number) => ({
                     ...t,
                     _no: i + 1,
                     _date: new Date(t.date).toLocaleDateString("id-ID"),
@@ -328,7 +346,7 @@ export default function WakafPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.slice((page - 1) * limit, page * limit).map((t, i) => (
+                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.slice((page - 1) * limit, page * limit).map((t) => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50" style={{ opacity: t.status === 'void' ? 0.5 : 1}}>
                     <td className="px-6 py-3 text-sm">{new Date(t.date).toLocaleDateString("id-ID")}</td>
                     <td className="px-6 py-3 text-sm font-semibold">{t.donor_name}</td>
@@ -343,7 +361,7 @@ export default function WakafPage() {
                           <button 
                             onClick={(ev) => { 
                               ev.stopPropagation(); 
-                              (ev.nativeEvent as any).stopImmediatePropagation();
+                              ev.nativeEvent.stopImmediatePropagation();
                               setOpenActionId(openActionId === t.id ? null : t.id); 
                             }}
                             style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}

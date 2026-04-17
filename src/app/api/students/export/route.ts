@@ -4,6 +4,8 @@ import { students, classrooms, studentEnrollments, academicYears } from "@/db/sc
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { isNull, and, eq, asc } from "drizzle-orm";
 
+type StudentStatusFilter = typeof students.$inferSelect.status;
+
 /**
  * GET /api/students/export — Export data siswa ke CSV
  */
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
 
     const conditions = [isNull(students.deletedAt), isNull(studentEnrollments.deletedAt)];
     if (classroomId) conditions.push(eq(studentEnrollments.classroomId, Number(classroomId)));
-    if (status) conditions.push(eq(students.status, status as any));
+    if (status) conditions.push(eq(students.status, status as StudentStatusFilter));
     if (targetAcademicYearId) conditions.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
 
     const studentList = await db.select({

@@ -10,7 +10,7 @@ function normalizeConnectionString(url: string): string {
   try {
     const parsed = new URL(url);
     return parsed.toString();
-  } catch (e) {
+  } catch {
     return url;
   }
 }

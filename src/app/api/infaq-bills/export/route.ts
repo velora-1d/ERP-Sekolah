@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const conditions = [isNull(infaqBills.deletedAt), isNull(students.deletedAt), isNull(studentEnrollments.deletedAt)];
     if (month) conditions.push(eq(infaqBills.month, month));
     if (year) conditions.push(eq(infaqBills.year, year));
-    if (status) conditions.push(eq(infaqBills.status, status as any));
+    if (status) conditions.push(eq(infaqBills.status, status));
     if (targetAcademicYearId) conditions.push(eq(infaqBills.academicYearId, targetAcademicYearId));
 
     const bills = await db.select({
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
     // Get class names
     const classIds = [...new Set(bills.map(b => b.studentClassroomId).filter((id): id is number => id != null))];
-    let classMap: Record<number, string> = {};
+    const classMap: Record<number, string> = {};
     if (classIds.length > 0) {
       const cls = await db.select({ id: classrooms.id, name: classrooms.name }).from(classrooms).where(sql`${classrooms.id} = ANY(${classIds})`);
       cls.forEach(c => { classMap[c.id] = c.name; });

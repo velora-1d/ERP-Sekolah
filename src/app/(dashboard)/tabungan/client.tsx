@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Pagination from "@/components/Pagination";
 import { ExportButtons, fmtRupiah } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
@@ -31,7 +31,7 @@ interface Transaction {
 
 export default function TabunganPage({ initialClassrooms }: { initialClassrooms: Classroom[] }) {
   const queryClient = useQueryClient();
-  const [classrooms, setClassrooms] = useState<Classroom[]>(initialClassrooms);
+  const [classrooms] = useState<Classroom[]>(initialClassrooms);
   const [classFilter, setClassFilter] = useState("");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);

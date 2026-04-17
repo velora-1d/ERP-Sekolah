@@ -43,7 +43,7 @@ import { requireAuth, requireRole, AuthError } from "@/lib/rbac";
 /**
  * Escape nilai untuk SQL string literal PostgreSQL.
  */
-function escapeSQL(value: any): string {
+function escapeSQL(value: unknown): string {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   if (typeof value === "number") return String(value);
@@ -55,7 +55,7 @@ function escapeSQL(value: any): string {
 /**
  * Buat INSERT statement dari array data dan kolom yang diketahui.
  */
-function generateInserts(tableName: string, rows: any[]): string {
+function generateInserts(tableName: string, rows: Record<string, unknown>[]): string {
   if (!rows || rows.length === 0) return "";
   const lines: string[] = [];
   for (const row of rows) {

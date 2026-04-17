@@ -3,6 +3,10 @@ import { db } from "@/db";
 import { attendances, students, studentEnrollments, academicYears } from "@/db/schema";
 import { and, eq, gte, isNull, lte, asc, sql } from "drizzle-orm";
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Terjadi kesalahan server";
+}
+
 // GET: Rekapitulasi absensi siswa per periode per kelas
 export async function GET(request: Request) {
   try {
@@ -105,7 +109,7 @@ export async function GET(request: Request) {
 
     response.headers.set('Cache-Control', 'no-store');
     return response;
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 });
   }
 }

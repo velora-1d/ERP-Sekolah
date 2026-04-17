@@ -24,7 +24,7 @@ export async function GET() {
     .where(
       and(
         isNull(generalTransactions.deletedAt), 
-        eq(generalTransactions.status, 'valid' as any),
+        eq(generalTransactions.status, 'valid'),
         isNotNull(generalTransactions.wakafDonorId)
       )
     )
@@ -64,12 +64,12 @@ export async function POST(request: Request) {
     const result = await db.transaction(async (tx) => {
       const txDate = date || new Date().toISOString().split("T")[0];
       const [transaction] = await tx.insert(generalTransactions).values({
-        type: "in" as any, 
+        type: "in", 
         amount: Number(amount), 
         description: description || "Penerimaan Wakaf",
         transactionDate: txDate, // FIXED MAPPING
         transactionCategoryId: transactionCategoryId ? Number(transactionCategoryId) : null,
-        status: "valid" as any,
+        status: "valid",
         wakafDonorId: Number(donorId), 
         wakafPurposeId: purposeId ? Number(purposeId) : null,
         cashAccountId: cashAccountId ? Number(cashAccountId) : null,

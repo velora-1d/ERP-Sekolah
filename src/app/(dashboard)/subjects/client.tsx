@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Swal from "sweetalert2";
 import { ExportButtons } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
@@ -8,8 +8,16 @@ import Pagination from "@/components/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
+interface SubjectItem {
+  id: number;
+  name: string;
+  code?: string;
+  type: "wajib" | "mulok" | "muatan_khusus";
+  tingkatKelas?: string;
+}
+
 interface InitialResult {
-  data: any[];
+  data: SubjectItem[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
@@ -89,7 +97,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
             try {
               const errorData = await res.json();
               if (errorData.message) errorMsg = errorData.message;
-            } catch (e) {}
+            } catch {}
             throw new Error(errorMsg);
           }
 
@@ -108,7 +116,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
     });
   };
 
-  const handleEdit = (sub: any) => {
+  const handleEdit = (sub: SubjectItem) => {
     Swal.fire({
       title: "Edit Mata Pelajaran",
       html: `
@@ -161,7 +169,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
             try {
               const errorData = await res.json();
               if (errorData.message) errorMsg = errorData.message;
-            } catch (e) {}
+            } catch {}
             throw new Error(errorMsg);
           }
 
@@ -198,7 +206,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
             try {
               const errorData = await res.json();
               if (errorData.message) errorMsg = errorData.message;
-            } catch (e) {}
+            } catch {}
             throw new Error(errorMsg);
           }
 
@@ -240,7 +248,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
                   { header: "Jenis", key: "type", width: 20, format: (v: string) => v === "wajib" ? "Wajib" : v === "mulok" ? "Muatan Lokal" : "Muatan Khusus" },
                   { header: "Tingkat", key: "tingkatKelas", width: 20, format: (v: string) => v || "Semua" },
                 ],
-                data: data.map((d: any, i: number) => ({
+                data: data.map((d: SubjectItem, i: number) => ({
                   ...d,
                   _no: ((paginationMeta.page - 1) * paginationMeta.limit) + i + 1,
                 })),
@@ -308,7 +316,7 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
                   </div>
                 </td></tr>
               ) : (
-                data.map((item: any, index: number) => (
+                data.map((item: SubjectItem, index: number) => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 border-dashed last:border-0">
                     <td className="py-2.5 px-4 text-center text-[13px] font-semibold text-slate-400">{((paginationMeta.page - 1) * paginationMeta.limit) + index + 1}</td>
                     <td className="py-2.5 px-4 text-[13px] text-slate-600">{item.code || '-'}</td>
