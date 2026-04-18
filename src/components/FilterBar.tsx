@@ -115,7 +115,7 @@ export default function FilterBar({
             onChange={(e) => updateFilter("academicYearId", e.target.value)}
             className="bg-slate-50/50 border border-slate-200 text-slate-700 text-xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 block w-full p-2.5 font-semibold outline-none transition-all cursor-pointer"
           >
-            <option value="">Semua Tahun</option>
+            <option value="all">Semua Tahun</option>
             {academicYears.map((y) => (
               <option key={y.id} value={String(y.id)}>
                 {y.year} {y.isActive ? "(Aktif)" : ""}
@@ -166,7 +166,7 @@ export default function FilterBar({
           >
             <option value="">Semua Kelas</option>
             {classrooms
-              .filter(c => !filters.academicYearId || c.academicYearId === Number(filters.academicYearId))
+              .filter(c => !filters.academicYearId || filters.academicYearId === "all" || c.academicYearId === Number(filters.academicYearId))
               .map((c) => (
                 <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}

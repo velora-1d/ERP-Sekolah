@@ -15,6 +15,7 @@ export async function GET(req: Request) {
     const academicYearId = searchParams.get("academicYearId");
     const semester = searchParams.get("semester");
     const month = searchParams.get("month");
+    const status = searchParams.get("status");
     const search = searchParams.get("search");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
     if (academicYearId) filters.push(eq(letters.academicYearId, parseInt(academicYearId)));
     if (semester) filters.push(eq(letters.semester, semester));
     if (month) filters.push(eq(letters.month, month));
+    if (status && status !== "all") filters.push(eq(letters.status, status));
     if (search) {
       filters.push(
         or(
@@ -85,6 +87,7 @@ export async function GET(req: Request) {
 
       const legacyFilters = [];
       if (type) legacyFilters.push(eq(letters.type, type));
+      if (status && status !== "all") legacyFilters.push(eq(letters.status, status));
       if (search) {
         legacyFilters.push(
           or(

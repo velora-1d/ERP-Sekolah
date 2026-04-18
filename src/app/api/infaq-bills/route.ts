@@ -10,19 +10,23 @@ export async function GET(request: Request) {
   const semester = searchParams.get("semester") || "";
   const academicYearId = searchParams.get("academicYearId") || "";
   const classroomId = searchParams.get("classroomId") || "";
+  const gender = searchParams.get("gender") || "";
   const statusFilter = searchParams.get("status") || "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 25));
 
   try {
     // 1. Tentukan Tahun Ajaran Target
-    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
-    if (!targetAcademicYearId) {
-      const [activeYear] = await db.select({ id: academicYears.id })
-        .from(academicYears)
-        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
-        .limit(1);
-      targetAcademicYearId = activeYear?.id || null;
+    let targetAcademicYearId: number | null = null;
+    if (academicYearId !== "all") {
+      targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+      if (!targetAcademicYearId) {
+        const [activeYear] = await db.select({ id: academicYears.id })
+          .from(academicYears)
+          .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+          .limit(1);
+        targetAcademicYearId = activeYear?.id || null;
+      }
     }
 
     // 2. Build where clause
@@ -42,6 +46,7 @@ export async function GET(request: Request) {
     // Filter Relasi Siswa
     if (search) conditions.push(ilike(students.name, `%${search}%`));
     if (classroomId) conditions.push(eq(studentEnrollments.classroomId, Number(classroomId)));
+    if (gender) conditions.push(eq(students.gender, gender));
 
     const whereClause = and(...conditions);
 

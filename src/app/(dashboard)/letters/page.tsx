@@ -309,7 +309,7 @@ export default function LettersPage() {
                     key: "status", 
                     width: 30, 
                     align: "center",
-                    format: (v: string) => statusLabels[v as keyof typeof statusLabels] || String(v)
+                    format: (v: unknown) => statusLabels[v as keyof typeof statusLabels] || String(v)
                   },
                 ],
                 data: data.map((d, i) => ({
@@ -323,7 +323,12 @@ export default function LettersPage() {
       />
 
       <FilterBar 
-        visibleFilters={["academicYear", "semester", "month"]} 
+        visibleFilters={["academicYear", "semester", "month", "status"]} 
+        customStatusOptions={[
+          { label: "Belum Disposisi", value: "belum_disposisi" },
+          { label: "Sudah Disposisi", value: "sudah_disposisi" },
+          { label: "Diarsipkan", value: "diarsip" },
+        ]}
       />
 
       <Card className="p-4 relative z-10">

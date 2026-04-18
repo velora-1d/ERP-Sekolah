@@ -158,7 +158,20 @@ function InfaqBillsContent() {
   const data: InfaqBillItem[] = queryResult?.data || [];
   const pagination = queryResult?.pagination || { page: 1, totalPages: 1, total: 0, limit: 20 };
 
-  const refreshData = () => queryClient.invalidateQueries({ queryKey: ["infaq-bills"] });
+  const { data: statsQuery } = useQuery({
+    queryKey: ["infaq-bills-stats", queryString],
+    queryFn: async () => {
+      const res = await fetch(`/api/infaq-bills/stats?${queryString}`);
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const stats = statsQuery?.data || null;
+
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ["infaq-bills"] });
+    queryClient.invalidateQueries({ queryKey: ["infaq-bills-stats"] });
+  };
 
   useEffect(() => {
     fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
@@ -410,7 +423,50 @@ function InfaqBillsContent() {
         </div>
       )}
 
-      <FilterBar />
+      <FilterBar
+        customStatusOptions={[
+          { label: "Lunas", value: "paid" },
+          { label: "Belum Lunas", value: "unpaid" },
+          { label: "Sebagian", value: "partial" },
+        ]}
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-5 flex flex-col justify-center border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-[0.6875rem] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Total Tagihan</p>
+          <h3 className="text-2xl font-bold text-slate-800">{stats ? fmtRupiah(stats.totalNominal) : "Rp 0"}</h3>
+          <p className="text-xs text-slate-400 mt-2.5 font-medium flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
+            {stats ? stats.totalBills : 0} item tagihan
+          </p>
+        </Card>
+        <Card className="p-5 flex flex-col justify-center border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-[0.6875rem] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Terkumpul</p>
+          <h3 className="text-2xl font-bold text-slate-800">{stats ? fmtRupiah(stats.totalPaid) : "Rp 0"}</h3>
+          <p className="text-xs text-slate-400 mt-2.5 font-medium flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>
+            {stats ? stats.lunasCount + stats.sebagianCount : 0} tagihan terbayar
+          </p>
+        </Card>
+        <Card className="p-5 flex flex-col justify-center border-l-4 border-l-rose-500 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-[0.6875rem] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Tunggakan</p>
+          <h3 className="text-2xl font-bold text-slate-800">{stats ? fmtRupiah(stats.totalUnpaid) : "Rp 0"}</h3>
+          <p className="text-xs text-slate-400 mt-2.5 font-medium flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mr-1.5"></span>
+            {stats ? stats.belumLunasCount : 0} tagihan belum lunas
+          </p>
+        </Card>
+        <Card className="p-5 flex flex-col justify-center border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-shadow">
+          <p className="text-[0.6875rem] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Collection Rate</p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-bold text-slate-800">{stats ? stats.collectionRate.toFixed(1) : "0.0"}%</h3>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+            <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-1000 ease-out" style={{ width: `${stats ? Math.min(100, stats.collectionRate) : 0}%` }}></div>
+          </div>
+        </Card>
+      </div>
 
       {/* Hero Header */}
       <PageHeader
@@ -493,8 +549,8 @@ function InfaqBillsContent() {
                 { header: "Siswa", key: "student_name", width: 40 },
                 { header: "Kelas", key: "classroom", width: 20 },
                 { header: "Periode", key: "_periode", width: 25 },
-                { header: "Nominal", key: "nominal", width: 25, align: "right", format: (v: number) => fmtRupiah(v) },
-                { header: "Status", key: "status", width: 20, align: "center", format: (v: string) => v === 'lunas' ? 'Lunas' : v === 'sebagian' ? 'Sebagian' : v === 'void' ? 'Void' : 'Belum Lunas' },
+                { header: "Nominal", key: "nominal", width: 25, align: "right", format: (v: unknown) => fmtRupiah(v as number) },
+                { header: "Status", key: "status", width: 20, align: "center", format: (v: unknown) => v === 'lunas' ? 'Lunas' : v === 'sebagian' ? 'Sebagian' : v === 'void' ? 'Void' : 'Belum Lunas' },
               ],
               data: data.map((b, i: number) => ({
                 ...b,
@@ -746,7 +802,7 @@ function InfaqBillsContent() {
             </div>
             <div style={{ marginTop: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.6875rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.375rem" }}>Metode Pembayaran</label>
-              <select value={payMethod} onChange={e => setPayMethod(e.target.value)} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
+              <select value={payMethod} onChange={e => setPayMethod(e.target.value as "tunai" | "transfer" | "tabungan")} style={{ width: "100%", padding: "0.625rem 1rem", border: "1.5px solid #e2e8f0", borderRadius: "0.625rem", fontSize: "0.875rem", outline: "none" }}>
                 <option value="tunai">Tunai</option>
                 <option value="transfer">Transfer</option>
                 <option value="tabungan">Potong Tabungan</option>

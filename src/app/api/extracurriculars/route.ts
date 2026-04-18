@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { extracurriculars, employees } from "@/db/schema";
-import { eq, and, isNull, asc } from "drizzle-orm";
+import { eq, isNull, asc } from "drizzle-orm";
 import { requireAuth } from "@/lib/rbac";
 
 /**

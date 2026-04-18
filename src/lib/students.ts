@@ -68,7 +68,7 @@ export async function getStudentsList({
     conditions.push(eq(students.gender, gender));
   }
 
-  if (status) {
+  if (status && status !== "all") {
     conditions.push(eq(students.status, status));
   }
 
