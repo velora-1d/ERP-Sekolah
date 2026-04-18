@@ -35,6 +35,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   "/api/journal": ["superadmin", "admin", "bendahara"],
   "/api/transaction-categories": ["superadmin", "admin", "bendahara"],
   "/api/reports": ["superadmin", "admin", "bendahara"],
+  "/api/cash-accounts": ["superadmin", "admin", "bendahara"],
 
   // === DATA MASTER ===
   // (Guru perlu akses read-only ke data ini untuk dropdown nilai & absen)
@@ -149,6 +150,7 @@ export const SIDEBAR_PERMISSIONS: Record<string, Role[]> = {
   "/wakaf": ["superadmin", "admin", "bendahara"],
   "/journal": ["superadmin", "admin", "bendahara"],
   "/reports": ["superadmin", "admin", "bendahara"],
+  "/cash-accounts": ["superadmin", "admin", "bendahara"],
   
   // SDM
   "/teachers": ["superadmin", "admin", "operator"],
