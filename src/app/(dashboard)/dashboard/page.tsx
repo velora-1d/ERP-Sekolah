@@ -50,7 +50,7 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
   }
 
   // 3. Filter Query untuk Enrollment
-  const enrollmentConds = [isNull(studentEnrollments.deletedAt)];
+  const enrollmentConds = [isNull(studentEnrollments.deletedAt), isNull(students.deletedAt), eq(students.status, "aktif")];
   if (targetAcademicYearId) enrollmentConds.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
   if (classroomId) enrollmentConds.push(eq(studentEnrollments.classroomId, classroomId));
   const enrollmentWhere = and(...enrollmentConds);
@@ -88,7 +88,7 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
   ] = await Promise.all([
     // Enrollment counts
     db.select({ 
-      total: sql<number>`count(*)`.mapWith(Number),
+      total: sql<number>`count(distinct ${students.id})`.mapWith(Number),
       putra: sql<number>`count(case when ${students.gender} = 'L' then 1 end)`.mapWith(Number),
       putri: sql<number>`count(case when ${students.gender} = 'P' then 1 end)`.mapWith(Number)
     })

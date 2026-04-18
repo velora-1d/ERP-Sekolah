@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { academicYears, studentEnrollments, employees, classrooms, infaqBills, ppdbRegistrations, generalTransactions, studentSavings, cashAccounts } from "@/db/schema";
+import { academicYears, studentEnrollments, employees, classrooms, infaqBills, ppdbRegistrations, generalTransactions, studentSavings, cashAccounts, students } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq, and, isNull, ilike, gte, lte, sql } from "drizzle-orm";
 
@@ -51,11 +51,12 @@ export async function GET(request: Request) {
     }
 
     // 3. Build conditions
-    const enrollmentConditions = [isNull(studentEnrollments.deletedAt)];
+    const enrollmentConditions = [isNull(studentEnrollments.deletedAt), isNull(students.deletedAt), eq(students.status, "aktif")];
     if (targetAcademicYearId) enrollmentConditions.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
     if (classroomId) enrollmentConditions.push(eq(studentEnrollments.classroomId, classroomId));
+    if (gender) enrollmentConditions.push(eq(students.gender, gender));
 
-    const billConditions = [eq(infaqBills.status, "belum_lunas" as any), isNull(infaqBills.deletedAt)];
+    const billConditions = [eq(infaqBills.status, "belum_lunas"), isNull(infaqBills.deletedAt)];
     if (targetAcademicYearId) billConditions.push(eq(infaqBills.academicYearId, targetAcademicYearId));
     if (month) billConditions.push(eq(infaqBills.month, month));
 
@@ -76,22 +77,25 @@ export async function GET(request: Request) {
       [resTabungan],
       [resKas],
     ] = await Promise.all([
-      db.select({ siswaTerdaftar: sql<number>`count(*)`.mapWith(Number) }).from(studentEnrollments).where(and(...enrollmentConditions)),
-      db.select({ totalGuru: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), ilike(employees.position, "%guru%"), eq(employees.status, "aktif" as any))),
-      db.select({ totalStaff: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), eq(employees.status, "aktif" as any))),
+      db.select({ siswaTerdaftar: sql<number>`count(distinct ${students.id})`.mapWith(Number) })
+        .from(studentEnrollments)
+        .innerJoin(students, eq(studentEnrollments.studentId, students.id))
+        .where(and(...enrollmentConditions)),
+      db.select({ totalGuru: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), ilike(employees.position, "%guru%"), eq(employees.status, "aktif"))),
+      db.select({ totalStaff: sql<number>`count(*)`.mapWith(Number) }).from(employees).where(and(isNull(employees.deletedAt), eq(employees.status, "aktif"))),
       db.select({ totalKelas: sql<number>`count(*)`.mapWith(Number) }).from(classrooms).where(and(...classroomConditions)),
       db.select({ tunggakanCount: sql<number>`count(*)`.mapWith(Number) }).from(infaqBills).where(and(...billConditions)),
       db.select({ tunggakanSum: sql<number>`coalesce(sum(${infaqBills.nominal}), 0)`.mapWith(Number) }).from(infaqBills).where(and(...billConditions)),
       db.select({ status: ppdbRegistrations.status, count: sql<number>`count(*)`.mapWith(Number) }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)).groupBy(ppdbRegistrations.status),
-      db.select({ pemasukanPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "in" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
-      db.select({ pengeluaranPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "out" as any), eq(generalTransactions.status, "valid" as any), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
-      db.select({ totalIn: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'setor' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number), totalOut: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'tarik' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number) }).from(studentSavings).where(and(isNull(studentSavings.deletedAt), eq(studentSavings.status, "active" as any))),
+      db.select({ pemasukanPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "in"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
+      db.select({ pengeluaranPeriode: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) }).from(generalTransactions).where(and(eq(generalTransactions.type, "out"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
+      db.select({ totalIn: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'setor' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number), totalOut: sql<number>`coalesce(sum(case when ${studentSavings.type} = 'tarik' then ${studentSavings.amount} else 0 end), 0)`.mapWith(Number) }).from(studentSavings).where(and(isNull(studentSavings.deletedAt), eq(studentSavings.status, "active"))),
       db.select({ totalSaldoKas: sql<number>`coalesce(sum(${cashAccounts.balance}), 0)`.mapWith(Number) }).from(cashAccounts).where(isNull(cashAccounts.deletedAt)),
     ]);
 
     const totalSaldoTabungan = resTabungan.totalIn - resTabungan.totalOut;
     const ppdbMap: Record<string, number> = {};
-    ppdbStats.forEach((p: any) => { ppdbMap[p.status] = p.count; });
+    ppdbStats.forEach((p) => { ppdbMap[p.status] = p.count; });
 
     return NextResponse.json({
       success: true,

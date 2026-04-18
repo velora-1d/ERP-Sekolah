@@ -47,6 +47,10 @@ function clearAttempts(ip: string): void {
 
 export async function POST(request: NextRequest) {
   try {
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+    const isSecureRequest =
+      request.nextUrl.protocol === "https:" || forwardedProto === "https";
+
     // Rate limiting berdasarkan IP
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || request.headers.get("x-real-ip")
@@ -114,13 +118,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Set cookie JWT
-    await setAuthCookie({
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      unitId: user.unitId || "",
-    });
+    await setAuthCookie(
+      {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        unitId: user.unitId || "",
+      },
+      { secure: isSecureRequest }
+    );
 
     return NextResponse.json({
       success: true,

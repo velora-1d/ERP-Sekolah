@@ -5,15 +5,28 @@ import Link from "next/link";
 import Swal from "sweetalert2";
 import Pagination from "@/components/Pagination";
 import FilterBar from "@/components/FilterBar";
-import { ExportButtons, fmtRupiah } from "@/lib/export-utils";
+import { ExportButtons } from "@/lib/export-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 
 interface InitialResult {
-  data: any[];
+  data: StudentRecord[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+interface StudentRecord {
+  id: number;
+  name: string;
+  nisn: string;
+  gender: string;
+  category: string;
+  status: string;
+  classroom?: {
+    id?: number;
+    name?: string;
+  } | null;
 }
 
 function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
@@ -35,7 +48,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
     initialData: !queryString && initialResult ? initialResult : undefined,
   });
 
-  const data: any[] = result?.data || [];
+  const data: StudentRecord[] = result?.data || [];
   const pagination = result?.pagination || { page: 1, totalPages: 1, total: 0, limit: 20 };
 
   const refreshStudents = () => queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -52,7 +65,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
     return () => document.removeEventListener("click", handleClickOutside);
   }, [openActionId]);
 
-  const handleDelete = (s: any) => {
+  const handleDelete = (s: StudentRecord) => {
     Swal.fire({
       title: "Hapus Siswa?",
       text: `Semua data terkait "${s.name}" akan ikut terhapus.`,
@@ -140,7 +153,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
         actions={actions}
       />
 
-      <FilterBar />
+      <FilterBar visibleFilters={["academicYear", "classroom", "gender", "status", "ageRange"]} />
 
       <Card title="Daftar Siswa" icon={true} noPadding>
         {data.length > 0 && (
@@ -157,7 +170,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
                 { header: "Gender", key: "gender", width: 10, align: "center", format: (v: string) => v === 'L' ? 'Laki-laki' : 'Perempuan' },
                 { header: "Status", key: "status", width: 12, align: "center", format: (v: string) => (v || 'aktif').charAt(0).toUpperCase() + (v || 'aktif').slice(1) },
               ],
-              data: data.map((s: any, i: number) => ({
+              data: data.map((s: StudentRecord, i: number) => ({
                 ...s,
                 _no: ((pagination.page - 1) * pagination.limit) + i + 1,
               })),
@@ -189,7 +202,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
                       <svg style={{ width: 28, height: 28, color: "#8b5cf6" }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     </div>
                     <p style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "0.9375rem", color: "#1e293b", margin: 0 }}>Belum Ada Data Siswa</p>
-                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Periksa filter Anda atau klik tombol "Tambah" untuk menambahkan data siswa.</p>
+                    <p style={{ fontSize: "0.8125rem", color: "#94a3b8", marginTop: "0.375rem" }}>Periksa filter Anda atau klik tombol Tambah untuk menambahkan data siswa.</p>
                   </div>
                 </td></tr>
               ) : (
@@ -229,7 +242,7 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
-                            (e.nativeEvent as any).stopImmediatePropagation();
+                            (e.nativeEvent as Event).stopImmediatePropagation();
                             setOpenActionId(openActionId === s.id ? null : s.id); 
                           }}
                           style={{ padding: "0.375rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}

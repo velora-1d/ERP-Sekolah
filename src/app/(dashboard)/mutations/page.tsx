@@ -9,6 +9,22 @@ import { ExportButtons } from "@/lib/export-utils";
 
 interface ClassroomItem { id: number; name: string; }
 interface StudentItem { id: number; name: string; nisn?: string; gender?: string; status?: string; }
+interface EnrollmentAuditResult {
+  activeYear: { id: number; year: string } | null;
+  summary: {
+    nonActiveWithActiveEnrollment: number;
+    duplicateActiveEnrollments: number;
+    classroomMismatch: number;
+    activeStudentsWithoutEnrollment: number;
+  };
+  samples: Array<{
+    student_id: number;
+    student_name: string;
+    status: string;
+    student_classroom_name: string | null;
+    enrollment_classroom_name: string | null;
+  }>;
+}
 
 export default function MutationsPage() {
   const [classrooms, setClassrooms] = useState<ClassroomItem[]>([]);
@@ -22,9 +38,12 @@ export default function MutationsPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 0 });
+  const [audit, setAudit] = useState<EnrollmentAuditResult | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     loadClassrooms();
+    loadAudit();
   }, []);
 
   useEffect(() => {
@@ -43,6 +62,19 @@ export default function MutationsPage() {
       const json = await res.json();
       if (json.success) setClassrooms(json.data || []);
     } catch (e) { console.error(e); }
+  };
+
+  const loadAudit = async () => {
+    setAuditLoading(true);
+    try {
+      const res = await fetch("/api/students/enrollment-audit");
+      const json = await res.json();
+      if (json.success) setAudit(json.data || null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAuditLoading(false);
+    }
   };
 
   const loadStudents = async (classId: string, pageNum: number = 1) => {
@@ -105,6 +137,7 @@ export default function MutationsPage() {
       if (json.success) {
         Swal.fire("Berhasil", json.message, "success");
         setSelected([]);
+        loadAudit();
         if (selectedClass) loadStudents(selectedClass, page);
       } else {
         Swal.fire("Gagal", json.message || "Terjadi kesalahan", "error");
@@ -179,6 +212,75 @@ export default function MutationsPage() {
             </button>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <h4 className="font-bold text-slate-800 text-sm">Audit Konsistensi Siswa</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              {audit?.activeYear ? `Tahun aktif ${audit.activeYear.year}` : "Belum ada tahun ajaran aktif"}
+            </p>
+          </div>
+          <button onClick={loadAudit} className="px-3 py-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
+            Muat Ulang Audit
+          </button>
+        </div>
+        {auditLoading ? (
+          <div className="text-sm text-slate-400">Memuat audit...</div>
+        ) : audit ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className={`rounded-xl border px-4 py-3 ${audit.summary.nonActiveWithActiveEnrollment === 0 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Nonaktif + Enrollment Aktif</div>
+                <div className="mt-1 text-lg font-bold text-slate-800">{audit.summary.nonActiveWithActiveEnrollment}</div>
+              </div>
+              <div className={`rounded-xl border px-4 py-3 ${audit.summary.duplicateActiveEnrollments === 0 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Duplicate Enrollment</div>
+                <div className="mt-1 text-lg font-bold text-slate-800">{audit.summary.duplicateActiveEnrollments}</div>
+              </div>
+              <div className={`rounded-xl border px-4 py-3 ${audit.summary.classroomMismatch === 0 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Kelas Master Tidak Sinkron</div>
+                <div className="mt-1 text-lg font-bold text-slate-800">{audit.summary.classroomMismatch}</div>
+              </div>
+              <div className={`rounded-xl border px-4 py-3 ${audit.summary.activeStudentsWithoutEnrollment === 0 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Siswa Aktif Tanpa Enrollment</div>
+                <div className="mt-1 text-lg font-bold text-slate-800">{audit.summary.activeStudentsWithoutEnrollment}</div>
+              </div>
+            </div>
+            {audit.samples.length > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 overflow-hidden">
+                <div className="px-4 py-3 border-b border-amber-200 text-xs font-semibold text-amber-800 uppercase tracking-wider">
+                  Contoh Data Yang Perlu Dicek
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-white/70">
+                        <th className="px-4 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase">Siswa</th>
+                        <th className="px-4 py-2 text-center text-[11px] font-semibold text-slate-500 uppercase">Status</th>
+                        <th className="px-4 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase">Kelas Master</th>
+                        <th className="px-4 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase">Kelas Enrollment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {audit.samples.map((item) => (
+                        <tr key={item.student_id} className="border-t border-amber-200/70">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-800">{item.student_name}</td>
+                          <td className="px-4 py-2 text-center text-sm text-slate-600">{item.status}</td>
+                          <td className="px-4 py-2 text-sm text-slate-600">{item.student_classroom_name || "-"}</td>
+                          <td className="px-4 py-2 text-sm text-slate-600">{item.enrollment_classroom_name || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-sm text-slate-400">Audit belum tersedia.</div>
+        )}
       </Card>
 
       {/* Tabel Siswa */}

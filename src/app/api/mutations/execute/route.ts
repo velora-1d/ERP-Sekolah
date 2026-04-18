@@ -13,13 +13,19 @@ export async function POST(request: Request) {
   try {
     await requireAuth();
     const body = await request.json();
-    const { studentIds, targetClassroomId, newStatus } = body;
+    const { studentIds, targetClassroomId, newStatus, action } = body;
+    const resolvedStatus =
+      typeof newStatus === "string" && newStatus
+        ? newStatus
+        : ["lulus", "pindah", "nonaktif"].includes(action)
+          ? action
+          : undefined;
 
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
       return NextResponse.json({ success: false, message: "Pilih minimal 1 siswa" }, { status: 400 });
     }
 
-    if (!targetClassroomId && !newStatus) {
+    if (!targetClassroomId && !resolvedStatus) {
       return NextResponse.json({ success: false, message: "Tentukan kelas tujuan atau status baru" }, { status: 400 });
     }
 
@@ -34,9 +40,9 @@ export async function POST(request: Request) {
       const academicYearId = activeYear[0]?.id;
 
       // 2. Update Profil Siswa (Master)
-      const updateData: any = { updatedAt: new Date() };
+      const updateData: { updatedAt: Date; classroomId?: number; status?: string } = { updatedAt: new Date() };
       if (targetClassroomId) updateData.classroomId = Number(targetClassroomId);
-      if (newStatus) updateData.status = newStatus;
+      if (resolvedStatus) updateData.status = resolvedStatus;
 
       const updated = await tx
         .update(students)
@@ -51,6 +57,23 @@ export async function POST(request: Request) {
 
       // 3. Update Pendaftaran Siswa (Enrollment) - Penting untuk statistik & listing
       if (academicYearId && targetClassroomId) {
+        const normalizedStudentIds = studentIds.map(Number);
+        const existingEnrollments = await tx
+          .select({
+            id: studentEnrollments.id,
+            studentId: studentEnrollments.studentId,
+          })
+          .from(studentEnrollments)
+          .where(
+            and(
+              inArray(studentEnrollments.studentId, normalizedStudentIds),
+              eq(studentEnrollments.academicYearId, academicYearId),
+              isNull(studentEnrollments.deletedAt)
+            )
+          );
+
+        const existingStudentIds = new Set(existingEnrollments.map((row) => row.studentId).filter((id): id is number => id !== null));
+
         await tx
           .update(studentEnrollments)
           .set({ 
@@ -59,11 +82,23 @@ export async function POST(request: Request) {
           })
           .where(
             and(
-              inArray(studentEnrollments.studentId, studentIds.map(Number)),
+              inArray(studentEnrollments.studentId, normalizedStudentIds),
               eq(studentEnrollments.academicYearId, academicYearId),
               isNull(studentEnrollments.deletedAt)
             )
           );
+
+        const missingStudentIds = normalizedStudentIds.filter((id) => !existingStudentIds.has(id));
+        if (missingStudentIds.length > 0) {
+          await tx.insert(studentEnrollments).values(
+            missingStudentIds.map((studentId: number) => ({
+              studentId,
+              classroomId: Number(targetClassroomId),
+              academicYearId,
+              enrollmentType: "mutasi",
+            }))
+          );
+        }
       }
 
       return { count: updated.length };
@@ -72,13 +107,13 @@ export async function POST(request: Request) {
     // Invalidate cache agar daftar siswa langsung terupdate
     revalidateTag("students", "page");
 
-    const action = newStatus
-      ? `Status ${result.count} siswa diubah ke "${newStatus}"`
+    const actionLabel = resolvedStatus
+      ? `Status ${result.count} siswa diubah ke "${resolvedStatus}"`
       : `${result.count} siswa dipindahkan ke kelas baru`;
 
     return NextResponse.json({
       success: true,
-      message: action,
+      message: actionLabel,
       data: { affected: result.count },
     });
   } catch (error) {

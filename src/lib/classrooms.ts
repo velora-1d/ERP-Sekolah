@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { academicYears, classrooms, employees, studentEnrollments } from "@/db/schema";
+import { academicYears, classrooms, employees, studentEnrollments, students } from "@/db/schema";
 import { and, asc, eq, ilike, isNull, sql } from "drizzle-orm";
 
 export async function getClassroomsList({
@@ -31,7 +31,7 @@ export async function getClassroomsList({
         waliKelasId: classrooms.waliKelasId,
         waliKelas: employees.name,
         infaqNominal: classrooms.infaqNominal,
-        student_count: sql<number>`count(distinct ${studentEnrollments.studentId})`.mapWith(Number),
+        student_count: sql<number>`count(distinct ${students.id})`.mapWith(Number),
       })
       .from(classrooms)
       .leftJoin(academicYears, eq(classrooms.academicYearId, academicYears.id))
@@ -42,6 +42,14 @@ export async function getClassroomsList({
           eq(classrooms.id, studentEnrollments.classroomId),
           eq(classrooms.academicYearId, studentEnrollments.academicYearId),
           isNull(studentEnrollments.deletedAt)
+        )
+      )
+      .leftJoin(
+        students,
+        and(
+          eq(studentEnrollments.studentId, students.id),
+          isNull(students.deletedAt),
+          eq(students.status, "aktif")
         )
       )
       .where(whereClause)

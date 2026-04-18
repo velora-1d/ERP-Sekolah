@@ -59,5 +59,11 @@ update-profile.ts
 /src/generated/prisma
 
 # SSH Keys
-id_*_vps
-id_*_vps.pub
+id_rsa_vps
+id_rsa_vps.pub
+id_ed25519_vps
+id_ed25519_vps.pub
+
+# Logs
+*.log
+

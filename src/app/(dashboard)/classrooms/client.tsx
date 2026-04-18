@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Swal from "sweetalert2";
 import { ExportButtons, fmtRupiah } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
@@ -21,7 +22,7 @@ export interface ClassroomRecord {
 }
 
 interface InitialResult {
-  data: any[];
+  data: ClassroomRecord[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 interface AYItem { id: number; year: string; isActive: boolean; }
@@ -208,8 +209,14 @@ export default function ClassroomsClient({
                     </td>
                     <td className="py-4 px-6 text-center">
                       <div className="flex flex-col items-center">
-                        <span className="text-sm font-bold text-slate-800">{c.student_count || 0}</span>
-                        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">Siswa</span>
+                        <Link
+                          href={`/students?classroomId=${c.id}&academicYearId=${c.academicYearId || ""}&status=aktif`}
+                          className="text-sm font-bold text-slate-800 underline decoration-dotted underline-offset-4 hover:text-indigo-600"
+                          title="Lihat daftar siswa aktif di kelas ini"
+                        >
+                          {c.student_count || 0}
+                        </Link>
+                        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">Siswa Aktif</span>
                       </div>
                     </td>
                     <td className="py-4 px-6 text-right">
@@ -265,7 +272,7 @@ export default function ClassroomsClient({
                                   <label style="font-size: 14px; font-weight: 600;">Wali Kelas</label>
                                   <select id="swal-edit-classroom-walikelas" class="swal2-input" style="margin-top: 5px; width: 100%;">
                                     <option value="null">-- Belum Ada --</option>
-                                    ${teachers.map((t: any) => `<option value="${t.id}" ${t.id === c.waliKelasId ? 'selected' : ''}>${t.name}</option>`).join('')}
+                                    ${teachers.map((t: TeacherItem) => `<option value="${t.id}" ${t.id === c.waliKelasId ? 'selected' : ''}>${t.name}</option>`).join('')}
                                   </select>
                                 </div>
                               `,

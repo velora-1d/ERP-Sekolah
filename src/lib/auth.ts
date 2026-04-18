@@ -21,6 +21,10 @@ export interface JwtPayload {
   unitId: string;
 }
 
+export interface AuthCookieOptions {
+  secure?: boolean;
+}
+
 /**
  * Hash password menggunakan bcrypt
  */
@@ -83,12 +87,15 @@ export async function getAuthUser(): Promise<JwtPayload | null> {
 /**
  * Set auth cookie
  */
-export async function setAuthCookie(payload: JwtPayload): Promise<string> {
+export async function setAuthCookie(
+  payload: JwtPayload,
+  options: AuthCookieOptions = {}
+): Promise<string> {
   const token = generateToken(payload);
   const cookieStore = await cookies();
   cookieStore.set(TOKEN_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: options.secure ?? process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60, // 7 hari
     path: "/",
