@@ -116,7 +116,7 @@ export default function ClassroomsClient({
                   { header: "Nama Kelas", key: "name", width: 20 },
                   { header: "Wali Kelas", key: "wali_kelas", width: 25 },
                   { header: "Jumlah Siswa", key: "student_count", width: 15, align: "center" },
-                  { header: "Tarif Infaq", key: "infaq_nominal", width: 18, align: "right", format: (v: number) => fmtRupiah(v) },
+                  { header: "Tarif Infaq", key: "infaqNominal", width: 18, align: "right", format: (v: unknown) => fmtRupiah(Number(v || 0)) },
                 ],
                 data: data.map((c: ClassroomRecord, i: number) => ({
                   ...c,
@@ -220,7 +220,7 @@ export default function ClassroomsClient({
                       </div>
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmtRupiah(c.infaq_nominal || c.infaqNominal || 0)}</span>
+                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmtRupiah(c.infaqNominal || 0)}</span>
                     </td>
                     <td className="py-4 px-6 text-center relative">
                       <button 
@@ -266,7 +266,7 @@ export default function ClassroomsClient({
                                 </div>
                                 <div style="text-align: left; margin-bottom: 10px;">
                                   <label style="font-size: 14px; font-weight: 600;">Tarif Infaq/SPP (Rp)</label>
-                                  <input id="swal-edit-classroom-infaq" type="number" class="swal2-input" value="${c.infaq_nominal || c.infaqNominal || 0}" style="margin-top: 5px;">
+                                  <input id="swal-edit-classroom-infaq" type="number" class="swal2-input" value="${c.infaqNominal || 0}" style="margin-top: 5px;">
                                 </div>
                                 <div style="text-align: left;">
                                   <label style="font-size: 14px; font-weight: 600;">Wali Kelas</label>

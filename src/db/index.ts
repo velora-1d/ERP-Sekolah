@@ -25,9 +25,9 @@ const globalPool = (() => {
   }
   return new Pool({
     connectionString: normalizeConnectionString(url),
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    max: 50,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 10000,
     ssl: url.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
   });
 })();

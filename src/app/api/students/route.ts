@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, studentEnrollments, academicYears } from "@/db/schema";
-import { and, eq, ilike, or, isNull } from "drizzle-orm";
+import { and, eq, or, isNull } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { getStudentsList } from "@/lib/students";
 
 /**
  * Mengekstrak field Dapodik dari body request.
- * Menangani field lama (place_of_birth, father_name dll) DAN field baru (birthPlace, fatherName dll).
  */
 function extractStudentData(body: Record<string, unknown>) {
   const b = body as Record<string, string | number | boolean | null | undefined>;
@@ -135,19 +134,17 @@ export async function POST(request: Request) {
 
     const targetYearId = activeYearRes[0].id;
 
-    // 2. Cek Duplikasi (termasuk yang di-soft delete)
-    // Kita cek berdasarkan NISN atau NIK (karena ini unik di Dapodik)
-    // Nama saja tidak cukup unik, tapi jika NISN & NIK kosong (jarang di Dapodik), kita cek Nama + Tgl Lahir
+    // 2. Cek Duplikasi
+    const dupeConds = [];
+    if (data.nisn?.trim()) dupeConds.push(eq(students.nisn, data.nisn.trim()));
+    if (data.nik?.trim()) dupeConds.push(eq(students.nik, data.nik.trim()));
+
     const existing = await db.select()
       .from(students)
       .where(
-        or(
-          data.nisn ? eq(students.nisn, data.nisn.trim()) : undefined,
-          data.nik ? eq(students.nik, data.nik.trim()) : undefined,
-          and(
-            ilike(students.name, data.name.trim()),
-            data.birthDate ? eq(students.birthDate, data.birthDate) : undefined
-          )
+        and(
+          isNull(students.deletedAt),
+          dupeConds.length > 0 ? or(...dupeConds) : eq(students.id, -1)
         )
       )
       .limit(1);
@@ -155,17 +152,15 @@ export async function POST(request: Request) {
     if (existing.length > 0) {
       const record = existing[0];
 
-      // Jika masih aktif
       if (!record.deletedAt) {
         return NextResponse.json({ 
           success: false, 
-          message: `Siswa dengan Nama/NISN/NIK tersebut sudah terdaftar dan masih aktif.` 
+          message: `Siswa dengan Nama/NIS/NISN/NIK tersebut sudah terdaftar dan masih aktif.` 
         }, { status: 400 });
       }
 
       // Jika terhapus, lakukan Restore
       const student = await db.transaction(async (tx) => {
-        // A. Update data utama & hilangkan deletedAt
         const [restored] = await tx.update(students)
           .set({
             ...data,
@@ -175,7 +170,6 @@ export async function POST(request: Request) {
           .where(eq(students.id, record.id))
           .returning();
 
-        // B. Cek pendaftaran di tahun ajaran aktif
         const existingEnrollment = await tx.select()
           .from(studentEnrollments)
           .where(and(
@@ -190,10 +184,9 @@ export async function POST(request: Request) {
             studentId: record.id,
             classroomId: data.classroomId,
             academicYearId: targetYearId,
-            enrollmentType: "kembali", // Mark sebagai siswa yang kembali/restore
+            enrollmentType: "kembali",
           });
         } else {
-           // Jika sudah ada enrollment aktif (aneh tapi mungkin), update kelasnya
            await tx.update(studentEnrollments)
             .set({ classroomId: data.classroomId, updatedAt: new Date() })
             .where(eq(studentEnrollments.id, existingEnrollment[0].id));
@@ -204,13 +197,13 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ 
         success: true, 
-        message: "Data siswa yang sebelumnya terhapus telah diaktifkan kembali dan didaftarkan pada tahun ajaran aktif.", 
+        message: "Data siswa yang sebelumnya terhapus telah diaktifkan kembali.", 
         data: student,
         isRestored: true 
       });
     }
 
-    // 3. Insert Baru (Gunakan transaksi)
+    // 3. Insert Baru
     const newStudent = await db.transaction(async (tx) => {
       const [inserted] = await tx.insert(students).values(data).returning();
 
@@ -224,14 +217,14 @@ export async function POST(request: Request) {
       return inserted;
     });
 
-    revalidateTag("students", "page");
+    revalidateTag("students");
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: newStudent });
   } catch (error: unknown) {
     console.error("Error creating student:", error);
     const err = error as { code?: string; message?: string };
     if (err.code === '23505' || err.message?.includes('duplicate key')) {
-      return NextResponse.json({ success: false, message: "NISN atau NIK sudah dipakai siswa lain" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "NIS, NISN, atau NIK sudah dipakai siswa lain" }, { status: 400 });
     }
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
     return NextResponse.json({ success: false, message: msg }, { status: 500 });

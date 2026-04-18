@@ -106,7 +106,7 @@ export async function DELETE(req: Request) {
     if (!id) return NextResponse.json({ success: false, message: "ID kategori diperlukan" }, { status: 400 });
 
     const [category] = await db.update(transactionCategories)
-      .set({ deletedAt: new Date() })
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(transactionCategories.id, Number(id)))
       .returning();
 
@@ -117,3 +117,5 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;

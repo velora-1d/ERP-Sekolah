@@ -54,10 +54,10 @@ export const classrooms = pgTable('classrooms', {
 // ─── STUDENTS ──────────────────────────────────────────────────────────────
 export const students = pgTable('students', {
   id: serial('id').primaryKey(),
-  nisn: text('nisn').notNull().default(''),
-  nis: text('nis').notNull().default(''),
-  nik: text('nik').notNull().default(''),
-  noKk: text('no_kk').notNull().default(''),
+  nisn: text('nisn'),
+  nis: text('nis'),
+  nik: text('nik'),
+  noKk: text('no_kk'),
   name: text('name').notNull(),
   gender: text('gender').notNull().default('L'),
   category: text('category').notNull().default('reguler'),
@@ -230,7 +230,10 @@ export const transactionCategories = pgTable('transaction_categories', {
 export const cashAccounts = pgTable('cash_accounts', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
+  bankName: text('bank_name'),
+  accountNumber: text('account_number'),
   balance: doublePrecision('balance').notNull().default(0),
+  status: text('status').notNull().default('active'),
   unitId: text('unit_id').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

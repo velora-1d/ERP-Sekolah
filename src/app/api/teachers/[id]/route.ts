@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { employees } from "@/db/schema";
 import { eq, and, isNull, ne, or, ilike } from "drizzle-orm";
 
+// GET /api/teachers/[id]
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
@@ -20,7 +21,8 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
   }
 }
 
-export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+// PATCH /api/teachers/[id]
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
     const body = await request.json();
@@ -86,12 +88,13 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
     return NextResponse.json({ success: true, message: "Data berhasil diperbarui", data: employee });
   } catch (error: unknown) {
-    console.error("Employee PUT error:", error);
+    console.error("Employee PATCH error:", error);
     const msg = error instanceof Error ? error.message : "Gagal memperbarui data guru";
     return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
 
+// DELETE /api/teachers/[id]
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {

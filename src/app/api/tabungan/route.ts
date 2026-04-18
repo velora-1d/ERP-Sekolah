@@ -3,10 +3,12 @@ import { db } from "@/db";
 import { students, classrooms, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { isNull, and, eq, asc, sql, inArray, or, ilike } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classFilter = searchParams.get("classId") || "";
-  const query = searchParams.get("q") || ""; // Tambahkan q
+  const query = searchParams.get("q") || "";
   const studentId = searchParams.get("studentId");
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
@@ -141,16 +143,12 @@ export async function GET(request: Request) {
       balance: balanceMap[s.id] || 0,
     }));
 
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       data,
       totalBalance: globalTotalBalance,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
-
-    // Cache pendek untuk meredam pemuatan berulang saat navigasi cepat
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
-    return response;
   } catch (error) {
     console.error("Tabungan GET error:", error);
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       status: (body.status as string) || "aktif",
       phone: body.phone || "",
       address: body.address || "",
-      joinDate: body.joinDate || null,
+      joinDate: body.joinDate || "",
       baseSalary: body.baseSalary ? Number(body.baseSalary) : 0,
     }).returning();
 

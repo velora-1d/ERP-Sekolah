@@ -3,7 +3,10 @@ import { db } from "@/db";
 import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq, and, isNull, desc, sql, ne, or } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
+import { auditLogs } from "@/db/schema";
+
+export const dynamic = "force-dynamic";
 
 type StudentSavingsStatus = "active";
 type StudentSavingsType = "setor" | "tarik";
@@ -191,12 +194,24 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
         }
       }
 
+      // 4. Audit Log
+      await tx.insert(auditLogs).values({
+        userId: existing.id, // atau user ID dari session jika ada
+        action: "UPDATE_STUDENT",
+        modelType: "students",
+        modelId: studentId.toString(),
+        oldValues: JSON.stringify(existing),
+        newValues: JSON.stringify(updatedStudent),
+      });
+
       return [updatedStudent];
     });
 
-    revalidateTag("students", "page");
+    revalidatePath("/students");
+    revalidatePath("/classrooms");
+    revalidatePath("/infaq-bills");
 
-    return NextResponse.json({ success: true, message: "Data siswa berhasil diupdate", data: student });
+    return NextResponse.json({ success: true, message: "Data siswa berhasil diperbarui", data: student });
   } catch (error: unknown) {
     console.error("Error updating student:", error);
     const err = error as { code?: string; message?: string };
@@ -228,3 +243,5 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     return NextResponse.json({ success: false, message: msg }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
