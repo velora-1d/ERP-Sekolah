@@ -89,11 +89,11 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     // Enrollment counts
     db.select({ 
       total: sql<number>`count(distinct ${students.id})`.mapWith(Number),
-      putra: sql<number>`count(case when ${students.gender} = 'L' then 1 end)`.mapWith(Number),
-      putri: sql<number>`count(case when ${students.gender} = 'P' then 1 end)`.mapWith(Number)
+      putra: sql<number>`count(distinct case when ${students.gender} = 'L' then ${students.id} end)`.mapWith(Number),
+      putri: sql<number>`count(distinct case when ${students.gender} = 'P' then ${students.id} end)`.mapWith(Number)
     })
     .from(studentEnrollments)
-    .leftJoin(students, eq(studentEnrollments.studentId, students.id))
+    .innerJoin(students, eq(studentEnrollments.studentId, students.id))
     .where(gender ? and(enrollmentWhere, eq(students.gender, gender)) : enrollmentWhere),
 
     db.select({ type: employees.type, count: sql<number>`count(*)`.mapWith(Number) })
