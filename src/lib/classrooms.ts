@@ -6,16 +6,23 @@ export async function getClassroomsList({
   page = 1,
   limit = 10,
   q = "",
+  academicYearId,
 }: {
   page?: number;
   limit?: number;
   q?: string;
+  academicYearId?: number | null;
 }) {
   const skip = (page - 1) * limit;
   const conditions = [isNull(classrooms.deletedAt)];
 
   if (q) {
     conditions.push(ilike(classrooms.name, `%${q}%`));
+  }
+
+  // Filter per tahun ajaran jika disediakan
+  if (academicYearId) {
+    conditions.push(eq(classrooms.academicYearId, academicYearId));
   }
 
   const whereClause = and(...conditions);

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { classrooms } from "@/db/schema";
+import { academicYears, classrooms } from "@/db/schema";
 import { getClassroomsList } from "@/lib/classrooms";
-import { eq, ilike } from "drizzle-orm";
+import { and, eq, ilike, isNull } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,11 +10,27 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const q = searchParams.get("q") || "";
-    const result = await getClassroomsList({ page, limit, q });
+    const reqAcademicYearId = searchParams.get("academicYearId");
+
+    // Tentukan tahun ajaran: gunakan query param jika ada, jika tidak → tahun aktif
+    // Kirim "all" untuk tampilkan semua tahun ajaran
+    let academicYearId: number | null = null;
+    if (reqAcademicYearId && reqAcademicYearId !== "all") {
+      academicYearId = Number(reqAcademicYearId);
+    } else if (!reqAcademicYearId) {
+      const [activeYear] = await db
+        .select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      academicYearId = activeYear?.id ?? null;
+    }
+
+    const result = await getClassroomsList({ page, limit, q, academicYearId });
 
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         data: result.data,
         pagination: result.pagination,
         total: result.pagination.total,
@@ -35,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, level, academicYearId, waliKelasId, infaqNominal } = body;
-    
+
     if (!name) {
       return NextResponse.json({ success: false, message: "Nama kelas wajib diisi" }, { status: 400 });
     }
@@ -48,12 +64,12 @@ export async function POST(req: NextRequest) {
 
     if (existing.length > 0) {
       const record = existing[0];
-      
+
       // Jika record aktif sudah ada, kembalikan error duplikasi
       if (!record.deletedAt) {
-        return NextResponse.json({ 
-          success: false, 
-          message: `Kelas dengan nama "${name}" sudah ada dan masih aktif.` 
+        return NextResponse.json({
+          success: false,
+          message: `Kelas dengan nama "${name}" sudah ada dan masih aktif.`,
         }, { status: 400 });
       }
 
@@ -65,16 +81,16 @@ export async function POST(req: NextRequest) {
           waliKelasId: (waliKelasId && waliKelasId !== "null") ? Number(waliKelasId) : null,
           infaqNominal: (infaqNominal && infaqNominal !== "null") ? Number(infaqNominal) : 0,
           deletedAt: null,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(classrooms.id, record.id))
         .returning();
 
-      return NextResponse.json({ 
-        success: true, 
-        message: "Kelas yang sebelumnya terhapus telah diaktifkan kembali.", 
+      return NextResponse.json({
+        success: true,
+        message: "Kelas yang sebelumnya terhapus telah diaktifkan kembali.",
         data: restored,
-        isRestored: true 
+        isRestored: true,
       });
     }
 

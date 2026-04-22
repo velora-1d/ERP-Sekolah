@@ -472,7 +472,13 @@ export const studentEnrollments = pgTable('student_enrollments', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
-});
+}, (t) => [
+  // Index untuk mempercepat query per siswa & per tahun ajaran
+  index('student_enrollments_student_id_idx').on(t.studentId),
+  index('student_enrollments_academic_year_idx').on(t.academicYearId),
+  index('student_enrollments_student_year_idx').on(t.studentId, t.academicYearId),
+  index('student_enrollments_deleted_at_idx').on(t.deletedAt),
+]);
 
 // ─── SCHOOL SETTINGS ───────────────────────────────────────────────────────
 export const schoolSettings = pgTable('school_settings', {

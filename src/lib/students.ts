@@ -125,7 +125,7 @@ export async function getStudentsList({
       .limit(limit)
       .offset((page - 1) * limit),
     db
-      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .select({ count: sql<number>`count(distinct ${students.id})`.mapWith(Number) })
       .from(studentEnrollments)
       .innerJoin(students, eq(studentEnrollments.studentId, students.id))
       .where(whereClause),
