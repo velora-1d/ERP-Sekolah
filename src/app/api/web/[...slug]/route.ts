@@ -43,15 +43,15 @@ export async function GET(
         const post = await db.query.webPosts.findFirst({
           where: and(eq(webPosts.slug, subResource), eq(webPosts.status, "published")),
         });
-        if (!post) return NextResponse.json({ success: false, message: "Berita tidak ditemukan" }, { status: 404 });
-        return NextResponse.json({ success: true, data: post });
+        if (!post) return NextResponse.json({ success: false, message: "Berita tidak ditemukan" }, { status: 404, headers: corsHeaders });
+        return NextResponse.json({ success: true, data: post }, { headers: corsHeaders });
       } else {
         // All Published Posts
         const posts = await db.query.webPosts.findMany({
           where: eq(webPosts.status, "published"),
           orderBy: [desc(webPosts.publishedAt)],
         });
-        return NextResponse.json({ success: true, data: posts });
+        return NextResponse.json({ success: true, data: posts }, { headers: corsHeaders });
       }
     }
 
@@ -61,7 +61,7 @@ export async function GET(
         where: eq(webHeroes.status, "aktif"),
         orderBy: [webHeroes.order],
       });
-      return NextResponse.json({ success: true, data: heroes });
+      return NextResponse.json({ success: true, data: heroes }, { headers: corsHeaders });
     }
 
     // 3. TEACHERS
@@ -86,7 +86,7 @@ export async function GET(
           status: t.status
       }));
 
-      return NextResponse.json({ success: true, data: formattedTeachers });
+      return NextResponse.json({ success: true, data: formattedTeachers }, { headers: corsHeaders });
     }
 
     // 4. FACILITIES (Features)
@@ -94,7 +94,7 @@ export async function GET(
       const facilities = await db.query.webFacilities.findMany({
         orderBy: [webFacilities.order],
       });
-      return NextResponse.json({ success: true, data: facilities });
+      return NextResponse.json({ success: true, data: facilities }, { headers: corsHeaders });
     }
 
     // 5. ACHIEVEMENTS
@@ -102,7 +102,7 @@ export async function GET(
       const achievements = await db.query.webAchievements.findMany({
         orderBy: [desc(webAchievements.year)],
       });
-      return NextResponse.json({ success: true, data: achievements });
+      return NextResponse.json({ success: true, data: achievements }, { headers: corsHeaders });
     }
 
     // 6. PROGRAMS
@@ -111,7 +111,7 @@ export async function GET(
         where: eq(webPrograms.status, "aktif"),
         orderBy: [webPrograms.order],
       });
-      return NextResponse.json({ success: true, data: programs });
+      return NextResponse.json({ success: true, data: programs }, { headers: corsHeaders });
     }
 
     // 7. STATS
@@ -120,7 +120,7 @@ export async function GET(
         where: eq(webStats.status, "aktif"),
         orderBy: [webStats.order],
       });
-      return NextResponse.json({ success: true, data: stats });
+      return NextResponse.json({ success: true, data: stats }, { headers: corsHeaders });
     }
 
     // 8. PPDB INFO
