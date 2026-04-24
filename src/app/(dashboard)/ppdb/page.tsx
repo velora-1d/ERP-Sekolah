@@ -2,11 +2,12 @@ import { db } from "@/db";
 import { classrooms, cashAccounts } from "@/db/schema";
 import { isNull, and, eq, or, desc, inArray, sql, asc } from "drizzle-orm";
 import { ppdbRegistrations, registrationPayments } from "@/db/schema";
-import PpdbClient from "./client";
+import PpdbClient, { Gender, RegistrationStatus, PpdbQueryResult } from "./client";
 
 interface RegistrationPaymentItem {
   id: number;
-  payableId: number;
+  paymentType: string;
+  payableId: number | null;
   nominal: number;
   isPaid: boolean;
 }
@@ -56,6 +57,7 @@ const getInitialRegistrations = async () => {
   if (regIds.length > 0) {
     payments = await db.select({
       id: registrationPayments.id,
+      paymentType: registrationPayments.paymentType,
       payableId: registrationPayments.payableId,
       nominal: registrationPayments.nominal,
       isPaid: registrationPayments.isPaid,
@@ -66,8 +68,12 @@ const getInitialRegistrations = async () => {
 
   const dataWithPayments = list.map(r => ({ 
     ...r, 
+    gender: r.gender as Gender,
+    status: r.status as RegistrationStatus,
     createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
-    payments: payments.filter(p => p.payableId === r.id) 
+    payments: payments
+      .filter(p => p.payableId === r.id)
+      .map(p => ({ ...p, payableId: p.payableId as number })) 
   }));
   
   const [{ pending }, { diterima }, { ditolak }, { totalAll }] = await Promise.all([
@@ -81,7 +87,7 @@ const getInitialRegistrations = async () => {
     data: dataWithPayments,
     stats: { total: totalAll, pending, diterima, ditolak },
     pagination: { page: 1, limit, total, totalPages: Math.ceil(total / limit) }
-  };
+  } as PpdbQueryResult;
 };
 
 export default async function PpdbPage() {

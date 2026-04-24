@@ -6,7 +6,7 @@ import {
   webAchievements, webSettings, webHeroes,
   webPrograms, webStats
 } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // --- TYPES ---
@@ -122,8 +122,11 @@ import { employees } from "@/db/schema";
 // --- TEACHERS ---
 export async function getTeachers() {
   return await db.query.employees.findMany({
-    where: eq(employees.type, 'guru'),
-    orderBy: [desc(employees.createdAt)]
+    where: and(
+      eq(employees.type, 'guru'),
+      isNull(employees.deletedAt)
+    ),
+    orderBy: [asc(employees.order), asc(employees.name)]
   });
 }
 
@@ -135,6 +138,9 @@ export async function saveTeacher(data: TeacherData) {
       name: values.name,
       position: values.position,
       status: values.status,
+      photoUrl: values.photoUrl,
+      bio: values.bio,
+      order: values.order,
       updatedAt: new Date() 
     }).where(eq(employees.id, Number(id)));
   } else {
@@ -142,6 +148,9 @@ export async function saveTeacher(data: TeacherData) {
       name: values.name,
       position: values.position,
       status: values.status || 'aktif',
+      photoUrl: values.photoUrl,
+      bio: values.bio,
+      order: values.order || 1,
       type: 'guru'
     });
   }

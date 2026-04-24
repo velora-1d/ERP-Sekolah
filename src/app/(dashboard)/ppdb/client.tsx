@@ -10,9 +10,9 @@ import Card from "@/components/ui/Card";
 import { UserPlus, Plus, Wrench } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-type RegistrationStatus = "menunggu" | "pending" | "diterima" | "ditolak" | "converted";
-type Gender = "L" | "P";
-type PaymentType = "daftar" | "buku" | "seragam" | string;
+export type RegistrationStatus = "menunggu" | "pending" | "diterima" | "ditolak" | "converted";
+export type Gender = "L" | "P";
+export type PaymentType = "daftar" | "buku" | "seragam" | string;
 
 interface ClassroomItem {
   id: number;
@@ -68,7 +68,7 @@ interface QueryPagination {
   total: number;
 }
 
-interface PpdbQueryResult {
+export interface PpdbQueryResult {
   data?: PpdbRegistrationItem[];
   stats?: PpdbStats | null;
   pagination?: QueryPagination;

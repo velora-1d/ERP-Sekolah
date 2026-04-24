@@ -2,7 +2,7 @@
  * RE-REGISTRATION MODULE AUDIT (AUTHENTICATED)
  * Target: /api/reregistration/settings & /api/reregistration
  */
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const BASE_URL = 'http://localhost:3000/api';
 const JWT_SECRET = 'assaodah-super-secret-key-2025-secure-test';
@@ -32,7 +32,7 @@ async function auditReregistration() {
         } else {
             console.error('❌ Security Test FAILED: API is still open without auth!');
         }
-    } catch (e) {
+    } catch {
         console.log('✅ Security Test PASSED: Access blocked.');
     }
 

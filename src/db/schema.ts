@@ -364,6 +364,9 @@ export const employees = pgTable('employees', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
   userId: integer('user_id').unique(),
+  photoUrl: text('photo_url'),
+  bio: text('bio'),
+  order: integer('order').default(1),
 }, (t) => [
   index('employees_type_deleted_idx').on(t.type, t.deletedAt),
   index('employees_status_idx').on(t.status),

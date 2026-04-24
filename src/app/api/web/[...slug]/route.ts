@@ -72,7 +72,7 @@ export async function GET(
               eq(employees.status, 'aktif'),
               isNull(employees.deletedAt)
           ),
-          orderBy: [asc(employees.name)],
+          orderBy: [asc(employees.order), asc(employees.name)],
       });
       
       // Map to match the expected frontend format
@@ -80,9 +80,9 @@ export async function GET(
           id: t.id,
           name: t.name,
           position: t.position,
-          bio: '',
-          photoUrl: null, // Default as photo is not in employees table yet
-          order: 1,
+          bio: t.bio || '',
+          photoUrl: t.photoUrl,
+          order: t.order || 1,
           status: t.status
       }));
 
