@@ -4,13 +4,13 @@ import {
   webPosts, 
   webHeroes, 
   webFacilities, 
-  webTeachers, 
+  employees, 
   webAchievements, 
   webPrograms,
   webStats,
   webSettings
 } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull, asc } from "drizzle-orm";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,11 +66,27 @@ export async function GET(
 
     // 3. TEACHERS
     if (resource === "teachers") {
-      const teachers = await db.query.webTeachers.findMany({
-        where: eq(webTeachers.status, "aktif"),
-        orderBy: [webTeachers.order],
+      const teachersData = await db.query.employees.findMany({
+          where: and(
+              eq(employees.type, 'guru'),
+              eq(employees.status, 'aktif'),
+              isNull(employees.deletedAt)
+          ),
+          orderBy: [asc(employees.name)],
       });
-      return NextResponse.json({ success: true, data: teachers });
+      
+      // Map to match the expected frontend format
+      const formattedTeachers = teachersData.map(t => ({
+          id: t.id,
+          name: t.name,
+          position: t.position,
+          bio: '',
+          photoUrl: null, // Default as photo is not in employees table yet
+          order: 1,
+          status: t.status
+      }));
+
+      return NextResponse.json({ success: true, data: formattedTeachers });
     }
 
     // 4. FACILITIES (Features)
