@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { 
-  webPosts, webTeachers, webFacilities, 
+  webPosts, webFacilities, 
   webAchievements, webSettings, webHeroes,
   webPrograms, webStats
 } from "@/db/schema";
