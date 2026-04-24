@@ -85,11 +85,21 @@ export async function GET(request: Request) {
   }
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = body.name || body.nama; // Support field lama/baru
-    if (!name) return NextResponse.json({ success: false, message: "Nama calon murid wajib diisi" }, { status: 400 });
+    if (!name) return NextResponse.json({ success: false, message: "Nama calon murid wajib diisi" }, { status: 400, headers: corsHeaders });
 
     const nik = body.nik || "";
     const nisn = body.nisn || "";
@@ -112,7 +122,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ 
             success: false, 
             message: `Pendaftar dengan ${nik ? 'NIK' : 'NISN'} tersebut sudah terdaftar (No Formulir: ${found.formNo})` 
-          }, { status: 400 });
+          }, { status: 400, headers: corsHeaders });
         }
 
         // 2. Restore Logic: Jika data terhapus, aktifkan kembali
@@ -242,9 +252,9 @@ export async function POST(request: Request) {
       guardianPhone: body.guardianPhone || "",
     }).returning();
 
-    return NextResponse.json({ success: true, message: `Pendaftaran ${formNo} berhasil disimpan`, data: registration });
+    return NextResponse.json({ success: true, message: `Pendaftaran ${formNo} berhasil disimpan`, data: registration }, { headers: corsHeaders });
   } catch (error) {
     console.error("PPDB POST error:", error);
-    return NextResponse.json({ success: false, message: "Gagal menyimpan pendaftaran" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Gagal menyimpan pendaftaran" }, { status: 500, headers: corsHeaders });
   }
 }
