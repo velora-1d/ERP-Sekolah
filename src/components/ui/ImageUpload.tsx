@@ -4,14 +4,32 @@ import React, { useState, useRef } from "react";
 import { ensureHttpsUrl } from "@/lib/url";
 
 interface ImageUploadProps {
-  name: string;
+  name?: string;
+  value?: string;
   defaultValue?: string;
   placeholder?: string;
   onUploadSuccess?: (url: string) => void;
+  onChange?: (url: string) => void;
 }
 
-export default function ImageUpload({ name, defaultValue, placeholder, onUploadSuccess }: ImageUploadProps) {
-  const [url, setUrl] = useState<string>(ensureHttpsUrl(defaultValue || ""));
+export default function ImageUpload({ 
+  name, 
+  value,
+  defaultValue, 
+  placeholder, 
+  onUploadSuccess,
+  onChange 
+}: ImageUploadProps) {
+  const [internalUrl, setInternalUrl] = useState<string>(ensureHttpsUrl(defaultValue || ""));
+  
+  // Use controlled value if provided, otherwise use internal state
+  const url = value !== undefined ? value : internalUrl;
+  const setUrl = (newUrl: string) => {
+    setInternalUrl(newUrl);
+    if (onUploadSuccess) onUploadSuccess(newUrl);
+    if (onChange) onChange(newUrl);
+  };
+
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,7 +52,6 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
       const data = await res.json();
       const normalizedUrl = ensureHttpsUrl(data.url);
       setUrl(normalizedUrl);
-      if (onUploadSuccess) onUploadSuccess(normalizedUrl);
     } catch (error) {
       console.error("Upload Error:", error);
       alert("Gagal mengunggah gambar");
@@ -56,11 +73,13 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
       )}
       
       <div className="flex gap-2 items-center">
-        <input 
-          type="hidden" 
-          name={name} 
-          value={url} 
-        />
+        {name && (
+          <input 
+            type="hidden" 
+            name={name} 
+            value={url} 
+          />
+        )}
         
         <input
           type="file"
@@ -95,7 +114,7 @@ export default function ImageUpload({ name, defaultValue, placeholder, onUploadS
            </button>
         )}
       </div>
-      {!url && <p className="text-xs text-slate-500 italic">Atau tempelkan URL langsung jika menghendaki:</p>}
+      {!url && <p className="text-xs text-slate-500 italic">Atau tempelkan URL langsung:</p>}
       {!url && (
         <input 
           type="text" 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { saveSettings } from '@/app/actions/cms-actions';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ImageUpload from '@/components/ui/ImageUpload';
 
 export default function SettingsCMS() {
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -15,7 +16,21 @@ export default function SettingsCMS() {
       try {
         const res = await fetch('/api/web/settings');
         const data = await res.json();
-        setSettings(data.data || {});
+        
+        // Flatten the grouped data if necessary
+        let flat: Record<string, string> = {};
+        if (data.data && typeof data.data === 'object') {
+          const firstValue = Object.values(data.data)[0];
+          if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
+            Object.values(data.data).forEach((group: unknown) => {
+              if (typeof group === 'object' && group !== null) Object.assign(flat, group);
+            });
+          } else {
+            flat = data.data as Record<string, string>;
+          }
+        }
+        
+        setSettings(flat || {});
       } finally {
         setLoading(false);
       }
@@ -36,17 +51,36 @@ export default function SettingsCMS() {
     // Refresh settings
     const res = await fetch('/api/web/settings');
     const updatedData = await res.json();
-    setSettings(updatedData.data || {});
+    let flat: Record<string, string> = {};
+    if (updatedData.data && typeof updatedData.data === 'object') {
+      const firstValue = Object.values(updatedData.data)[0];
+      if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
+        Object.values(updatedData.data).forEach((group: unknown) => {
+          if (typeof group === 'object' && group !== null) Object.assign(flat, group);
+        });
+      } else {
+        flat = updatedData.data as Record<string, string>;
+      }
+    }
+    setSettings(flat || {});
   }
 
   const sections = [
     {
-      title: "Informasi Sekolah",
+      title: "Informasi Sekolah & Branding",
       fields: [
         { key: "school_name", label: "Nama Sekolah", placeholder: "MI As-Sa'adah" },
-        { key: "school_address", label: "Alamat Lengkap", placeholder: "Jl. ..." },
-        { key: "school_phone", label: "Nomor Telepon", placeholder: "08..." },
+        { key: "school_tagline", label: "Tagline Sekolah", placeholder: "Mencetak generasi berilmu..." },
         { key: "school_email", label: "Email Resmi", placeholder: "admin@..." },
+        { key: "school_phone", label: "Nomor Telepon", placeholder: "08..." },
+        { key: "web_logo_url", label: "Logo Sekolah", type: "image" },
+      ]
+    },
+    {
+      title: "Banner & Tampilan Utama",
+      fields: [
+        { key: "banner_home", label: "Banner Utama (Home)", type: "image" },
+        { key: "banner_ppdb", label: "Banner PPDB (Bawah)", type: "image" },
       ]
     },
     {
@@ -59,12 +93,11 @@ export default function SettingsCMS() {
       ]
     },
     {
-      title: "SEO & Branding",
+      title: "SEO Website",
       fields: [
         { key: "web_title", label: "Website Title", placeholder: "Profil MI As-Sa'adah - Modern & Kreatif" },
         { key: "web_description", label: "Meta Description", placeholder: "Portal resmi ..." },
         { key: "web_keywords", label: "Keywords (pisahkan koma)", placeholder: "madrasah, sekolah, ..." },
-        { key: "web_logo_url", label: "Link Logo Sekolah", placeholder: "https://..." },
       ]
     }
   ];
@@ -74,7 +107,7 @@ export default function SettingsCMS() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Pengaturan Website</h1>
-          <p className="text-slate-500">Kelola identitas, media sosial, dan SEO website profil.</p>
+          <p className="text-slate-500">Kelola identitas, banner, dan media sosial website profil.</p>
         </div>
       </div>
 
@@ -88,20 +121,67 @@ export default function SettingsCMS() {
                 <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
                   {section.title}
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                   {section.fields.map((f) => (
-                    <div key={f.key}>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">{f.label}</label>
-                      <Input name={f.key} defaultValue={settings[f.key] || ''} placeholder={f.placeholder} />
+                    <div key={f.key} className={f.type === 'image' ? 'md:col-span-2' : ''}>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">{f.label}</label>
+                      {f.type === 'image' ? (
+                        <ImageUpload name={f.key} defaultValue={settings[f.key] || ''} />
+                      ) : (
+                        <Input name={f.key} defaultValue={settings[f.key] || ''} placeholder={f.placeholder} />
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             ))}
           </div>
+          {/* Narasi & Visi Misi */}
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">📜</div>
+              <h2 className="text-xl font-bold text-slate-900">Narasi & Visi Misi</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700">Sejarah Singkat</label>
+                <textarea 
+                  name="school_history" 
+                  defaultValue={settings.school_history} 
+                  rows={4} 
+                  placeholder="Ceritakan sejarah berdirinya sekolah..."
+                  className="w-full border border-slate-300 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Visi Sekolah</label>
+                  <textarea 
+                    name="school_vision" 
+                    defaultValue={settings.school_vision} 
+                    rows={3} 
+                    placeholder="Visi utama sekolah..."
+                    className="w-full border border-slate-300 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700">Misi Sekolah</label>
+                  <textarea 
+                    name="school_mission" 
+                    defaultValue={settings.school_mission} 
+                    rows={3} 
+                    placeholder="Misi-misi sekolah (pisahkan dengan baris baru)..."
+                    className="w-full border border-slate-300 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
+            <Button type="submit" size="lg" className="px-12 shadow-xl shadow-indigo-200" disabled={saving}>
+              {saving ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
             </Button>
           </div>
         </form>

@@ -108,11 +108,13 @@ export async function savePost(data: PostData) {
   }
   revalidatePath("/admin/cms/posts");
   revalidatePath("/api/web/posts");
+  return { success: true };
 }
 
 export async function deletePost(id: number) {
   await db.delete(webPosts).where(eq(webPosts.id, Number(id)));
   revalidatePath("/admin/cms/posts");
+  return { success: true };
 }
 
 // --- TEACHERS ---
@@ -206,14 +208,16 @@ export async function deleteHero(id: number) {
   revalidatePath("/admin/cms/heroes");
 }
 
-export async function saveSettings(settings: Record<string, string>) {
+export async function saveSettings(settings: Record<string, string>, group: string = 'umum') {
   for (const [key, value] of Object.entries(settings)) {
     await db.insert(webSettings)
-      .values({ key, value, group: 'umum' })
-      .onConflictDoUpdate({ target: webSettings.key, set: { value } });
+      .values({ key, value, group })
+      .onConflictDoUpdate({ target: webSettings.key, set: { value, group } });
   }
   revalidatePath("/admin/cms/settings");
   revalidatePath("/api/web/settings");
+  if (group === 'ppdb') revalidatePath("/api/web/ppdb/info");
+  return { success: true };
 }
 
 // --- PROGRAMS ---
@@ -231,11 +235,13 @@ export async function saveProgram(data: ProgramData) {
     await db.insert(webPrograms).values(values);
   }
   revalidatePath("/admin/cms/programs");
+  return { success: true, message: "Berhasil disimpan" };
 }
 
 export async function deleteProgram(id: number) {
   await db.delete(webPrograms).where(eq(webPrograms.id, Number(id)));
   revalidatePath("/admin/cms/programs");
+  return { success: true, message: "Berhasil dihapus" };
 }
 
 // --- STATS ---
@@ -253,9 +259,11 @@ export async function saveStat(data: StatData) {
     await db.insert(webStats).values(values);
   }
   revalidatePath("/admin/cms/stats");
+  return { success: true, message: "Berhasil disimpan" };
 }
 
 export async function deleteStat(id: number) {
   await db.delete(webStats).where(eq(webStats.id, Number(id)));
   revalidatePath("/admin/cms/stats");
+  return { success: true, message: "Berhasil dihapus" };
 }

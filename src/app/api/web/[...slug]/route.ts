@@ -7,7 +7,8 @@ import {
   webTeachers, 
   webAchievements, 
   webPrograms,
-  webStats
+  webStats,
+  webSettings
 } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -106,7 +107,35 @@ export async function GET(
       return NextResponse.json({ success: true, data: stats });
     }
 
-    // 6. SETTINGS
+    // 8. PPDB INFO
+    if (resource === "ppdb" && subResource === "info") {
+      const settings = await db.query.webSettings.findMany({
+        where: eq(webSettings.group, "ppdb"),
+      });
+      
+      const ppdbInfo = settings.reduce<Record<string, string>>((acc, curr) => {
+        acc[curr.key] = curr.value;
+        return acc;
+      }, {});
+
+      // Add default or transform values if needed
+      return NextResponse.json({ 
+        success: true, 
+        data: {
+          year: ppdbInfo.ppdb_year || "2024/2025",
+          is_open: ppdbInfo.ppdb_status === "buka",
+          quota: parseInt(ppdbInfo.ppdb_quota || "0"),
+          registered: parseInt(ppdbInfo.ppdb_registered || "0"),
+          start_date: ppdbInfo.ppdb_start_date || "-",
+          end_date: ppdbInfo.ppdb_end_date || "-",
+          fee: ppdbInfo.ppdb_fee || "Gratis",
+          whatsapp: ppdbInfo.ppdb_whatsapp || "",
+          banner_url: ppdbInfo.ppdb_banner_url || ""
+        } 
+      }, { headers: corsHeaders });
+    }
+
+    // 9. SETTINGS
     if (resource === "settings") {
       const settings = await db.query.webSettings.findMany();
       // Transform into object key-value
