@@ -1,8 +1,8 @@
 import { db } from "@/db";
 import { 
   webPosts, webFacilities, 
-  webAchievements, webSettings, webHeroes,
-  webPrograms, webStats, registrations
+  webAchievements, webHeroes,
+  webPrograms, webStats, ppdbRegistrations
 } from "@/db/schema";
 import { count, eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
@@ -27,11 +27,11 @@ async function getCMSStats() {
     db.select({ count: count() }).from(webHeroes),
     db.select({ count: count() }).from(webPrograms),
     db.select({ count: count() }).from(webStats),
-    db.select({ count: count() }).from(registrations).where(isNull(registrations.deletedAt)),
-    db.select({ count: count() }).from(registrations).where(
+    db.select({ count: count() }).from(ppdbRegistrations).where(isNull(ppdbRegistrations.deletedAt)),
+    db.select({ count: count() }).from(ppdbRegistrations).where(
       and(
-        eq(registrations.registrationSource, 'web_profil'),
-        isNull(registrations.deletedAt)
+        eq(ppdbRegistrations.registrationSource, 'web_profil'),
+        isNull(ppdbRegistrations.deletedAt)
       )
     ),
   ]);
