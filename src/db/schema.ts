@@ -873,7 +873,7 @@ export const studentCredits = pgTable('student_credits', {
 
 // ─── WEB CMS TABLES ────────────────────────────────────────────────────────
 
-export const webHeroes = pgTable('web_heroes', {
+export const webHeroes = pgTable('cms_web_heroes', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   subtitle: text('subtitle'),
@@ -888,7 +888,7 @@ export const webHeroes = pgTable('web_heroes', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webPosts = pgTable('web_posts', {
+export const webPosts = pgTable('cms_web_posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   slug: text('slug').notNull().unique(),
@@ -908,7 +908,7 @@ export const webPosts = pgTable('web_posts', {
   index('web_posts_status_idx').on(t.status),
 ]);
 
-export const webFacilities = pgTable('web_facilities', {
+export const webFacilities = pgTable('cms_web_facilities', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
@@ -920,7 +920,7 @@ export const webFacilities = pgTable('web_facilities', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webAchievements = pgTable('web_achievements', {
+export const webAchievements = pgTable('cms_web_achievements', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   studentName: text('student_name'),
@@ -933,7 +933,7 @@ export const webAchievements = pgTable('web_achievements', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webTeachers = pgTable('web_teachers', {
+export const webTeachers = pgTable('cms_web_teachers', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   position: text('position'),
@@ -946,7 +946,7 @@ export const webTeachers = pgTable('web_teachers', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webSettings = pgTable('web_settings', {
+export const webSettings = pgTable('cms_web_settings', {
   id: serial('id').primaryKey(),
   key: text('key').notNull().unique(),
   value: text('value').notNull(),
@@ -956,7 +956,7 @@ export const webSettings = pgTable('web_settings', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webPrograms = pgTable('web_programs', {
+export const webPrograms = pgTable('cms_web_programs', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   description: text('description').notNull(),
@@ -969,7 +969,7 @@ export const webPrograms = pgTable('web_programs', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const webStats = pgTable('web_stats', {
+export const webStats = pgTable('cms_web_stats', {
   id: serial('id').primaryKey(),
   label: text('label').notNull(),
   value: integer('value').notNull().default(0),

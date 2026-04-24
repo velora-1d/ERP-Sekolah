@@ -98,14 +98,14 @@ const TABLE_QUERIES = [
   { table: "student_credits", query: () => db.select().from(studentCredits).where(isNull(studentCredits.deletedAt)) },
   { table: "wakaf_donors", query: () => db.select().from(wakafDonors).where(isNull(wakafDonors.deletedAt)) },
   { table: "wakaf_purposes", query: () => db.select().from(wakafPurposes).where(isNull(wakafPurposes.deletedAt)) },
-  { table: "web_heroes", query: () => db.select().from(webHeroes) },
-  { table: "web_posts", query: () => db.select().from(webPosts) },
-  { table: "web_facilities", query: () => db.select().from(webFacilities) },
-  { table: "web_achievements", query: () => db.select().from(webAchievements) },
-  { table: "web_teachers", query: () => db.select().from(webTeachers) },
-  { table: "web_settings", query: () => db.select().from(webSettings) },
-  { table: "web_programs", query: () => db.select().from(webPrograms) },
-  { table: "web_stats", query: () => db.select().from(webStats) },
+  { table: "cms_web_heroes", query: () => db.select().from(webHeroes) },
+  { table: "cms_web_posts", query: () => db.select().from(webPosts) },
+  { table: "cms_web_facilities", query: () => db.select().from(webFacilities) },
+  { table: "cms_web_achievements", query: () => db.select().from(webAchievements) },
+  { table: "cms_web_teachers", query: () => db.select().from(webTeachers) },
+  { table: "cms_web_settings", query: () => db.select().from(webSettings) },
+  { table: "cms_web_programs", query: () => db.select().from(webPrograms) },
+  { table: "cms_web_stats", query: () => db.select().from(webStats) },
 ];
 
 export async function GET() {

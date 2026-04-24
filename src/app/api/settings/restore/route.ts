@@ -33,14 +33,14 @@ const WIPE_ORDER = [
   "academic_years",
   "cash_accounts",
   "school_settings",
-  "web_posts",
-  "web_heroes",
-  "web_facilities",
-  "web_achievements",
-  "web_teachers",
-  "web_settings",
-  "web_programs",
-  "web_stats",
+  "cms_web_posts",
+  "cms_web_heroes",
+  "cms_web_facilities",
+  "cms_web_achievements",
+  "cms_web_teachers",
+  "cms_web_settings",
+  "cms_web_programs",
+  "cms_web_stats",
 ];
 
 export async function POST(req: NextRequest) {
