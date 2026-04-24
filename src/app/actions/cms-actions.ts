@@ -117,25 +117,39 @@ export async function deletePost(id: number) {
   return { success: true };
 }
 
+import { employees } from "@/db/schema";
+
 // --- TEACHERS ---
 export async function getTeachers() {
-  return await db.query.webTeachers.findMany({
-    orderBy: [webTeachers.order]
+  return await db.query.employees.findMany({
+    where: eq(employees.type, 'guru'),
+    orderBy: [desc(employees.createdAt)]
   });
 }
 
 export async function saveTeacher(data: TeacherData) {
   const { id, ...values } = data;
   if (id) {
-    await db.update(webTeachers).set({ ...values, updatedAt: new Date() }).where(eq(webTeachers.id, Number(id)));
+    // Mapping TeacherData to Employee schema
+    await db.update(employees).set({ 
+      name: values.name,
+      position: values.position,
+      status: values.status,
+      updatedAt: new Date() 
+    }).where(eq(employees.id, Number(id)));
   } else {
-    await db.insert(webTeachers).values(values);
+    await db.insert(employees).values({
+      name: values.name,
+      position: values.position,
+      status: values.status || 'aktif',
+      type: 'guru'
+    });
   }
   revalidatePath("/admin/cms/teachers");
 }
 
 export async function deleteTeacher(id: number) {
-  await db.delete(webTeachers).where(eq(webTeachers.id, Number(id)));
+  await db.update(employees).set({ deletedAt: new Date() }).where(eq(employees.id, Number(id)));
   revalidatePath("/admin/cms/teachers");
 }
 
