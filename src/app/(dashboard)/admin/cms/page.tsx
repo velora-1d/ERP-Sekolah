@@ -6,11 +6,12 @@ import {
 } from "@/db/schema";
 import { count, eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
+import { getTeachers } from "@/app/actions/cms-actions";
 
 async function getCMSStats() {
   const [
+    teachers,
     postsCount,
-    teachersCount,
     facilitiesCount,
     achievementsCount,
     heroesCount,
@@ -19,8 +20,8 @@ async function getCMSStats() {
     ppdbTotal,
     ppdbWeb
   ] = await Promise.all([
+    getTeachers(),
     db.select({ count: count() }).from(webPosts),
-    db.select({ count: count() }).from(webTeachers),
     db.select({ count: count() }).from(webFacilities),
     db.select({ count: count() }).from(webAchievements),
     db.select({ count: count() }).from(webHeroes),
@@ -37,7 +38,7 @@ async function getCMSStats() {
 
   return {
     posts: postsCount[0]?.count || 0,
-    teachers: teachersCount[0]?.count || 0,
+    teachers: teachers.length || 0,
     facilities: facilitiesCount[0]?.count || 0,
     achievements: achievementsCount[0]?.count || 0,
     heroes: heroesCount[0]?.count || 0,

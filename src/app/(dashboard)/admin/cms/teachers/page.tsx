@@ -151,7 +151,7 @@ export default function TeachersCMS() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Foto Guru (Opsional)</label>
-                <ImageUpload name="photo_url" defaultValue={editing.photo_url} />
+                <ImageUpload name="photoUrl" defaultValue={editing.photoUrl} />
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Bio Singkat</label>
