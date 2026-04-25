@@ -73,6 +73,8 @@ export default function SettingsCMS() {
         { key: "school_tagline", label: "Tagline Sekolah", placeholder: "Mencetak generasi berilmu..." },
         { key: "school_email", label: "Email Resmi", placeholder: "admin@..." },
         { key: "school_phone", label: "Nomor Telepon", placeholder: "08..." },
+        { key: "school_address", label: "Alamat Lengkap", placeholder: "Jl. Raya Pendidikan No. 123, Kota..." },
+        { key: "ppdb_whatsapp", label: "WhatsApp PPDB (format: 628xxx)", placeholder: "628123456789" },
         { key: "web_logo_url", label: "Logo Sekolah", type: "image" },
       ]
     },
@@ -81,6 +83,7 @@ export default function SettingsCMS() {
       fields: [
         { key: "banner_home", label: "Banner Utama (Home)", type: "image" },
         { key: "banner_ppdb", label: "Banner PPDB (Bawah)", type: "image" },
+        { key: "banner_tentang", label: "Banner Halaman Tentang Kami", type: "image" },
       ]
     },
     {
