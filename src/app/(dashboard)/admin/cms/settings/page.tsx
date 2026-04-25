@@ -117,11 +117,11 @@ export default function SettingsCMS() {
       {loading ? (
         <div className="py-20 text-center text-slate-400 italic bg-white rounded-2xl border border-dashed border-slate-300 animate-pulse">Memuat pengaturan...</div>
       ) : (
-        <form onSubmit={handleSave} className="space-y-6 max-w-4xl">
+        <form onSubmit={handleSave} className="space-y-6">
           <div className="space-y-6">
             {sections.map((section, si) => (
               <div key={si} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
                   {section.title}
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -140,7 +140,7 @@ export default function SettingsCMS() {
             ))}
           </div>
           {/* Narasi & Visi Misi */}
-          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">📜</div>
               <h2 className="text-xl font-bold text-slate-900">Narasi & Visi Misi</h2>
