@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { 
   Plus, Trash2, Edit2, X, 
-  BookOpen, Trophy, Users, Star
+  BookOpen, Trophy, Users, Star,
+  GraduationCap, Building2, Heart, Lightbulb, Target
 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { toast } from "react-hot-toast";
@@ -19,11 +20,23 @@ interface Program {
 }
 
 const ICON_OPTIONS = [
-  { name: "BookOpen", icon: BookOpen },
-  { name: "Trophy", icon: Trophy },
-  { name: "Users", icon: Users },
-  { name: "Star", icon: Star },
+  { name: "BookOpen",     icon: BookOpen },
+  { name: "Trophy",      icon: Trophy },
+  { name: "Users",       icon: Users },
+  { name: "Star",        icon: Star },
+  { name: "GraduationCap", icon: GraduationCap },
+  { name: "Building2",   icon: Building2 },
+  { name: "Heart",       icon: Heart },
+  { name: "Lightbulb",   icon: Lightbulb },
+  { name: "Target",      icon: Target },
 ];
+
+const getIcon = (name: string) => {
+  const option = ICON_OPTIONS.find((o) => o.name === name);
+  if (!option) return <BookOpen className="w-6 h-6" />;
+  const IconComp = option.icon;
+  return <IconComp className="w-6 h-6" />;
+};
 
 const COLOR_OPTIONS = [
   { name: "Emerald", value: "from-emerald-500 to-teal-600" },
@@ -152,10 +165,7 @@ export default function ProgramsCMS() {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-12 h-12 rounded-xl bg-linear-to-br ${prog.color} flex items-center justify-center shadow-lg text-white`}>
-                    {prog.iconName === "BookOpen" && <BookOpen className="w-6 h-6" />}
-                    {prog.iconName === "Trophy" && <Trophy className="w-6 h-6" />}
-                    {prog.iconName === "Users" && <Users className="w-6 h-6" />}
-                    {prog.iconName === "Star" && <Star className="w-6 h-6" />}
+                    {getIcon(prog.iconName)}
                   </div>
                   <Badge variant={prog.status === "aktif" ? "success" : "neutral"}>
                     {prog.status}
