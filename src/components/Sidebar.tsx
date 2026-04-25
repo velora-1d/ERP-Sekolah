@@ -60,6 +60,7 @@ const menuItems = [
   ]},
   { group: "WEBSITE", items: [
     { name: "Website Profil Madrasah", short: "CMS", href: "/admin/cms", icon: "M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18" },
+    { name: "Lihat Website", short: "Preview", href: "__external:https://profil.assaodah.santrix.my.id/", icon: "M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" },
   ]},
   { group: "SISTEM", items: [
     { name: "Pengaturan", short: "Setting", href: "/settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
@@ -150,25 +151,25 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
                 )}
                 {collapsed && gi > 0 && <div className="my-3 mx-2 border-t border-indigo-900/30" />}
                 {visibleItems.map((item, ii) => {
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
-                  return (
-                    <Link
-                      key={ii}
-                      href={item.href}
-                      title={collapsed ? item.name : undefined}
-                      className={[
-                        "group flex items-center rounded-xl transition-all duration-200",
-                        collapsed ? "justify-center p-3 my-0.5" : "px-3 py-2.5 gap-3",
-                        isActive
-                          ? "bg-linear-to-r from-indigo-600/30 to-violet-600/20 text-white shadow-sm"
-                          : "text-indigo-200/70 hover:bg-indigo-600/15 hover:text-white",
-                      ].join(" ")}
-                    >
+                  const isExternal = item.href.startsWith("__external:");
+                  const externalUrl = isExternal ? item.href.replace("__external:", "") : null;
+                  const isActive = !isExternal && (pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")));
+
+                  const itemClassName = [
+                    "group flex items-center rounded-xl transition-all duration-200",
+                    collapsed ? "justify-center p-3 my-0.5" : "px-3 py-2.5 gap-3",
+                    isActive
+                      ? "bg-linear-to-r from-indigo-600/30 to-violet-600/20 text-white shadow-sm"
+                      : "text-indigo-200/70 hover:bg-indigo-600/15 hover:text-white",
+                  ].join(" ");
+
+                  const itemContent = (
+                    <>
                       <svg
                         className={[
                           "shrink-0 transition-colors duration-200",
                           collapsed ? "w-5 h-5" : "w-[18px] h-[18px]",
-                          isActive ? "text-amber-400" : "text-indigo-400/60 group-hover:text-indigo-300",
+                          isActive ? "text-amber-400" : isExternal ? "text-emerald-400/70 group-hover:text-emerald-300" : "text-indigo-400/60 group-hover:text-indigo-300",
                         ].join(" ")}
                         fill="none"
                         viewBox="0 0 24 24"
@@ -177,16 +178,46 @@ export default function Sidebar({ user, collapsed, onToggle }: { user: { name: s
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                       </svg>
                       {!collapsed && (
-                        <span className={`text-[13px] font-semibold truncate ${isActive ? "text-white" : ""}`}>
+                        <span className={`text-[13px] font-semibold truncate flex-1 ${isActive ? "text-white" : isExternal ? "text-emerald-300/80 group-hover:text-emerald-200" : ""}`}>
                           {item.name}
                         </span>
                       )}
-                      {isActive && !collapsed && (
+                      {!collapsed && isExternal && (
+                        <span className="ml-auto text-[9px] font-bold text-emerald-400/60 bg-emerald-400/10 px-1.5 py-0.5 rounded-md shrink-0">↗</span>
+                      )}
+                      {isActive && !collapsed && !isExternal && (
                         <div className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                       )}
+                    </>
+                  );
+
+                  if (isExternal) {
+                    return (
+                      <a
+                        key={ii}
+                        href={externalUrl!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={collapsed ? item.name : undefined}
+                        className={itemClassName}
+                      >
+                        {itemContent}
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={ii}
+                      href={item.href}
+                      title={collapsed ? item.name : undefined}
+                      className={itemClassName}
+                    >
+                      {itemContent}
                     </Link>
                   );
                 })}
+
               </div>
             );
           })}
