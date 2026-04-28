@@ -129,15 +129,15 @@ export default function WakafPage() {
       preConfirm: () => {
         return {
           date: (document.getElementById("swal-w-date") as HTMLInputElement).value,
-          donor_id: Number((document.getElementById("swal-w-donor") as HTMLSelectElement).value),
-          purpose_id: Number((document.getElementById("swal-w-purpose") as HTMLSelectElement).value),
+          donorId: Number((document.getElementById("swal-w-donor") as HTMLSelectElement).value),
+          purposeId: Number((document.getElementById("swal-w-purpose") as HTMLSelectElement).value),
           amount: Number((document.getElementById("swal-w-amount") as HTMLInputElement).value)
         };
       }
     }).then(async (r) => {
       if (r.isConfirmed) {
         const payload = r.value;
-        if (!payload.donor_id || !payload.purpose_id || !payload.amount) {
+        if (!payload.donorId || !payload.purposeId || !payload.amount) {
           return Swal.fire("Error", "Semua kolom wajib diisi!", "error");
         }
         Swal.fire({ title: "Menyimpan...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
