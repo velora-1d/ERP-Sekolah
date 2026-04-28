@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { students, classrooms, infaqBills, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { eq, and, isNull, desc, sql, ne, or } from "drizzle-orm";
-import { revalidateTag, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { auditLogs } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -234,7 +234,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
       })
       .where(eq(students.id, parseInt(params.id)));
       
-    revalidateTag("students", "page");
+    revalidatePath("/students");
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil dihapus" });
   } catch (error: unknown) {

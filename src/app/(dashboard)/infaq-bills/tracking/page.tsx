@@ -64,13 +64,8 @@ interface PayTarget {
   remaining: number;
 }
 
-interface TrackingExportRow {
-  _no: number;
-  name: string;
-  nisn: string;
-  totalRemaining: number;
-  [key: `m_${number}`]: string;
-}
+// Removed unused TrackingExportRow interface to satisfy lint
+
 
 const monthNames: Record<number, string> = {
   1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mei", 6: "Jun",
@@ -317,7 +312,7 @@ export default function TrackingPerKelasPage() {
       </div>
 
       {/* Tombol Export */}
-      {data?.tracking?.length > 0 && (
+      {data && data.tracking && data.tracking.length > 0 && (
         <div style={{ marginBottom: "1rem" }}>
           <ExportButtons options={{
             title: `Tracking SPP/Infaq - ${classrooms.find((c) => String(c.id) === classroomId)?.name || 'Kelas'}`,
@@ -325,13 +320,13 @@ export default function TrackingPerKelasPage() {
             filename: `tracking_spp_${year}_sem${semester}`,
             orientation: "landscape",
             columns: [
-              { header: "No", key: "_no", width: 8, align: "center" },
+              { header: "No", key: "_no", width: 8, align: "center" as const },
               { header: "Nama Siswa", key: "name", width: 35 },
               { header: "NISN", key: "nisn", width: 20 },
               ...months.map((m) => ({
                 header: m.name, key: `m_${m.month}`, width: 14, align: "center" as const,
-                format: (_: unknown, row: TrackingExportRow) => {
-                  const md = row[`m_${m.month}`];
+                format: (_v: unknown, row: Record<string, unknown>) => {
+                  const md = row[`m_${m.month}`] as string | undefined;
                   if (!md || md === '-') return '-';
                   if (md === 'lunas') return '✓';
                   if (md === 'sebagian') return '◐';
@@ -339,16 +334,16 @@ export default function TrackingPerKelasPage() {
                   return '○';
                 }
               })),
-              { header: "Tunggakan", key: "totalRemaining", width: 22, align: "right", format: (v: number) => v > 0 ? fmtRupiah(v) : 'Lunas' },
+              { header: "Tunggakan", key: "totalRemaining", width: 22, align: "right" as const, format: (v: unknown) => (Number(v) > 0 ? fmtRupiah(Number(v)) : 'Lunas') },
             ],
-            data: data.tracking.map((s, i: number) => {
-              const row: TrackingExportRow = { _no: i + 1, name: s.name, nisn: s.nisn || '-', totalRemaining: s.totalRemaining };
+            data: (data?.tracking || []).map((s, i: number) => {
+              const row: Record<string, unknown> = { _no: i + 1, name: s.name, nisn: s.nisn || '-', totalRemaining: s.totalRemaining };
               s.months.forEach((m) => { row[`m_${m.month}`] = m.status === 'belum_digenerate' ? '-' : m.status; });
               return row;
             }),
             summaryRows: [
-              { label: "Total Siswa", value: String(data.summary.totalStudents) },
-              { label: "Total Tunggakan", value: fmtRupiah(data.summary.totalRemaining) },
+              { label: "Total Siswa", value: String(data?.summary?.totalStudents || 0) },
+              { label: "Total Tunggakan", value: fmtRupiah(data?.summary?.totalRemaining || 0) },
             ],
           }} />
         </div>
@@ -431,7 +426,7 @@ export default function TrackingPerKelasPage() {
               style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "0.75rem", boxSizing: "border-box" }} />
 
             <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>Metode</label>
-            <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+            <select value={payMethod} onChange={e => setPayMethod(e.target.value as PaymentMethod)}
               style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
               <option value="tunai">Tunai</option>
               <option value="transfer">Transfer</option>

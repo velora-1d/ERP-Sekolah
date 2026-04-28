@@ -1,12 +1,12 @@
 import { db } from "@/db";
 import { academicYears, employees } from "@/db/schema";
 import { isNull, asc } from "drizzle-orm";
-import ClassroomsClient from "./client";
+import ClassroomsClient, { type InitialResult } from "./client";
 import { getClassroomsList } from "@/lib/classrooms";
 
 export default async function ClassroomsPage() {
   const limit = 10;
-  const fallbackResult = {
+  const fallbackResult: InitialResult = {
     data: [],
     pagination: { page: 1, limit, total: 0, totalPages: 1 },
   };
@@ -34,7 +34,7 @@ export default async function ClassroomsPage() {
         .limit(100),
     ]);
 
-    initialResult = classroomsResult;
+    initialResult = classroomsResult || fallbackResult;
     allAcademicYears = academicYearsResult;
     allTeachers = teachersResult;
   } catch (error) {
@@ -43,7 +43,7 @@ export default async function ClassroomsPage() {
 
   return (
     <ClassroomsClient
-      initialResult={initialResult}
+      initialResult={initialResult as InitialResult}
       initialAcademicYears={allAcademicYears}
       initialTeachers={allTeachers}
     />

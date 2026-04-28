@@ -4,7 +4,7 @@ import StudentForm from "@/components/StudentForm";
 
 export default function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [data, setData] = useState<ComponentProps<typeof StudentForm>["initialData"]>(null);
+  const [data, setData] = useState<ComponentProps<typeof StudentForm>["initialData"] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {

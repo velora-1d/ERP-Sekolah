@@ -377,6 +377,18 @@ export default function InventoryPage() {
                   )
                 })
               )}
+              {!isLoading && data.length > 0 && data.length < limit && (
+                Array.from({ length: limit - data.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "73px" }} className="bg-white border-b border-slate-100">
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1.25rem 1.5rem" }}>&nbsp;</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

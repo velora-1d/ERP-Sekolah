@@ -1,4 +1,4 @@
-import StudentsPage from "./client";
+import StudentsPage, { InitialResult } from "./client";
 import { getStudentsList } from "@/lib/students";
 
 export default async function Page() {
@@ -6,5 +6,5 @@ export default async function Page() {
   const limit = 20;
   const initialResult = await getStudentsList({ page: 1, limit });
 
-  return <StudentsPage initialResult={initialResult} />;
+  return <StudentsPage initialResult={initialResult as InitialResult} />;
 }

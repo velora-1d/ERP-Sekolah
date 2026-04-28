@@ -159,8 +159,8 @@ export default function ReportsPage() {
         { header: "Tanggal", key: "date", width: 25, format: (v) => v ? new Date(v).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-" },
         { header: "Keterangan", key: "description", width: 60 },
         { header: "Kategori", key: "category", width: 30 },
-        { header: "Masuk", key: "_in", width: 30, align: "right", format: (_, r) => r.type === "income" ? fmtRupiah(r.amount) : "-" },
-        { header: "Keluar", key: "_out", width: 30, align: "right", format: (_, r) => r.type === "expense" ? fmtRupiah(r.amount) : "-" },
+        { header: "Masuk", key: "_in", width: 30, align: "right", format: (_, r) => (r as unknown as CashflowTransaction).type === "income" ? fmtRupiah((r as unknown as CashflowTransaction).amount) : "-" },
+        { header: "Keluar", key: "_out", width: 30, align: "right", format: (_, r) => (r as unknown as CashflowTransaction).type === "expense" ? fmtRupiah((r as unknown as CashflowTransaction).amount) : "-" },
       ],
       data: txns.map((t, i: number) => ({ ...t, _no: i + 1 })),
       summaryRows: [

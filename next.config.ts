@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+// d:\Mahin Project\ERP-Sekolah\next.config.ts
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

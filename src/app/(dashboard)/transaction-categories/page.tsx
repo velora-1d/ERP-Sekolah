@@ -260,7 +260,8 @@ export default function TransactionCategoriesPage() {
                 ) : inCats.length === 0 ? (
                   <tr><td colSpan={4} style={{ padding: "3rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8" }}>{search ? "Hasil tidak ditemukan." : "Belum ada kategori pemasukan."}</td></tr>
                 ) : (
-                   inCats.map((c: TransactionCategory, i: number) => (
+                  <>
+                   {inCats.map((c: TransactionCategory, i: number) => (
                     <tr key={c.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(inPage - 1) * limit + i + 1}</td>
                       <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", fontWeight: 600, color: "#1e293b" }}>{c.name}</td>
@@ -272,7 +273,13 @@ export default function TransactionCategoriesPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  ))}
+                  {Array.from({ length: Math.max(0, limit - inCats.length) }).map((_, i) => (
+                    <tr key={`empty-in-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td colSpan={4} style={{ padding: "0.875rem 1.5rem" }}>&nbsp;</td>
+                    </tr>
+                  ))}
+                 </>
                 )}
               </tbody>
             </table>
@@ -320,7 +327,8 @@ export default function TransactionCategoriesPage() {
                 ) : outCats.length === 0 ? (
                   <tr><td colSpan={4} style={{ padding: "3rem 2rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8" }}>{search ? "Hasil tidak ditemukan." : "Belum ada kategori pengeluaran."}</td></tr>
                 ) : (
-                   outCats.map((c: TransactionCategory, i: number) => (
+                  <>
+                   {outCats.map((c: TransactionCategory, i: number) => (
                     <tr key={c.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "0.875rem 1.5rem", textAlign: "center", fontSize: "0.8125rem", color: "#94a3b8", fontWeight: 600 }}>{(outPage - 1) * limit + i + 1}</td>
                       <td style={{ padding: "0.875rem 1.5rem", fontSize: "0.8125rem", fontWeight: 600, color: "#1e293b" }}>{c.name}</td>
@@ -332,7 +340,13 @@ export default function TransactionCategoriesPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  ))}
+                  {Array.from({ length: Math.max(0, limit - outCats.length) }).map((_, i) => (
+                    <tr key={`empty-out-${i}`} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td colSpan={4} style={{ padding: "0.875rem 1.5rem" }}>&nbsp;</td>
+                    </tr>
+                  ))}
+                 </>
                 )}
               </tbody>
             </table>

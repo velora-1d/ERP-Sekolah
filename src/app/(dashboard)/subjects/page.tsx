@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { subjects } from "@/db/schema";
 import { isNull, asc, sql } from "drizzle-orm";
-import SubjectsClient from "./client";
+import SubjectsClient, { InitialResult, SubjectItem } from "./client";
 
 export default async function SubjectsPage() {
   const limit = 10;
@@ -26,8 +26,8 @@ export default async function SubjectsPage() {
       .where(isNull(subjects.deletedAt)),
   ]);
 
-  const initialResult = {
-    data: initialData,
+  const initialResult: InitialResult = {
+    data: initialData as SubjectItem[],
     pagination: {
       page: 1,
       limit,

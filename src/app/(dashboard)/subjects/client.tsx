@@ -8,7 +8,7 @@ import Pagination from "@/components/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
-interface SubjectItem {
+export interface SubjectItem {
   id: number;
   name: string;
   code?: string;
@@ -16,7 +16,7 @@ interface SubjectItem {
   tingkatKelas?: string;
 }
 
-interface InitialResult {
+export interface InitialResult {
   data: SubjectItem[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
@@ -337,6 +337,18 @@ export default function SubjectsClient({ initialResult }: { initialResult?: Init
                         <button onClick={() => handleDelete(item.id)} className="inline-flex py-1 px-2.5 text-[11px] font-semibold text-rose-600 bg-rose-50/50 hover:bg-rose-50 border border-rose-100/50 hover:border-rose-200 rounded text-center transition-colors">Hapus</button>
                       </div>
                     </td>
+                  </tr>
+                ))
+              )}
+              {!isLoading && data.length > 0 && data.length < (limit || 10) && (
+                Array.from({ length: (limit || 10) - data.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "45px" }} className="border-b border-slate-100 border-dashed last:border-0 bg-white">
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4 text-center">&nbsp;</td>
                   </tr>
                 ))
               )}

@@ -19,5 +19,9 @@ export default defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "scripts/**",
+    "testsprite_tests/**",
+    "drizzle/**",
+    "scratch/**",
   ]),
 ]);

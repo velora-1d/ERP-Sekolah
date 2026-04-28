@@ -390,18 +390,18 @@ export default function ReRegistrationPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-center">
                   <p className="text-xs font-bold text-violet-700 m-0">Daftar Ulang</p>
-                  <p className="font-heading font-extrabold text-xl text-violet-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_fee)}</p>
+                  <p className="font-heading font-extrabold text-xl text-violet-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_fee || 0)}</p>
                   <p className="text-[11px] text-slate-500 mt-1">{paymentStats.count_fee || 0} siswa lunas</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
                   <p className="text-xs font-bold text-amber-700 m-0">Buku / LKS</p>
-                  <p className="font-heading font-extrabold text-xl text-amber-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_books)}</p>
+                  <p className="font-heading font-extrabold text-xl text-amber-900 mt-1.5 mb-0">{fmtRp(paymentStats.total_books || 0)}</p>
                   <p className="text-[11px] text-slate-500 mt-1">{paymentStats.count_books || 0} siswa lunas</p>
                 </div>
 
                 <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-center shadow-inner">
                   <p className="text-xs font-bold text-emerald-700 m-0">Total Penerimaan</p>
-                  <p className="font-heading font-extrabold text-xl text-emerald-900 mt-1.5 mb-0">{fmtRp(paymentStats.grand_total)}</p>
+                  <p className="font-heading font-extrabold text-xl text-emerald-900 mt-1.5 mb-0">{fmtRp(paymentStats.grand_total || 0)}</p>
                   <p className="text-[11px] text-slate-500 mt-1">Masuk ke Kas Umum</p>
                 </div>
               </div>

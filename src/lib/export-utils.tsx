@@ -13,7 +13,8 @@ export interface ExportColumn {
   key: string;       // Key dari object data
   width?: number;    // Lebar kolom (untuk PDF, dalam satuan mm)
   align?: "left" | "center" | "right";
-  format?: (value: unknown, row: ExportRow) => string; // Custom format
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  format?: (value: any, row: ExportRow) => string; // Custom format
 }
 
 export type ExportRow = Record<string, unknown>;

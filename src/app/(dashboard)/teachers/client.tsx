@@ -283,6 +283,17 @@ export default function TeachersClient({ initialData }: { initialData: Teacher[]
                   )
                 })
               )}
+              {!isLoading && paginatedData.length > 0 && paginatedData.length < limit && (
+                Array.from({ length: limit - paginatedData.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "69px" }} className="bg-white">
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

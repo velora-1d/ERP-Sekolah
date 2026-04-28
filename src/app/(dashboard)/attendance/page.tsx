@@ -23,8 +23,7 @@ export default async function AttendancePage() {
 
   return (
     <AttendanceClient
-      initialClassrooms={allClassrooms}
-      initialAcademicYears={allAcademicYears}
+      initialClassrooms={allClassrooms.map((c) => ({ ...c, level: String(c.level) }))}
       initialActiveAY={activeAY}
     />
   );

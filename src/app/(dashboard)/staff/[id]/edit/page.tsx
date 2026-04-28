@@ -5,7 +5,7 @@ import EmployeeForm from "@/components/EmployeeForm";
 
 export default function StaffEditPage() {
   const params = useParams();
-  const [data, setData] = useState<ComponentProps<typeof EmployeeForm>["initialData"]>(null);
+  const [data, setData] = useState<ComponentProps<typeof EmployeeForm>["initialData"] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

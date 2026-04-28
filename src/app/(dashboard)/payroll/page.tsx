@@ -503,6 +503,16 @@ export default function PayrollPage() {
                       </tr>
                     ))
                   )}
+                  {!loading && payrolls.length > 0 && payrolls.length < payLimit && (
+                    Array.from({ length: payLimit - payrolls.length }).map((_, i) => (
+                      <tr key={`filler-pay-${i}`} style={{ height: "57px" }} className="bg-white border-b border-slate-100">
+                        <td className="px-6 py-3">&nbsp;</td>
+                        <td className="px-6 py-3">&nbsp;</td>
+                        <td className="px-6 py-3">&nbsp;</td>
+                        <td className="px-6 py-3 text-right">&nbsp;</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -583,7 +593,7 @@ export default function PayrollPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-2">Jenis/Sifat</label>
-                <select value={compType} onChange={(e) => setCompType(e.target.value)} className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                <select value={compType} onChange={(e) => setCompType(e.target.value as PayrollComponentType)} className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white">
                   <option value="earning">Pendapatan (+)</option>
                   <option value="deduction">Potongan (-)</option>
                 </select>

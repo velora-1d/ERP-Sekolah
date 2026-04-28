@@ -28,30 +28,45 @@ import { ensureHttpsUrl } from "@/lib/url";
 
 interface Classroom { id: number; name: string; }
 interface Curriculum { id: number; type: string; semester: string; academicYear?: { year: string }; }
-interface Student { id: number; name: string; nisn: string; nis: string; }
+interface Student { 
+  id: number; 
+  name: string; 
+  nisn: string; 
+  nis: string; 
+  gender: string; 
+  birthPlace: string; 
+  birthDate: string; 
+  address: string; 
+}
 interface FinalGradeCheck { subjectName: string; isLocked: boolean; }
 interface GeneratedGrade {
   subjectName: string;
-  nilaiAkhir?: number | string;
-  predikat?: string;
+  subjectCode: string;
+  subjectType: string;
+  nilaiPengetahuan: number;
+  nilaiKeterampilan: number;
+  nilaiAkhir: number;
+  predikat: string;
+  deskripsi: string;
 }
 interface AttendanceSummary {
-  sakit?: number;
-  izin?: number;
-  alpha?: number;
+  sakit: number;
+  izin: number;
+  alpha: number;
 }
 interface GeneratedStudentData {
   student: Student;
-  finalGrades?: GeneratedGrade[];
-  attendanceSummary?: AttendanceSummary;
-  teacherNote?: string;
+  finalGrades: GeneratedGrade[];
+  attendanceSummary: AttendanceSummary;
+  teacherNote: string;
+  extracurriculars: { name: string; score: number; predicate: string }[];
   [key: string]: unknown;
 }
 interface GeneratedReportData {
-  students?: GeneratedStudentData[];
+  students: GeneratedStudentData[];
   school: Record<string, string>;
-  curriculum?: { type?: string; semester?: string };
-  classroom?: { name?: string };
+  curriculum: { type: string; semester: string; academicYear: string };
+  classroom: { name: string; waliKelas: string };
 }
 interface ReportCard { 
   id: number; 
@@ -613,7 +628,7 @@ export default function ReportCardsPage({
                 {generating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 Generate Data
               </button>
-              {generatedData?.students?.length > 0 && (
+              {(generatedData?.students || []).length > 0 && (
                 <button
                   onClick={handleDownloadAll}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
@@ -877,7 +892,7 @@ export default function ReportCardsPage({
                   >
                     {(generatedData?.students || []).map((s, idx: number) => (
                       <option key={idx} value={idx}>
-                        {s?.student?.name || s?.name || `Siswa ${idx + 1}`}
+                        {String(s?.student?.name || s?.name || `Siswa ${idx + 1}`)}
                       </option>
                     ))}
                     {(generatedData?.students?.length || 0) === 0 && <option value={0}>Belum ada siswa</option>}
@@ -1034,7 +1049,7 @@ export default function ReportCardsPage({
             setPreviewUrl("");
           }
         }}
-        title={`Preview Rapor: ${generatedData?.students?.[previewStudentIndex]?.student?.name}`}
+        title={`Preview Rapor: ${generatedData?.students?.[previewStudentIndex]?.student?.name || "..."}`}
         size="xl"
       >
         <div className="w-full h-[75vh] min-h-[500px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner">

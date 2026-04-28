@@ -134,7 +134,7 @@ export async function GET(request: Request) {
           ...getDatabaseMeta(),
         },
         auth: {
-          userId: user.id,
+          userId: user.userId,
           role: user.role,
         },
         filters: {

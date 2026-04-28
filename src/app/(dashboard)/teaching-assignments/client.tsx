@@ -6,7 +6,17 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Pagination from "@/components/Pagination";
 
-interface TAItem { id: number; employeeId: number; subjectId: number; classroomId: number; academicYearId: number; employee?: { name: string }; subject?: { name: string; code: string }; classroom?: { name: string }; academicYear?: { year: string; isActive: boolean; semester?: string }; }
+interface TAItem { 
+  id: number; 
+  employeeId: number | null; 
+  subjectId: number | null; 
+  classroomId: number | null; 
+  academicYearId: number | null; 
+  employee?: { name: string } | null; 
+  subject?: { name: string; code: string } | null; 
+  classroom?: { name: string } | null; 
+  academicYear?: { year: string; isActive: boolean; semester?: string } | null; 
+}
 interface DropdownItem { id: number; name: string; code?: string; type?: string; isActive?: boolean; year?: string; semester?: string; }
 interface InitialResult {
   data: TAItem[];
@@ -176,22 +186,22 @@ export default function TeachingAssignmentsClient({
         <div style="text-align:left;display:grid;gap:0.75rem;">
           <div><label style="font-size:0.75rem;font-weight:600;">Tahun Ajaran *</label>
             <select id="swal-ta-edit-academicyear" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
-              ${getYrOptions(assignment.academicYearId)}
+              ${getYrOptions(assignment.academicYearId ?? undefined)}
             </select>
           </div>
           <div><label style="font-size:0.75rem;font-weight:600;">Guru / Pegawai *</label>
             <select id="swal-ta-edit-employee" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
-              ${getEmpOptions(assignment.employeeId)}
+              ${getEmpOptions(assignment.employeeId ?? undefined)}
             </select>
           </div>
           <div><label style="font-size:0.75rem;font-weight:600;">Mata Pelajaran *</label>
             <select id="swal-ta-edit-subject" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
-              ${getSubjOptions(assignment.subjectId)}
+              ${getSubjOptions(assignment.subjectId ?? undefined)}
             </select>
           </div>
           <div><label style="font-size:0.75rem;font-weight:600;">Kelas *</label>
             <select id="swal-ta-edit-classroom" class="swal2-select" style="margin:0;width:100%;height:2.5rem;padding:0.5rem;font-size:0.875rem;">
-              ${getClsOptions(assignment.classroomId)}
+              ${getClsOptions(assignment.classroomId ?? undefined)}
             </select>
           </div>
         </div>
@@ -379,6 +389,18 @@ export default function TeachingAssignmentsClient({
                         <button onClick={() => handleDelete(item.id)} className="inline-flex py-1 px-2.5 text-[11px] font-semibold text-rose-600 bg-rose-50/50 hover:bg-rose-50 border border-rose-100/50 hover:border-rose-200 rounded text-center transition-colors">Hapus</button>
                       </div>
                     </td>
+                  </tr>
+                ))
+              )}
+              {!loading && data.length > 0 && data.length < (paginationMeta?.limit || 10) && (
+                Array.from({ length: (paginationMeta?.limit || 10) - data.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "45px" }} className="border-b border-slate-100 border-dashed last:border-0 bg-white">
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4">&nbsp;</td>
+                    <td className="py-2.5 px-4 text-center">&nbsp;</td>
                   </tr>
                 ))
               )}

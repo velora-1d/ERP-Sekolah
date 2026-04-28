@@ -78,7 +78,6 @@ export default function AttendancePage({
   initialActiveAY = null
 }: {
   initialClassrooms?: Option[];
-  initialAcademicYears?: Option[];
   initialActiveAY?: Option | null;
 }) {
   const [activeTab, setActiveTab] = useState<"input" | "recap">("input");
@@ -432,6 +431,16 @@ export default function AttendancePage({
                               </td>
                             </tr>
                           ))}
+                          {attendances.length > 0 && attendances.length < 10 && (
+                            Array.from({ length: 10 - attendances.length }).map((_, i) => (
+                              <tr key={`filler-input-${i}`} style={{ height: "61px" }} className="bg-white">
+                                <td className="py-3 px-4 text-sm font-medium text-slate-400 text-center">&nbsp;</td>
+                                <td className="py-3 px-4">&nbsp;</td>
+                                <td className="py-3 px-4">&nbsp;</td>
+                                <td className="py-3 px-4">&nbsp;</td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -708,6 +717,19 @@ export default function AttendancePage({
                                 </td>
                               </tr>
                             ))}
+                            {recapDisplayData.length > 0 && recapDisplayData.length < (recapMeta.limit || 10) && (
+                              Array.from({ length: (recapMeta.limit || 10) - recapDisplayData.length }).map((_, i) => (
+                                <tr key={`filler-recap-${i}`} style={{ height: "61px" }} className="bg-white">
+                                  <td className="py-3 px-4 text-sm font-medium text-slate-400 text-center">&nbsp;</td>
+                                  <td className="py-3 px-4">&nbsp;</td>
+                                  <td className="py-3 px-4 text-center">&nbsp;</td>
+                                  <td className="py-3 px-4 text-center">&nbsp;</td>
+                                  <td className="py-3 px-4 text-center">&nbsp;</td>
+                                  <td className="py-3 px-4 text-center">&nbsp;</td>
+                                  <td className="py-3 px-4 text-center bg-blue-50/10">&nbsp;</td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>

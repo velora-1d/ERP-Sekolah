@@ -13,15 +13,15 @@ export interface ClassroomRecord {
   id: number;
   name: string;
   level: number;
-  academicYearId?: number;
-  waliKelasId?: number;
-  waliKelas?: string;
+  academicYearId: number | null;
+  waliKelasId: number | null;
+  waliKelas: string | null;
   student_count: number;
-  infaqNominal?: number;
+  infaqNominal: number | null;
   infaq_nominal?: number;
 }
 
-interface InitialResult {
+export interface InitialResult {
   data: ClassroomRecord[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
@@ -364,6 +364,19 @@ export default function ClassroomsClient({
                         </div>
                       )}
                     </td>
+                  </tr>
+                ))
+              )}
+              {!isLoading && data.length > 0 && data.length < (limit || 10) && (
+                Array.from({ length: (limit || 10) - data.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "69px" }} className="border-b border-slate-50">
+                    <td className="py-4 px-6">&nbsp;</td>
+                    <td className="py-4 px-6">&nbsp;</td>
+                    <td className="py-4 px-6">&nbsp;</td>
+                    <td className="py-4 px-6">&nbsp;</td>
+                    <td className="py-4 px-6 text-center">&nbsp;</td>
+                    <td className="py-4 px-6 text-right">&nbsp;</td>
+                    <td className="py-4 px-6 text-center">&nbsp;</td>
                   </tr>
                 ))
               )}

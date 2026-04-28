@@ -137,7 +137,7 @@ export default function WakafPage() {
     }).then(async (r) => {
       if (r.isConfirmed) {
         const payload = r.value;
-        if (!payload.donorId || !payload.purposeId || !payload.amount) {
+        if (!payload.donorId || !payload.amount) {
           return Swal.fire("Error", "Semua kolom wajib diisi!", "error");
         }
         Swal.fire({ title: "Menyimpan...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -255,7 +255,11 @@ export default function WakafPage() {
     }).then(async (r) => {
       if (r.isConfirmed) {
         try {
-          const res = await fetch(`/api/wakaf/purposes?id=${id}`, { method: "DELETE" });
+          const res = await fetch(`/api/wakaf/purposes`, { 
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+          });
           const json = await res.json();
           if (res.ok && json.success) { Swal.fire("Berhasil", "Dihapus", "success"); loadPurposes(); }
           else Swal.fire("Gagal", json.error, "error");
@@ -319,7 +323,7 @@ export default function WakafPage() {
                     { header: "Tanggal", key: "_date", width: 15 },
                     { header: "Donatur", key: "donor_name", width: 25 },
                     { header: "Tujuan", key: "purpose_name", width: 25 },
-                    { header: "Nominal", key: "amount", width: 20, align: "right", format: (v: number) => fmtRupiah(v) },
+                    { header: "Nominal", key: "amount", width: 20, align: "right", format: (v: unknown) => fmtRupiah(Number(v)) },
                     { header: "Status", key: "_status", width: 10, align: "center" },
                   ],
                   data: data.map((t: WakafTransaction, i: number) => ({
@@ -346,7 +350,12 @@ export default function WakafPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.length === 0 ? <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada transaksi</td></tr> : data.slice((page - 1) * limit, page * limit).map((t) => (
+                {data.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500 border-b border-slate-100">Belum ada transaksi</td>
+                  </tr>
+                )}
+                {data.slice((page - 1) * limit, page * limit).map((t) => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50" style={{ opacity: t.status === 'void' ? 0.5 : 1}}>
                     <td className="px-6 py-3 text-sm">{new Date(t.date).toLocaleDateString("id-ID")}</td>
                     <td className="px-6 py-3 text-sm font-semibold">{t.donor_name}</td>
@@ -391,6 +400,13 @@ export default function WakafPage() {
 
                   </tr>
                 ))}
+                
+                {Array.from({ length: Math.max(0, limit - (data.length === 0 ? 1 : data.slice((page - 1) * limit, page * limit).length)) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="border-b border-slate-100 pointer-events-none">
+                    <td className="px-6 py-3 text-sm opacity-0">&nbsp;</td>
+                    <td colSpan={5}></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -420,11 +436,22 @@ export default function WakafPage() {
                 </tr>
               </thead>
               <tbody>
-                {donors.length === 0 ? <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada donatur</td></tr> : donors.map(d => (
+                {donors.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500 border-b border-slate-100">Belum ada donatur</td>
+                  </tr>
+                )}
+                {donors.map(d => (
                   <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-6 py-3 text-sm font-semibold">{d.name}</td>
                     <td className="px-6 py-3 text-sm text-slate-600">{d.phone || "-"}</td>
                     <td className="px-6 py-3 text-sm text-slate-600">{d.address || "-"}</td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 10 - (donors.length === 0 ? 1 : donors.length)) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="border-b border-slate-100 pointer-events-none">
+                    <td className="px-6 py-3 text-sm opacity-0">&nbsp;</td>
+                    <td colSpan={2}></td>
                   </tr>
                 ))}
               </tbody>
@@ -453,7 +480,12 @@ export default function WakafPage() {
                 </tr>
               </thead>
               <tbody>
-                {purposes.length === 0 ? <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">Belum ada tujuan wakaf</td></tr> : purposes.map(p => (
+                {purposes.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500 border-b border-slate-100">Belum ada tujuan wakaf</td>
+                  </tr>
+                )}
+                {purposes.map(p => (
                   <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-6 py-3 text-sm font-semibold">{p.name}</td>
                     <td className="px-6 py-3 text-sm text-slate-600">{p.description || "-"}</td>
@@ -462,6 +494,12 @@ export default function WakafPage() {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </td>
+                  </tr>
+                ))}
+                {Array.from({ length: Math.max(0, 10 - (purposes.length === 0 ? 1 : purposes.length)) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="border-b border-slate-100 pointer-events-none">
+                    <td className="px-6 py-3 text-sm opacity-0">&nbsp;</td>
+                    <td colSpan={2}></td>
                   </tr>
                 ))}
               </tbody>

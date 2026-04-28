@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 
-interface InitialResult {
+export interface InitialResult {
   data: StudentRecord[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }
@@ -19,7 +19,7 @@ interface InitialResult {
 interface StudentRecord {
   id: number;
   name: string;
-  nisn: string;
+  nisn?: string | null;
   gender: string;
   category: string;
   status: string;
@@ -281,6 +281,18 @@ function StudentsContent({ initialResult }: { initialResult?: InitialResult }) {
                     </tr>
                   );
                 })
+              )}
+              {!isLoading && data.length > 0 && data.length < (pagination.limit || 20) && (
+                Array.from({ length: (pagination.limit || 20) - data.length }).map((_, i) => (
+                  <tr key={`filler-${i}`} style={{ height: "71px", borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>&nbsp;</td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

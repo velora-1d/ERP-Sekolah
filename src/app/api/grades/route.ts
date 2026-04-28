@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     }
 
     const { revalidateTag } = await import("next/cache");
-    revalidateTag("grades", "page");
+    revalidateTag("grades");
 
     return NextResponse.json({ success: true, count: upsertData.length }, { status: 201 });
   } catch (error) {
