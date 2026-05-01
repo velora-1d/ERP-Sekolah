@@ -36,6 +36,7 @@ interface WakafPurpose {
 interface CashAccount {
   id: number;
   name: string;
+  accountName?: string; // Menampung field dari API
 }
 
 export default function WakafPage() {
@@ -113,16 +114,23 @@ function WakafContent() {
     try {
       const res = await fetch(`/api/cash-accounts?limit=100`);
       const json = await res.json();
-      if (json.success) setCashAccounts(json.data || []);
+      if (json.success) {
+        // Map accountName dari API ke name agar konsisten
+        const mapped = (json.data || []).map((a: CashAccount) => ({
+          ...a,
+          name: a.accountName || a.name
+        }));
+        setCashAccounts(mapped);
+      }
     } catch (e) { console.error(e); }
   }, []);
 
   useEffect(() => {
-    if (activeTab === "riwayat") loadData();
-    if (activeTab === "donatur" || activeTab === "riwayat") loadDonors();
-    if (activeTab === "tujuan" || activeTab === "riwayat") loadPurposes();
+    loadData();
+    loadDonors();
+    loadPurposes();
     loadCashAccounts();
-  }, [activeTab, loadData, loadDonors, loadPurposes, loadCashAccounts]);
+  }, [loadData, loadDonors, loadPurposes, loadCashAccounts]);
 
   function fmtRp(n: number) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
@@ -290,6 +298,115 @@ function WakafContent() {
           const json = await res.json();
           if (res.ok && json.success) { Swal.fire("Berhasil", "Tujuan ditambahkan", "success"); loadPurposes(); }
           else Swal.fire("Gagal", json.error, "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  const handleDeleteDonor = async (id: number) => {
+    Swal.fire({
+      title: "Hapus Donatur?",
+      text: "Data donatur akan dihapus dari sistem.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#e11d48",
+      confirmButtonText: "Ya, Hapus"
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch(`/api/wakaf/donors`, { 
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+          });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur dihapus", "success"); loadDonors(); }
+          else Swal.fire("Gagal", json.error || json.message, "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  const handleEditPurpose = (p: WakafPurpose) => {
+    Swal.fire({
+      title: "Edit Program",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;">Nama Program</label>
+            <input type="text" id="swal-p-name" class="swal2-input" style="margin:0;height:2.5rem;padding:0.5rem;font-size:0.875rem;width:100%" value="${p.name}">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;">Deskripsi</label>
+            <textarea id="swal-p-desc" class="swal2-input" style="margin:0;height:4rem;padding:0.5rem;font-size:0.875rem;width:100%;resize:none;">${p.description || ""}</textarea>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan Perubahan",
+      preConfirm: () => {
+        return {
+          id: p.id,
+          name: (document.getElementById("swal-p-name") as HTMLInputElement).value,
+          description: (document.getElementById("swal-p-desc") as HTMLTextAreaElement).value
+        };
+      }
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch("/api/wakaf/purposes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(r.value)
+          });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Program diperbarui", "success"); loadPurposes(); }
+          else Swal.fire("Gagal", json.error || json.message, "error");
+        } catch { Swal.fire("Error", "Server error", "error"); }
+      }
+    });
+  };
+
+  const handleEditDonor = (d: WakafDonor) => {
+    Swal.fire({
+      title: "Edit Donatur",
+      html: `
+        <div style="text-align:left;display:grid;gap:0.75rem;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;">Nama Lengkap</label>
+            <input type="text" id="swal-d-name" class="swal2-input" style="margin:0;height:2.5rem;padding:0.5rem;font-size:0.875rem;width:100%" value="${d.name}">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;">No HP</label>
+            <input type="text" id="swal-d-phone" class="swal2-input" style="margin:0;height:2.5rem;padding:0.5rem;font-size:0.875rem;width:100%" value="${d.phone || ""}">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:600;">Alamat</label>
+            <textarea id="swal-d-address" class="swal2-input" style="margin:0;height:4rem;padding:0.5rem;font-size:0.875rem;width:100%;resize:none;">${d.address || ""}</textarea>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Simpan Perubahan",
+      preConfirm: () => {
+        return {
+          id: d.id,
+          name: (document.getElementById("swal-d-name") as HTMLInputElement).value,
+          phone: (document.getElementById("swal-d-phone") as HTMLInputElement).value,
+          address: (document.getElementById("swal-d-address") as HTMLTextAreaElement).value
+        };
+      }
+    }).then(async (r) => {
+      if (r.isConfirmed) {
+        try {
+          const res = await fetch("/api/wakaf/donors", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(r.value)
+          });
+          const json = await res.json();
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur diperbarui", "success"); loadDonors(); }
+          else Swal.fire("Gagal", json.error || json.message, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
     });
@@ -493,16 +610,25 @@ function WakafContent() {
               <thead>
                 <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
                   <th className="px-6 py-4 border-b border-slate-200">Nama Lengkap</th>
-                  <th className="px-6 py-4 border-b border-slate-200">No HP</th>
+                   <th className="px-6 py-4 border-b border-slate-200">No HP</th>
                   <th className="px-6 py-4 border-b border-slate-200">Alamat</th>
+                  <th className="px-6 py-4 border-b border-slate-200 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {donors.map(d => (
-                  <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
+                   <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-6 py-4 text-sm font-bold text-slate-700">{d.name}</td>
                     <td className="px-6 py-4 text-xs text-slate-500">{d.phone || "-"}</td>
                     <td className="px-6 py-4 text-xs text-slate-500">{d.address || "-"}</td>
+                    <td className="px-6 py-4 text-center">
+                      <button onClick={() => handleEditDonor(d)} className="p-1.5 bg-sky-50 text-sky-500 rounded-lg hover:bg-sky-100 border border-sky-100 mr-2">
+                        <svg style={{width:14, height:14}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                      <button onClick={() => handleDeleteDonor(d.id)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 border border-rose-100">
+                        <svg style={{width:14, height:14}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -534,7 +660,10 @@ function WakafContent() {
                   <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="px-6 py-4 text-sm font-bold text-slate-700">{p.name}</td>
                     <td className="px-6 py-4 text-xs text-slate-500">{p.description || "-"}</td>
-                    <td className="px-6 py-4 text-center">
+                     <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
+                      <button onClick={() => handleEditPurpose(p)} className="p-1.5 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 border border-amber-100">
+                        <svg style={{width:14, height:14}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
                       <button onClick={() => handleDeletePurpose(p.id)} className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 border border-rose-100">
                         <svg style={{width:14, height:14}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>

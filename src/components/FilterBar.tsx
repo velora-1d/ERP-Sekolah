@@ -43,7 +43,6 @@ export default function FilterBar({
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
 
-  // State untuk filter yang disinkronkan dengan URL
   const [filters, setFilters] = useState({
     academicYearId: searchParams.get("academicYearId") || "",
     semester: searchParams.get("semester") || "",
@@ -55,6 +54,21 @@ export default function FilterBar({
     ageMin: searchParams.get("ageMin") || "",
     ageMax: searchParams.get("ageMax") || "",
   });
+
+  // Sinkronkan state filters dengan URL saat searchParams berubah
+  useEffect(() => {
+    setFilters({
+      academicYearId: searchParams.get("academicYearId") || "",
+      semester: searchParams.get("semester") || "",
+      month: searchParams.get("month") || "",
+      classroomId: searchParams.get("classroomId") || "",
+      gender: searchParams.get("gender") || "",
+      status: searchParams.get("status") || "",
+      type: searchParams.get("type") || "",
+      ageMin: searchParams.get("ageMin") || "",
+      ageMax: searchParams.get("ageMax") || "",
+    });
+  }, [searchParams]);
 
   const updateFilter = useCallback((key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -81,18 +95,17 @@ export default function FilterBar({
         .then((data) => {
           const years: AcademicYear[] = data.success ? data.data : (Array.isArray(data) ? data : []);
           setAcademicYears(years);
-          const active = years.find((y) => y.isActive);
           
-          const params = new URLSearchParams(searchParams.toString());
+          // Logika auto-select hanya jalan jika belum ada di URL
+          const params = new URLSearchParams(window.location.search);
+          const active = years.find((y) => y.isActive);
           let needsUpdate = false;
 
-          // Auto-select Academic Year
           if (active && !params.get("academicYearId") && visibleFilters.includes("academicYear")) {
             params.set("academicYearId", String(active.id));
             needsUpdate = true;
           }
 
-          // Auto-select Month & Semester
           const now = new Date();
           const monthIdx = now.getMonth();
           const monthsList = [
@@ -111,7 +124,7 @@ export default function FilterBar({
           }
 
           if (needsUpdate) {
-            router.push(`${pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`);
           }
         });
     }
@@ -124,7 +137,8 @@ export default function FilterBar({
           if (data.success) setClassrooms(data.data);
         });
     }
-  }, [visibleFilters, searchParams, pathname, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Hanya jalan sekali saat mount
 
   const months = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
