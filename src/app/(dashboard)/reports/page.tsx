@@ -5,6 +5,9 @@ import { ExportButtons, type ExportOptions, fmtRupiah } from "@/lib/export-utils
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { FileText } from "lucide-react";
+import FilterBar from "@/components/FilterBar";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback } from "react";
 
 interface InfaqReportItem {
   student_name?: string;
@@ -43,6 +46,15 @@ interface CashflowReport {
 }
 
 export default function ReportsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ReportsContent />
+    </Suspense>
+  );
+}
+
+function ReportsContent() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("infaq");
   
   // Data State
@@ -53,14 +65,13 @@ export default function ReportsPage() {
   
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadData(activeTab);
-  }, [activeTab]);
 
-  const loadData = async (tab: string) => {
+
+  const loadData = useCallback(async (tab: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/reports/${tab}`);
+      const queryString = searchParams.toString();
+      const res = await fetch(`/api/reports/${tab}?${queryString}`);
       const json = await res.json();
       const d = json.data || json;
       
@@ -75,7 +86,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchParams]);
+
+  useEffect(() => {
+    loadData(activeTab);
+  }, [activeTab, loadData]);
 
   const fmtRp = (n: number) => {
     return "Rp " + Number(n || 0).toLocaleString("id-ID");
@@ -426,6 +441,9 @@ export default function ReportsPage() {
         subtitle="Pusat pelaporan keuangan dan operasional madrasah"
         icon={<FileText />}
       />
+
+
+      <FilterBar />
 
       {/* Tab Navigation */}
       <div className="flex gap-2 flex-wrap">

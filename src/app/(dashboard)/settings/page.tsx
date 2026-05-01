@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Swal from "sweetalert2";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -481,7 +482,12 @@ export default function SettingsPage() {
               <div className="shrink-0 flex flex-col items-center gap-2">
                 <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden relative">
                   {profile.logo ? (
-                    <img src={ensureHttpsUrl(profile.logo)} alt="Logo Madrasah" className="w-full h-full object-contain" />
+                    <Image 
+                      src={ensureHttpsUrl(profile.logo)} 
+                      alt="Logo Madrasah" 
+                      fill
+                      className="object-contain" 
+                    />
                   ) : (
                     <span className="text-slate-400 text-xs font-bold text-center px-2">Belum ada logo</span>
                   )}

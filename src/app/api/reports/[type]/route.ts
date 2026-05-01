@@ -12,7 +12,7 @@ import {
     studentEnrollments,
     academicYears
 } from "@/db/schema";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, gte, lte } from "drizzle-orm";
 import { requireAuth, AuthError } from "@/lib/rbac";
 
 export async function GET(
@@ -25,14 +25,46 @@ export async function GET(
     const { type } = params;
     const { searchParams } = new URL(request.url);
     const academicYearId = searchParams.get("academicYearId");
+    const semester = searchParams.get("semester");
+    const month = searchParams.get("month");
 
     let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
     if (!targetAcademicYearId) {
       const [activeYear] = await db.select({ id: academicYears.id })
         .from(academicYears)
         .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
         .limit(1);
       targetAcademicYearId = activeYear?.id || null;
+    }
+
+    if (targetAcademicYearId) {
+      const ay = await db.query.academicYears.findFirst({
+        where: eq(academicYears.id, targetAcademicYearId)
+      });
+      if (ay) {
+        startDate = ay.startDate ? new Date(ay.startDate) : null;
+        endDate = ay.endDate ? new Date(ay.endDate) : null;
+
+        if (semester === "Ganjil") {
+          endDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 0) : endDate;
+        } else if (semester === "Genap") {
+          startDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 1) : startDate;
+        }
+
+        if (month && month !== "Semua Bulan") {
+          const monthIndex = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].indexOf(month);
+          if (monthIndex !== -1) {
+            let year = startDate ? startDate.getFullYear() : new Date().getFullYear();
+            if (monthIndex < 6 && startDate && startDate.getMonth() >= 6) year++;
+            else if (monthIndex >= 6 && startDate && startDate.getMonth() < 6) year--;
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0);
+          }
+        }
+      }
     }
 
     if (type === "infaq") {
@@ -52,7 +84,11 @@ export async function GET(
           eq(infaqBills.id, infaqPayments.billId),
           isNull(infaqPayments.deletedAt)
         ))
-        .where(isNull(infaqBills.deletedAt))
+        .where(and(
+          isNull(infaqBills.deletedAt),
+          targetAcademicYearId ? eq(infaqBills.academicYearId, targetAcademicYearId) : undefined
+        ))
+
         .groupBy(infaqBills.id, students.name)
         .orderBy(desc(infaqBills.createdAt));
 
@@ -151,10 +187,12 @@ export async function GET(
         .where(
             and(
                 isNull(generalTransactions.deletedAt),
-                eq(generalTransactions.status, "valid")
+                eq(generalTransactions.status, "valid"),
+                startDate && endDate ? gte(generalTransactions.transactionDate, startDate.toISOString().split("T")[0]) : undefined,
+                startDate && endDate ? lte(generalTransactions.transactionDate, endDate.toISOString().split("T")[0]) : undefined
             )
         )
-        .orderBy(desc(generalTransactions.createdAt));
+        .orderBy(desc(generalTransactions.transactionDate));
 
       let total_income = 0;
       let total_expense = 0;

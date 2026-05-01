@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, classrooms, studentSavings, studentEnrollments, academicYears } from "@/db/schema";
-import { isNull, and, eq, asc, sql, inArray, or, ilike } from "drizzle-orm";
+import { isNull, and, eq, asc, sql, inArray, or, ilike, gte, lte } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,9 @@ export async function GET(request: Request) {
   const classFilter = searchParams.get("classId") || "";
   const query = searchParams.get("q") || "";
   const studentId = searchParams.get("studentId");
+  const academicYearId = searchParams.get("academicYearId");
+  const semester = searchParams.get("semester");
+  const month = searchParams.get("month");
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
 
@@ -28,12 +31,45 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, balance });
     }
 
-    // 1. Tentukan Tahun Ajaran Aktif (Agar sinkron dengan menu Data Siswa)
-    const activeYearRes = await db.select({ id: academicYears.id })
-      .from(academicYears)
-      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
-      .limit(1);
-    const targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
+    // 1. Tentukan Tahun Ajaran
+    let targetAcademicYearId = academicYearId ? Number(academicYearId) : null;
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    if (!targetAcademicYearId) {
+      const activeYearRes = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
+        .limit(1);
+      targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
+    }
+
+    if (targetAcademicYearId) {
+      const ay = await db.query.academicYears.findFirst({
+        where: eq(academicYears.id, targetAcademicYearId)
+      });
+      if (ay) {
+        startDate = ay.startDate ? new Date(ay.startDate) : null;
+        endDate = ay.endDate ? new Date(ay.endDate) : null;
+
+        if (semester === "Ganjil") {
+          endDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 0) : endDate;
+        } else if (semester === "Genap") {
+          startDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 1) : startDate;
+        }
+
+        if (month && month !== "Semua Bulan") {
+          const monthIndex = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].indexOf(month);
+          if (monthIndex !== -1) {
+            let year = startDate ? startDate.getFullYear() : new Date().getFullYear();
+            if (monthIndex < 6 && startDate && startDate.getMonth() >= 6) year++;
+            else if (monthIndex >= 6 && startDate && startDate.getMonth() < 6) year--;
+            startDate = new Date(year, monthIndex, 1);
+            endDate = new Date(year, monthIndex + 1, 0);
+          }
+        }
+      }
+    }
 
     // 2. Build where clause untuk siswa berdasarkan pendaftaran (Enrollment)
     const conditions = [
@@ -91,7 +127,9 @@ export async function GET(request: Request) {
       .where(and(
         whereClause,
         eq(studentSavings.status, "active"),
-        isNull(studentSavings.deletedAt)
+        isNull(studentSavings.deletedAt),
+        startDate && endDate ? gte(studentSavings.date, startDate.toISOString().split("T")[0]) : undefined,
+        startDate && endDate ? lte(studentSavings.date, endDate.toISOString().split("T")[0]) : undefined
       ))
       .groupBy(studentSavings.type)
     ]);

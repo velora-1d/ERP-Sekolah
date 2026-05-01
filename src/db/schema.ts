@@ -315,6 +315,7 @@ export const wakafPurposes = pgTable('wakaf_purposes', {
   description: text('description').notNull().default(''),
   targetAmount: doublePrecision('target_amount').notNull().default(0),
   collectedAmount: doublePrecision('collected_amount').notNull().default(0),
+  spentAmount: doublePrecision('spent_amount').notNull().default(0),
   unitId: text('unit_id').notNull().default(''),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

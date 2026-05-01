@@ -26,7 +26,9 @@ export interface DashboardMetrics {
   pemasukanPeriode: number;
   pengeluaranPeriode: number;
   saldoTabungan: number;
-  totalWakaf: number;
+  wakafIn: number;
+  wakafOut: number;
+  wakafNet: number;
   tunggakanTotal: number;
   tunggakanTotalNominal: number;
   tunggakanPa: number;
@@ -213,7 +215,7 @@ const ChartDistribusiTunggakan = ({ data }: ChartProps) => {
 const ChartTabunganWakaf = ({ data }: ChartProps) => {
   const danaData = [
     { name: "Tabungan", value: data.saldoTabungan },
-    { name: "Wakaf", value: data.totalWakaf },
+    { name: "Wakaf", value: data.wakafNet },
   ];
   return (
     <div style={cardStyle}>
@@ -250,7 +252,7 @@ const ChartRingkasanKeuangan = ({ data }: ChartProps) => {
         <div style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
         {[
           { label: "Tabungan", value: fmtRp(data.saldoTabungan), color: "#67e8f9" },
-          { label: "Wakaf", value: fmtRp(data.totalWakaf), color: "#fcd34d" },
+          { label: "Wakaf", value: fmtRp(data.wakafNet), color: "#fcd34d" },
         ].map((item) => (
           <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>{item.label}</span>

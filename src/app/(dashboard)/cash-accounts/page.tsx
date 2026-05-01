@@ -1,13 +1,9 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { 
-  Plus, Search, Filter, Download, CreditCard, 
-  MoreHorizontal, Pencil, Trash2, Building2, 
-  Hash, ShieldCheck, LayoutGrid, ArrowUpRight,
-  Wallet, Landmark, AlertCircle, RefreshCcw
-} from "lucide-react";
+import { useState, useEffect, Suspense, useCallback } from "react";
+import { Plus, Search, Filter, Download, CreditCard, MoreHorizontal, Pencil, Trash2, Building2, Hash, ShieldCheck, LayoutGrid, ArrowUpRight, Wallet, Landmark, AlertCircle, RefreshCcw } from "lucide-react";
 import Swal from "sweetalert2";
+import { useSearchParams } from "next/navigation";
+import FilterBar from "@/components/FilterBar";
 
 const Toast = Swal.mixin({
   toast: true,
@@ -28,6 +24,15 @@ interface CashAccount {
 }
 
 export default function CashAccountsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CashAccountsContent />
+    </Suspense>
+  );
+}
+
+function CashAccountsContent() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<CashAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,10 +45,11 @@ export default function CashAccountsPage() {
     status: "active",
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/cash-accounts");
+      const queryString = searchParams.toString();
+      const res = await fetch(`/api/cash-accounts?${queryString}`);
       const data = await res.json();
       if (data.success) {
         setItems(data.data || []);
@@ -53,11 +59,11 @@ export default function CashAccountsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchParams]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,6 +168,9 @@ export default function CashAccountsPage() {
           </button>
         </div>
       </div>
+
+      <FilterBar />
+
 
       {/* Stats Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

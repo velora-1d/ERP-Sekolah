@@ -1,7 +1,11 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Swal from "sweetalert2";
+import { useSearchParams } from "next/navigation";
+
 import Pagination from "@/components/Pagination";
+import FilterBar from "@/components/FilterBar";
+
 import { ExportButtons, fmtRupiah as fmtRupiahExport } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -45,6 +49,15 @@ function parseRupiah(value: string): number {
 }
 
 export default function JournalPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <JournalContent />
+    </Suspense>
+  );
+}
+
+function JournalContent() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<JournalEntry[]>([]);
   const [categories, setCategories] = useState<JournalCategory[]>([]);
   const [kpi, setKpi] = useState<JournalKpi>({ totalBalance: 0, thisMonthIn: 0, thisMonthOut: 0 });
@@ -83,7 +96,9 @@ export default function JournalPage() {
   const loadData = useCallback(async (filter = typeFilter) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/journal?type=${filter}`);
+      const queryString = searchParams.toString();
+      const res = await fetch(`/api/journal?type=${filter}&${queryString}`);
+
       const json = await res.json();
       if (json.success) {
         setData(json.entries || []);
@@ -92,7 +107,7 @@ export default function JournalPage() {
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [typeFilter]);
+  }, [typeFilter, searchParams]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -254,6 +269,9 @@ export default function JournalPage() {
           </button>
         }
       />
+
+      <FilterBar />
+
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

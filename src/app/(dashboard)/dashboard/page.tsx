@@ -22,44 +22,65 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
   const classroomId = searchParams.classroomId ? Number(searchParams.classroomId) : null;
   const gender = searchParams.gender;
 
-  // 1. Tentukan Tahun Ajaran Target (Pencarian default ke tahun aktif)
+  // 1. Tentukan Tahun Ajaran Target & Detailnya
   let targetAcademicYearId = academicYearId;
-  if (!targetAcademicYearId) {
-    const activeYearRes = await db.select({ id: academicYears.id })
-      .from(academicYears)
-      .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
-      .limit(1);
-    targetAcademicYearId = activeYearRes.length > 0 ? activeYearRes[0].id : null;
-  }
-
-  // 2. Rentang Waktu Keuangan
-  const now = new Date();
-  let dateStart: string, dateEnd: string;
+  const activeYearRes = await db.select()
+    .from(academicYears)
+    .where(and(
+      targetAcademicYearId ? eq(academicYears.id, targetAcademicYearId) : eq(academicYears.isActive, true),
+      isNull(academicYears.deletedAt)
+    ))
+    .limit(1);
   
+  const activeYearData = activeYearRes[0];
+  targetAcademicYearId = activeYearData?.id || null;
+  const yearLabel = activeYearData?.year || ""; // Misal "2025/2026"
+  const yearParts = yearLabel.split('/');
+  const now = new Date();
+  const startYear = yearParts[0] ? Number(yearParts[0]) : now.getFullYear();
+  const endYear = yearParts[1] ? Number(yearParts[1]) : startYear + 1;
+
+  // 2. Logika Rentang Waktu
+  const monthMap: Record<string, number> = {
+    "Januari": 0, "Februari": 1, "Maret": 2, "April": 3, "Mei": 4, "Juni": 5,
+    "Juli": 6, "Agustus": 7, "September": 8, "Oktober": 9, "November": 10, "Desember": 11
+  };
+  const monthsList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  const getYearForMonth = (mIdx: number) => (mIdx >= 0 && mIdx <= 5) ? endYear : startYear;
+
+  // Range Bulan Berjalan (Selalu bulan sekarang)
+  const thisMonthIdx = now.getMonth();
+  const thisMonthYear = getYearForMonth(thisMonthIdx);
+  const thisMonthStart = new Date(thisMonthYear, thisMonthIdx, 1);
+  const thisMonthEnd = new Date(thisMonthYear, thisMonthIdx + 1, 0, 23, 59, 59);
+
+  // Range Periode (Berdasarkan filter atau default Tahun Ajaran)
+  let dateStart: Date, dateEnd: Date;
   if (month) {
-    const monthMap: Record<string, number> = {
-      "Januari": 0, "Februari": 1, "Maret": 2, "April": 3, "Mei": 4, "Juni": 5,
-      "Juli": 6, "Agustus": 7, "September": 8, "Oktober": 9, "November": 10, "Desember": 11
-    };
     const mIdx = monthMap[month] ?? now.getMonth();
-    dateStart = new Date(now.getFullYear(), mIdx, 1).toISOString();
-    dateEnd = new Date(now.getFullYear(), mIdx + 1, 0, 23, 59, 59).toISOString();
+    const mYear = getYearForMonth(mIdx);
+    dateStart = new Date(mYear, mIdx, 1);
+    dateEnd = new Date(mYear, mIdx + 1, 0, 23, 59, 59);
+  } else if (semester) {
+    const isGanjil = semester.toLowerCase() === "ganjil";
+    dateStart = new Date(startYear, isGanjil ? 6 : 0, 1);
+    dateEnd = new Date(isGanjil ? startYear : endYear, isGanjil ? 12 : 6, 0, 23, 59, 59);
   } else {
-    dateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    // Default: Seluruh Tahun Ajaran (Juli s/d Juni)
+    dateStart = new Date(startYear, 6, 1);
+    dateEnd = new Date(endYear, 6, 0, 23, 59, 59);
   }
 
-  // 3. Filter Query untuk Enrollment
+  // 3. Filter Query
   const enrollmentConds = [isNull(studentEnrollments.deletedAt), isNull(students.deletedAt), eq(students.status, "aktif")];
   if (targetAcademicYearId) enrollmentConds.push(eq(studentEnrollments.academicYearId, targetAcademicYearId));
   if (classroomId) enrollmentConds.push(eq(studentEnrollments.classroomId, classroomId));
   const enrollmentWhere = and(...enrollmentConds);
 
-  // 4. Filter Query untuk Infaq Bills
   const billConds = [eq(infaqBills.status, "belum_lunas"), isNull(infaqBills.deletedAt)];
   if (targetAcademicYearId) billConds.push(eq(infaqBills.academicYearId, targetAcademicYearId));
   if (month) billConds.push(eq(infaqBills.month, month));
-  
   if (semester) {
     const ganjilMonths = ["Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const genapMonths = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
@@ -67,26 +88,15 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
   }
   const billWhere = and(...billConds);
 
-  // --- EKSEKUSI SEMUA AGREGASI PARALEL ---
-  
-  // Optimasi: Gunakan query count/sum SQL untuk mengurangi beban komputasi di serverless (CPU saving)
+  // --- EKSEKUSI ---
   const [
-    enrollmentCounts,
-    employeesGroup,
-    classroomsCountRes,
-    ppdbGroup,
-    incomePeriodeRes,
-    expensePeriodeRes,
-    savingsAggRes,
-    billAggRes,
-    wakafAggRes,
-    coopTrxAggRes,
-    coopCreditAggRes,
-    counselingCountRes,
-    announcementsCountRes,
-    lettersCountRes,
+    enrollmentCounts, employeesGroup, classroomsCountRes, ppdbGroup,
+    incomePeriodeRes, expensePeriodeRes,
+    incomeThisMonthRes, expenseThisMonthRes,
+    savingsAggRes, billAggRes, wakafAggRes,
+    coopTrxAggRes, coopCreditAggRes,
+    counselingCountRes, announcementsCountRes, lettersCountRes,
   ] = await Promise.all([
-    // Enrollment counts
     db.select({ 
       total: sql<number>`count(distinct ${students.id})`.mapWith(Number),
       putra: sql<number>`count(distinct case when ${students.gender} = 'L' then ${students.id} end)`.mapWith(Number),
@@ -103,48 +113,32 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
 
     db.select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(classrooms)
-      .where(and(
-        isNull(classrooms.deletedAt), 
-        targetAcademicYearId ? eq(classrooms.academicYearId, targetAcademicYearId) : undefined
-      )),
+      .where(and(isNull(classrooms.deletedAt), targetAcademicYearId ? eq(classrooms.academicYearId, targetAcademicYearId) : undefined)),
 
     db.select({ status: ppdbRegistrations.status, count: sql<number>`count(*)`.mapWith(Number) })
       .from(ppdbRegistrations)
-      .where(and(
-        isNull(ppdbRegistrations.deletedAt), 
-        gender ? eq(ppdbRegistrations.gender, gender) : undefined
-      ))
+      .where(and(isNull(ppdbRegistrations.deletedAt), gender ? eq(ppdbRegistrations.gender, gender) : undefined))
       .groupBy(ppdbRegistrations.status),
 
     db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
       .from(generalTransactions)
-      .where(and(
-        eq(generalTransactions.type, "in"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd))
-      )),
+      .where(and(eq(generalTransactions.type, "in"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
+    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
+      .from(generalTransactions)
+      .where(and(eq(generalTransactions.type, "out"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, dateStart), lte(generalTransactions.createdAt, dateEnd))),
 
     db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
       .from(generalTransactions)
-      .where(and(
-        eq(generalTransactions.type, "out"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd))
-      )),
+      .where(and(eq(generalTransactions.type, "in"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, thisMonthStart), lte(generalTransactions.createdAt, thisMonthEnd))),
+    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
+      .from(generalTransactions)
+      .where(and(eq(generalTransactions.type, "out"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), gte(generalTransactions.createdAt, thisMonthStart), lte(generalTransactions.createdAt, thisMonthEnd))),
 
     db.select({ sum: sql<number>`sum(${studentSavings.amount})`.mapWith(Number) })
       .from(studentSavings)
       .leftJoin(students, eq(studentSavings.studentId, students.id))
-      .where(and(
-        isNull(studentSavings.deletedAt),
-        gender ? eq(students.gender, gender) : undefined
-      )),
+      .where(and(isNull(studentSavings.deletedAt), gender ? eq(students.gender, gender) : undefined)),
 
-    // Bill aggregates
     db.select({ 
       totalNominal: sql<number>`sum(${infaqBills.nominal})`.mapWith(Number),
       count: sql<number>`count(*)`.mapWith(Number),
@@ -154,45 +148,28 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     })
     .from(infaqBills)
     .leftJoin(students, eq(infaqBills.studentId, students.id))
-    .leftJoin(studentEnrollments, and(
-      eq(studentEnrollments.studentId, infaqBills.studentId),
-      eq(studentEnrollments.academicYearId, infaqBills.academicYearId),
-      isNull(studentEnrollments.deletedAt)
-    ))
+    .leftJoin(studentEnrollments, and(eq(studentEnrollments.studentId, infaqBills.studentId), eq(studentEnrollments.academicYearId, infaqBills.academicYearId), isNull(studentEnrollments.deletedAt)))
     .where(classroomId ? and(billWhere, eq(studentEnrollments.classroomId, classroomId)) : billWhere),
 
-    db.select({ sum: sql<number>`sum(${generalTransactions.amount})`.mapWith(Number) })
-      .from(generalTransactions)
-      .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
-      .where(and(
-        eq(generalTransactions.type, "in"), 
-        eq(generalTransactions.status, "valid"), 
-        isNull(generalTransactions.deletedAt), 
-        gte(generalTransactions.createdAt, new Date(dateStart)), 
-        lte(generalTransactions.createdAt, new Date(dateEnd)),
-        ilike(transactionCategories.name, "%wakaf%")
-      )),
-
     db.select({ 
-        sumValue: sql<number>`sum(${coopTransactions.total})`.mapWith(Number),
-        count: sql<number>`count(*)`.mapWith(Number) 
-      })
+      totalIn: sql<number>`sum(case when ${generalTransactions.type} = 'in' then ${generalTransactions.amount} else 0 end)`.mapWith(Number),
+      totalOut: sql<number>`sum(case when ${generalTransactions.type} = 'out' then ${generalTransactions.amount} else 0 end)`.mapWith(Number),
+    })
+    .from(generalTransactions)
+    .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
+    .where(and(eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), ilike(transactionCategories.name, "%wakaf%"))),
+
+    db.select({ sumValue: sql<number>`sum(${coopTransactions.total})`.mapWith(Number), count: sql<number>`count(*)`.mapWith(Number) })
       .from(coopTransactions)
-      .where(and(
-        gte(coopTransactions.createdAt, new Date(dateStart)), 
-        lte(coopTransactions.createdAt, new Date(dateEnd))
-      )),
+      .where(and(gte(coopTransactions.createdAt, dateStart), lte(coopTransactions.createdAt, dateEnd))),
 
-    db.select({ 
-        sumAmount: sql<number>`sum(${studentCredits.amount})`.mapWith(Number),
-        sumPaid: sql<number>`sum(${studentCredits.paidAmount})`.mapWith(Number)
-      })
+    db.select({ sumAmount: sql<number>`sum(${studentCredits.amount})`.mapWith(Number), sumPaid: sql<number>`sum(${studentCredits.paidAmount})`.mapWith(Number) })
       .from(studentCredits)
       .where(not(eq(studentCredits.status, "lunas"))),
 
     db.select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(counselingRecords)
-      .where(gte(counselingRecords.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString())),
+      .where(gte(counselingRecords.date, dateStart.toISOString())),
 
     db.select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(announcements)
@@ -200,7 +177,7 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
 
     db.select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(letters)
-      .where(gte(letters.date, new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])),
+      .where(gte(letters.date, dateStart.toISOString().split('T')[0])),
   ]);
 
   const stats = enrollmentCounts[0];
@@ -216,12 +193,14 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     totalKelas: classroomsCountRes[0]?.count || 0,
     ppdbPending: ppdbGroup.find(p => p.status === "pending" || p.status === "menunggu")?.count || 0,
     ppdbDiterima: ppdbGroup.find(p => p.status === "diterima")?.count || 0,
-    pemasukanBulanIni: incomePeriodeRes[0]?.sum || 0,
-    pengeluaranBulanIni: expensePeriodeRes[0]?.sum || 0,
+    pemasukanBulanIni: incomeThisMonthRes[0]?.sum || 0,
+    pengeluaranBulanIni: expenseThisMonthRes[0]?.sum || 0,
     pemasukanPeriode: incomePeriodeRes[0]?.sum || 0,
     pengeluaranPeriode: expensePeriodeRes[0]?.sum || 0,
     saldoTabungan: savingsAggRes[0]?.sum || 0,
-    totalWakaf: wakafAggRes[0]?.sum || 0,
+    wakafIn: wakafAggRes[0]?.totalIn || 0,
+    wakafOut: wakafAggRes[0]?.totalOut || 0,
+    wakafNet: (wakafAggRes[0]?.totalIn || 0) - (wakafAggRes[0]?.totalOut || 0),
     tunggakanTotal: billStats.count || 0,
     tunggakanTotalNominal: billStats.totalNominal || 0,
     tunggakanPa: billStats.pa || 0,
@@ -233,6 +212,7 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     counselingCount: counselingCountRes[0]?.count || 0,
     announcementsCount: announcementsCountRes[0]?.count || 0,
     lettersCount: lettersCountRes[0]?.count || 0,
+    currentMonthName: month || monthsList[now.getMonth()],
   };
 };
 
@@ -260,8 +240,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
     activeTab = allowedTabs[0];
   }
 
-  // Gunakan key kombinasi tab dan filter agar skeleton muncul saat filter/tab berubah
-  // Optimasi: Hindari JSON.stringify yang berat di server render
   const suspenseKey = `${activeTab}-${searchParams.academicYearId || 'all'}-${searchParams.month || 'all'}-${searchParams.classroomId || 'all'}`;
 
   return (
@@ -284,9 +262,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ [ke
 function DashboardContentLoading() {
   return (
     <div className="space-y-6">
-      {/* Hero Placeholder */}
       <div className="h-[104px] rounded-2xl bg-indigo-50 animate-pulse border border-indigo-100"></div>
-      {/* Stats Grid Placeholder */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(8)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start gap-4 animate-pulse">
@@ -337,8 +313,8 @@ async function DashboardContent({ searchParams, activeTab, user }: { searchParam
           <KpiCard anim={1} label="Siswa Aktif (Enroll)" value={data.totalSiswa} color="#6366f1" bg="#e0e7ff" icon="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
             footer={<><span>Putra: <strong style={{ color: "#6366f1" }}>{data.totalSiswaPa}</strong></span><span>Putri: <strong style={{ color: "#f59e0b" }}>{data.totalSiswaPi}</strong></span></>}
           />
-          <KpiCard anim={2} label="Pemasukan (Netto)" value={fmtRp(data.pemasukanBulanIni - data.pengeluaranBulanIni)} color="#10b981" bg="#d1fae5" icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" small
-            footer={<><span>In: <strong style={{ color: "#10b981" }}>{fmtRp(data.pemasukanPeriode)}</strong></span><span>Out: <strong style={{ color: "#f43f5e" }}>{fmtRp(data.pengeluaranPeriode)}</strong></span></>}
+          <KpiCard anim={2} label="Pemasukan (Netto)" value={fmtRp(data.pemasukanPeriode - data.pengeluaranPeriode)} color="#10b981" bg="#d1fae5" icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" small
+            footer={<><span>{data.currentMonthName}: <strong style={{ color: "#10b981" }}>{fmtRp(data.pemasukanBulanIni - data.pengeluaranBulanIni)}</strong></span></>}
           />
           <KpiCard anim={3} label="Total Guru & Staff" value={data.totalGuru + data.totalStaff} color="#8b5cf6" bg="#ede9fe" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
             footer={<><span>Guru: <strong style={{ color: "#8b5cf6" }}>{data.totalGuru}</strong></span><span>Staff: <strong style={{ color: "#a78bfa" }}>{data.totalStaff}</strong></span></>}
@@ -356,10 +332,10 @@ async function DashboardContent({ searchParams, activeTab, user }: { searchParam
       {activeTab === "finance" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard anim={1} label="Pemasukan Periode" value={fmtRp(data.pemasukanPeriode)} color="#10b981" bg="#d1fae5" icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" small
-            footer={<><span>Status Valid</span><strong style={{ color: "#10b981" }}>Lunas</strong></>}
+            footer={<><span>{data.currentMonthName}</span><strong style={{ color: "#10b981" }}>{fmtRp(data.pemasukanBulanIni)}</strong></>}
           />
           <KpiCard anim={2} label="Pengeluaran Periode" value={fmtRp(data.pengeluaranPeriode)} color="#f43f5e" bg="#ffe4e6" icon="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" small valueColor="#f43f5e"
-            footer={<><span>Status Valid</span><strong style={{ color: "#f43f5e" }}>Keluar</strong></>}
+            footer={<><span>{data.currentMonthName}</span><strong style={{ color: "#f43f5e" }}>{fmtRp(data.pengeluaranBulanIni)}</strong></>}
           />
           <KpiCard anim={3} label="Tunggakan SPP (Siswa)" value={data.tunggakanTotal} color="#f43f5e" bg="#ffe4e6" icon="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" valueColor="#f43f5e"
             footer={<><span>Siswa PA: <strong style={{ color: "#f43f5e" }}>{data.tunggakanPa}</strong></span><span>Siswa PI: <strong style={{ color: "#f43f5e" }}>{data.tunggakanPi}</strong></span></>}
@@ -370,8 +346,11 @@ async function DashboardContent({ searchParams, activeTab, user }: { searchParam
           <KpiCard anim={5} label="Saldo Tabungan Siswa" value={fmtRp(data.saldoTabungan)} color="#06b6d4" bg="#cffafe" icon="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" small
             footer={<><span>Semua Kelas Aktif</span><strong style={{ color: "#06b6d4" }}>Balance</strong></>}
           />
-          <KpiCard anim={6} label="Total Dana Wakaf" value={fmtRp(data.totalWakaf)} color="#65a30d" bg="#ecfccb" icon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" small
-            footer={<><span>Dana Abadi</span><strong style={{ color: "#65a30d" }}>Donasi</strong></>}
+          <KpiCard anim={6} label="Saldo Wakaf (Net)" value={fmtRp(data.wakafNet)} color="#0ea5e9" bg="#e0f2fe" icon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" small
+            footer={<><span>Kas Wakaf Tersedia</span><strong style={{ color: "#0ea5e9" }}>Netto</strong></>}
+          />
+          <KpiCard anim={7} label="Penyaluran Wakaf" value={fmtRp(data.wakafOut)} color="#f43f5e" bg="#ffe4e6" icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" small valueColor="#f43f5e"
+            footer={<><span>Dana Disalurkan</span><strong style={{ color: "#f43f5e" }}>Out</strong></>}
           />
         </div>
       )}
@@ -388,7 +367,7 @@ async function DashboardContent({ searchParams, activeTab, user }: { searchParam
           <KpiCard anim={3} label="Siswa Aktif Perempuan" value={data.totalSiswaPi} color="#ec4899" bg="#fce7f3" icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             footer={<><span>Rasio Perempuan: <strong>{data.totalSiswa ? Math.round((data.totalSiswaPi/data.totalSiswa)*100) : 0}%</strong></span></>}
           />
-          <KpiCard anim={4} label="Kasus/Catatan BK (Bulan Ini)" value={data.counselingCount} color="#6366f1" bg="#e0e7ff" icon="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          <KpiCard anim={4} label="Kasus/Catatan BK (Periode)" value={data.counselingCount} color="#6366f1" bg="#e0e7ff" icon="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
             footer={<><span>Riwayat Bimbingan</span><strong style={{ color: "#6366f1" }}>Konseling</strong></>}
           />
         </div>
@@ -403,7 +382,7 @@ async function DashboardContent({ searchParams, activeTab, user }: { searchParam
           <KpiCard anim={2} label="Total Tenaga Kependidikan" value={data.totalStaff} color="#3b82f6" bg="#dbeafe" icon="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
             footer={<><span>Staf & Tata Usaha</span></>}
           />
-          <KpiCard anim={3} label="Omzet Koperasi (Bulan Ini)" value={fmtRp(data.coopTotal)} color="#10b981" bg="#d1fae5" icon="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" small
+          <KpiCard anim={3} label="Omzet Koperasi (Periode)" value={fmtRp(data.coopTotal)} color="#10b981" bg="#d1fae5" icon="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" small
             footer={<><span>Total: <strong>{data.coopCount}</strong> Trx</span><strong style={{ color: "#10b981" }}>Koperasi</strong></>}
           />
           <KpiCard anim={4} label="Administrasi Tata Usaha" value={data.lettersCount} color="#94a3b8" bg="#f1f5f9" icon="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
@@ -438,4 +417,3 @@ function KpiCard({ anim, label, value, color, bg, icon, footer, small, valueColo
     </div>
   );
 }
-

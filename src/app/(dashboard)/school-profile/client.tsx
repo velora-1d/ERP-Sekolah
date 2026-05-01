@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import Swal from "sweetalert2";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -110,7 +111,16 @@ export default function SchoolProfileClient({ initialData }: { initialData: Reco
                           }
                         }} />
                       </label>
-                      {profile[pk.key] && <img src={ensureHttpsUrl(profile[pk.key])} alt={pk.label} className="mt-2 h-16 w-auto object-contain border border-slate-200 rounded-md bg-white p-1" />}
+                      {profile[pk.key] && (
+                        <div className="mt-2 relative h-16 w-32">
+                          <Image 
+                            src={ensureHttpsUrl(profile[pk.key])} 
+                            alt={pk.label} 
+                            fill
+                            className="object-contain border border-slate-200 rounded-md bg-white p-1" 
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <input value={profile[pk.key] || ""} onChange={e => updateField(pk.key, e.target.value)}
@@ -129,7 +139,14 @@ export default function SchoolProfileClient({ initialData }: { initialData: Reco
             </div>
             <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-2 text-center">
               {profile["school_logo"] ? (
-                <img src={ensureHttpsUrl(profile["school_logo"])} alt="Logo Sekolah" className="w-16 h-16 mx-auto object-contain mb-2 bg-transparent" />
+                <div className="relative w-16 h-16 mx-auto mb-2">
+                  <Image 
+                    src={ensureHttpsUrl(profile["school_logo"])} 
+                    alt="Logo Sekolah" 
+                    fill
+                    className="object-contain bg-transparent" 
+                  />
+                </div>
               ) : (
                 <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center mb-2">
                   <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>

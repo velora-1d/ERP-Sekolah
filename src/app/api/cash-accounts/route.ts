@@ -2,18 +2,68 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { cashAccounts, generalTransactions } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
-import { eq, isNull, asc, and, sql, ilike } from "drizzle-orm";
+import { eq, isNull, asc, and, sql, ilike, gte, lte } from "drizzle-orm";
+import { academicYears } from "@/db/schema";
 
 /**
  * GET — List semua akun kas (non-deleted)
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const academicYearId = searchParams.get("academicYearId");
+  const semester = searchParams.get("semester");
+  const month = searchParams.get("month");
+
+  let startDate: Date | null = null;
+  let endDate: Date | null = null;
+
+  if (academicYearId) {
+    const ay = await db.query.academicYears.findFirst({
+      where: eq(academicYears.id, Number(academicYearId))
+    });
+
+    if (ay) {
+      startDate = ay.startDate ? new Date(ay.startDate) : null;
+      endDate = ay.endDate ? new Date(ay.endDate) : null;
+
+      if (semester === "Ganjil") {
+        endDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 0) : endDate;
+      } else if (semester === "Genap") {
+        startDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 1) : startDate;
+      }
+
+      if (month && month !== "Semua Bulan") {
+        const monthIndex = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].indexOf(month);
+        if (monthIndex !== -1) {
+          let year = startDate ? startDate.getFullYear() : new Date().getFullYear();
+          if (monthIndex < 6 && startDate && startDate.getMonth() >= 6) {
+            year++;
+          } else if (monthIndex >= 6 && startDate && startDate.getMonth() < 6) {
+            year--;
+          }
+          startDate = new Date(year, monthIndex, 1);
+          endDate = new Date(year, monthIndex + 1, 0);
+        }
+      }
+    }
+  }
+
+  const periodConditions = [];
+  if (startDate && endDate) {
+    periodConditions.push(gte(generalTransactions.transactionDate, startDate.toISOString().split("T")[0]));
+    periodConditions.push(lte(generalTransactions.transactionDate, endDate.toISOString().split("T")[0]));
+  }
+
   try {
     const records = await db.select({
       id: cashAccounts.id,
       accountName: cashAccounts.name,
       bankName: cashAccounts.bankName,
       accountNumber: cashAccounts.accountNumber,
+      // If period is filtered, show balance at the end of the period
+      // Actually, for now, let's just filter the transaction count and keep real-time balance as per user instruction "Blokir & Peringatan: real-time"
+      // But let's calculate the balance for that period specifically if requested?
+      // No, user said real-time. I'll just filter transactionCount.
       balance: cashAccounts.balance,
       status: cashAccounts.status,
       transactionCount: sql<number>`count(${generalTransactions.id})`.mapWith(Number),
@@ -21,7 +71,8 @@ export async function GET() {
     .from(cashAccounts)
     .leftJoin(generalTransactions, and(
       eq(cashAccounts.id, generalTransactions.cashAccountId),
-      isNull(generalTransactions.deletedAt)
+      isNull(generalTransactions.deletedAt),
+      ...periodConditions
     ))
     .where(isNull(cashAccounts.deletedAt))
     .groupBy(cashAccounts.id)

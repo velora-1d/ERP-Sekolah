@@ -82,8 +82,36 @@ export default function FilterBar({
           const years: AcademicYear[] = data.success ? data.data : (Array.isArray(data) ? data : []);
           setAcademicYears(years);
           const active = years.find((y) => y.isActive);
-          if (active && !searchParams.get("academicYearId") && visibleFilters.includes("academicYear")) {
-            updateFilter("academicYearId", String(active.id));
+          
+          const params = new URLSearchParams(searchParams.toString());
+          let needsUpdate = false;
+
+          // Auto-select Academic Year
+          if (active && !params.get("academicYearId") && visibleFilters.includes("academicYear")) {
+            params.set("academicYearId", String(active.id));
+            needsUpdate = true;
+          }
+
+          // Auto-select Month & Semester
+          const now = new Date();
+          const monthIdx = now.getMonth();
+          const monthsList = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+          ];
+          
+          if (!params.get("month") && visibleFilters.includes("month")) {
+            params.set("month", monthsList[monthIdx]);
+            needsUpdate = true;
+          }
+          
+          if (!params.get("semester") && visibleFilters.includes("semester")) {
+            params.set("semester", monthIdx >= 6 ? "ganjil" : "genap");
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            router.push(`${pathname}?${params.toString()}`);
           }
         });
     }
@@ -96,7 +124,7 @@ export default function FilterBar({
           if (data.success) setClassrooms(data.data);
         });
     }
-  }, [visibleFilters, searchParams, updateFilter]);
+  }, [visibleFilters, searchParams, pathname, router]);
 
   const months = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",

@@ -6,6 +6,9 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { Wallet, Search } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import FilterBar from "@/components/FilterBar";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 interface StudentTabungan {
   id: number;
@@ -30,6 +33,15 @@ interface Transaction {
 }
 
 export default function TabunganPage({ initialClassrooms }: { initialClassrooms: Classroom[] }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TabunganContent initialClassrooms={initialClassrooms} />
+    </Suspense>
+  );
+}
+
+function TabunganContent({ initialClassrooms }: { initialClassrooms: Classroom[] }) {
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [classrooms] = useState<Classroom[]>(initialClassrooms);
   const [classFilter, setClassFilter] = useState("");
@@ -62,9 +74,16 @@ export default function TabunganPage({ initialClassrooms }: { initialClassrooms:
   const fmtRp = (n: number) => "Rp " + Number(n || 0).toLocaleString("id-ID");
 
   const { data: queryResult, isLoading } = useQuery({
-    queryKey: ["tabungan", classFilter, search, page, limit],
+    queryKey: ["tabungan", classFilter, search, page, limit, searchParams.toString()],
     queryFn: async () => {
-      const res = await fetch(`/api/tabungan?classId=${classFilter}&q=${search}&page=${page}&limit=${limit}`);
+      const queryString = new URLSearchParams({
+        classId: classFilter,
+        q: search,
+        page: page.toString(),
+        limit: limit.toString(),
+        ...Object.fromEntries(searchParams.entries())
+      }).toString();
+      const res = await fetch(`/api/tabungan?${queryString}`);
       return res.json();
     },
     staleTime: 1000 * 60 * 5,
@@ -148,6 +167,7 @@ export default function TabunganPage({ initialClassrooms }: { initialClassrooms:
         title="Tabungan Siswa"
         subtitle="Kelola setoran & penarikan tabungan seluruh siswa aktif."
         icon={<Wallet />}
+
         actions={
           <div className="flex items-center gap-3">
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2">
@@ -178,6 +198,8 @@ export default function TabunganPage({ initialClassrooms }: { initialClassrooms:
           </div>
         }
       />
+
+      <FilterBar />
 
       {/* Tabel Siswa & Saldo */}
       <Card>
