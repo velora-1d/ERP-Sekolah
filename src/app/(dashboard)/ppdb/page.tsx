@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { db } from "@/db";
 import { classrooms, cashAccounts } from "@/db/schema";
 import { isNull, and, eq, or, desc, inArray, sql, asc } from "drizzle-orm";

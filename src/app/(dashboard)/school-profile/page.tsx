@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { db } from "@/db";
 import { schoolSettings } from "@/db/schema";
 import SchoolProfileClient from "./client";

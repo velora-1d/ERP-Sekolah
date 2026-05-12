@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { db } from "@/db";
 import { teachingAssignments, employees, subjects, classrooms, academicYears } from "@/db/schema";
 import { isNull, eq, desc, sql } from "drizzle-orm";
