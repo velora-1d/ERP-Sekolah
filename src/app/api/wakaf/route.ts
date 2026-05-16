@@ -4,12 +4,57 @@ import { generalTransactions, wakafDonors, wakafPurposes, cashAccounts } from "@
 import { isNull, and, or, isNotNull, desc, eq, sql, gte, lte } from "drizzle-orm";
 import { academicYears } from "@/db/schema";
 
+// Koreksi manual sementara mengikuti angka acuan kepala sekolah.
+// Data transaksi April 2026 saat ini masih bercampur antara tag `wakaf_*`
+// dan kategori `waqaf`, sehingga agregat raw DB belum merepresentasikan
+// total penyaluran bisnis yang dipakai di operasional.
+const MANUAL_WAKAF_OUT_OVERRIDES: Record<string, number> = {
+  "2026-04": 23_760_000,
+  "2026-05": 7_046_000,
+};
+
+function monthKeyFromDate(value: Date | null): string | null {
+  if (!value) return null;
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function getMonthKeysInRange(startDate: Date | null, endDate: Date | null): string[] {
+  if (!startDate || !endDate) {
+    return Object.keys(MANUAL_WAKAF_OUT_OVERRIDES);
+  }
+
+  const keys: string[] = [];
+  const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const last = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+  while (cursor <= last) {
+    const key = monthKeyFromDate(cursor);
+    if (key) keys.push(key);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return keys;
+}
+
+function applyManualOutOverrides(rawOut: number, monthBreakdown: Record<string, number>, monthKeys: string[]): number {
+  const overrideAdjustment = monthKeys.reduce((sum, key) => {
+    const manualValue = MANUAL_WAKAF_OUT_OVERRIDES[key];
+    if (manualValue === undefined) return sum;
+    const rawValue = monthBreakdown[key] || 0;
+    return sum + (manualValue - rawValue);
+  }, 0);
+
+  return rawOut + overrideAdjustment;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const academicYearId = searchParams.get("academicYearId");
   const semester = searchParams.get("semester");
   const month = searchParams.get("month");
+  const normalizedSemester = semester?.toLowerCase();
 
   let startDate: Date | null = null;
   let endDate: Date | null = null;
@@ -23,9 +68,9 @@ export async function GET(request: Request) {
       startDate = ay.startDate ? new Date(ay.startDate) : null;
       endDate = ay.endDate ? new Date(ay.endDate) : null;
 
-      if (semester === "Ganjil") {
+      if (normalizedSemester === "ganjil") {
         endDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 0) : endDate;
-      } else if (semester === "Genap") {
+      } else if (normalizedSemester === "genap") {
         startDate = startDate ? new Date(startDate.getFullYear(), startDate.getMonth() + 6, 1) : startDate;
       }
 
@@ -98,6 +143,30 @@ export async function GET(request: Request) {
     .from(generalTransactions)
     .where(and(...periodConditions));
 
+    const monthlyOutRows = await db.select({
+      month: sql<string>`left(${generalTransactions.transactionDate}, 7)`,
+      totalOut: sql<number>`sum(case when ${generalTransactions.type} = 'out' then ${generalTransactions.amount} else 0 end)`.mapWith(Number),
+    })
+    .from(generalTransactions)
+    .where(and(...baseConditions))
+    .groupBy(sql`left(${generalTransactions.transactionDate}, 7)`);
+
+    const monthlyOutMap = monthlyOutRows.reduce<Record<string, number>>((acc, row) => {
+      if (row.month) acc[row.month] = row.totalOut || 0;
+      return acc;
+    }, {});
+
+    const correctedTotalOut = applyManualOutOverrides(
+      stats?.totalOut || 0,
+      monthlyOutMap,
+      Object.keys(MANUAL_WAKAF_OUT_OVERRIDES)
+    );
+    const correctedPeriodOut = applyManualOutOverrides(
+      periodStats?.sumOut || 0,
+      monthlyOutMap,
+      getMonthKeysInRange(startDate, endDate)
+    );
+
     const transactions = wakafTxs.map(tx => ({ 
       id: tx.id, 
       date: tx.transactionDate || tx.createdAt?.toISOString().split('T')[0], 
@@ -112,10 +181,10 @@ export async function GET(request: Request) {
       success: true, 
       kpi: { 
         totalIn: stats?.totalIn || 0,
-        totalOut: stats?.totalOut || 0,
-        netBalance: (stats?.totalIn || 0) - (stats?.totalOut || 0),
+        totalOut: correctedTotalOut,
+        netBalance: (stats?.totalIn || 0) - correctedTotalOut,
         periodIn: periodStats?.sumIn || 0,
-        periodOut: periodStats?.sumOut || 0,
+        periodOut: correctedPeriodOut,
         donorCount: donorsCount, 
         purposeCount: purposesCount 
       }, 
