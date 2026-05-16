@@ -66,6 +66,14 @@ function WakafContent() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
+  const hasPeriodFilter = Boolean(
+    searchParams.get("academicYearId") ||
+    searchParams.get("semester") ||
+    searchParams.get("month")
+  );
+  const displayedTotalIn = hasPeriodFilter ? kpi.periodIn : kpi.totalIn;
+  const displayedTotalOut = hasPeriodFilter ? kpi.periodOut : kpi.totalOut;
+
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -450,18 +458,18 @@ function WakafContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 border-l-4 border-emerald-500 shadow-sm">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Terkumpul</p>
-          <p className="text-xl font-extrabold text-emerald-600">{fmtRp(kpi.totalIn)}</p>
+          <p className="text-xl font-extrabold text-emerald-600">{fmtRp(displayedTotalIn)}</p>
           <div className="mt-2 flex items-center text-[10px] text-slate-400">
-            <span className="font-bold text-emerald-500">+{fmtRp(kpi.periodIn)}</span>
-            <span className="ml-1">periode ini</span>
+            <span className="font-bold text-emerald-500">+{fmtRp(kpi.totalIn)}</span>
+            <span className="ml-1">total semua data</span>
           </div>
         </Card>
         <Card className="p-5 border-l-4 border-rose-500 shadow-sm">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Penyaluran</p>
-          <p className="text-xl font-extrabold text-rose-600">{fmtRp(kpi.totalOut)}</p>
+          <p className="text-xl font-extrabold text-rose-600">{fmtRp(displayedTotalOut)}</p>
           <div className="mt-2 flex items-center text-[10px] text-slate-400">
-            <span className="font-bold text-rose-500">-{fmtRp(kpi.periodOut)}</span>
-            <span className="ml-1">periode ini</span>
+            <span className="font-bold text-rose-500">-{fmtRp(kpi.totalOut)}</span>
+            <span className="ml-1">total semua data</span>
           </div>
         </Card>
         <Card className="p-5 border-l-4 border-blue-500 shadow-sm bg-blue-50/30">
