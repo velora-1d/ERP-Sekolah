@@ -4,7 +4,7 @@
 Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, penugasan guru, keuangan, dan administrasi siswa.
 
 ## Stack Teknologi
-- Frontend: Next.js 16.1.6 (App Router)
+- Frontend: Next.js 16.2.6 (App Router)
 - Backend: Next.js API Routes (Route Handlers)
 - Database: PostgreSQL (Regular/Standard)
 - ORM: Drizzle ORM
@@ -37,7 +37,7 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 
 ## Hosting & Infra
 - Development: Local
-- Production: Vercel
+- Production: Vercel / VPS (Docker + Dokploy)
 
 ## Catatan Khusus
 - Menggunakan soft delete (`deletedAt`) di sebagian besar tabel.
@@ -56,6 +56,7 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 - Perbaikan modul kurikulum: menghapus ketergantungan client ke Server Action dan memindahkan reset kurikulum ke Route Handler agar stabil saat deployment Vercel.
 - Redesign halaman kurikulum: ringkasan periode lebih akurat, tahun ajaran tidak lagi hardcoded, komponen nilai dan KKM dimuat sesuai periode aktif.
 - Menonaktifkan cache GET untuk endpoint kurikulum, komponen nilai, dan KKM agar refetch admin selalu mengambil data terbaru setelah simpan/reset.
+- Audit performa VPS: Upgrade Next.js ke versi 16.2.6 (memperbaiki bug worker Server Actions), optimasi `next.config.ts` untuk standalone, dan perbaikan koneksi database pooling menggunakan pola `globalThis` di `src/db/index.ts` untuk load yang lebih cepat di self-hosted.
 
 ## Last Updated
 2026-06-01
