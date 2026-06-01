@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import Pagination from "@/components/Pagination";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FilterBar from "@/components/FilterBar";
@@ -40,6 +40,8 @@ interface CashAccount {
   accountName?: string; // Menampung field dari API
 }
 
+const SUPPORTED_WAKAF_FILTER_KEYS = ["academicYearId", "semester", "month", "type"];
+
 export default function WakafPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -49,12 +51,40 @@ export default function WakafPage() {
 }
 
 function WakafContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, donatur, tujuan
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const queryString = searchParams.toString();
+  const wakafParams = new URLSearchParams();
+
+  SUPPORTED_WAKAF_FILTER_KEYS.forEach((key) => {
+    const value = searchParams.get(key);
+    if (value) {
+      wakafParams.set(key, value);
+    }
+  });
+
+  const queryString = wakafParams.toString();
+
+  useEffect(() => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+    let hasUnsupportedParams = false;
+
+    Array.from(currentParams.keys()).forEach((key) => {
+      if (!SUPPORTED_WAKAF_FILTER_KEYS.includes(key)) {
+        currentParams.delete(key);
+        hasUnsupportedParams = true;
+      }
+    });
+
+    if (hasUnsupportedParams) {
+      const nextQuery = currentParams.toString();
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+    }
+  }, [pathname, router, searchParams]);
 
   const { data: wakafQuery } = useQuery({
     queryKey: ["wakaf", queryString],
