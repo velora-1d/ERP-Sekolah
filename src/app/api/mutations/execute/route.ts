@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     });
     
     // Invalidate cache agar daftar siswa langsung terupdate
-    revalidateTag("students");
+    revalidateTag("students", { expire: 0 });
 
     const actionLabel = resolvedStatus
       ? `Status ${result.count} siswa diubah ke "${resolvedStatus}"`
