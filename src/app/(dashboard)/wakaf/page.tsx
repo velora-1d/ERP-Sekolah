@@ -40,7 +40,14 @@ interface CashAccount {
   accountName?: string; // Menampung field dari API
 }
 
-const SUPPORTED_WAKAF_FILTER_KEYS = ["academicYearId", "semester", "month", "type"];
+const SUPPORTED_WAKAF_FILTER_KEYS = [
+  "academicYearId",
+  "semester",
+  "month",
+  "type",
+  "donorId",
+  "purposeId",
+];
 
 export default function WakafPage() {
   return (
@@ -68,6 +75,8 @@ function WakafContent() {
   });
 
   const queryString = wakafParams.toString();
+  const selectedDonorId = searchParams.get("donorId") || "";
+  const selectedPurposeId = searchParams.get("purposeId") || "";
 
   useEffect(() => {
     const currentParams = new URLSearchParams(searchParams.toString());
@@ -148,13 +157,16 @@ function WakafContent() {
     name: account.accountName || account.name,
   }));
 
-  const hasPeriodFilter = Boolean(
+  const hasActiveFilter = Boolean(
     searchParams.get("academicYearId") ||
     searchParams.get("semester") ||
-    searchParams.get("month")
+    searchParams.get("month") ||
+    searchParams.get("type") ||
+    selectedDonorId ||
+    selectedPurposeId
   );
-  const totalInCaption = hasPeriodFilter ? `Periode aktif: +${fmtRp(kpi.periodIn)}` : "total semua data";
-  const totalOutCaption = hasPeriodFilter ? `Periode aktif: -${fmtRp(kpi.periodOut)}` : "total semua data";
+  const totalInCaption = hasActiveFilter ? `Filter aktif: +${fmtRp(kpi.periodIn)}` : "total semua data";
+  const totalOutCaption = hasActiveFilter ? `Filter aktif: -${fmtRp(kpi.periodOut)}` : "total semua data";
 
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
@@ -180,6 +192,25 @@ function WakafContent() {
   const refreshPurposes = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["wakaf-purposes"] });
   }, [queryClient]);
+
+  const updateWakafFilter = useCallback((key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
+
+  const clearDonorPurposeFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("donorId");
+    params.delete("purposeId");
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+  }, [pathname, router, searchParams]);
 
   function fmtRp(n: number) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
@@ -500,6 +531,53 @@ function WakafContent() {
           { label: "Keluar (Penyaluran)", value: "out" },
         ]}
       />
+
+      <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm">
+        <div className="min-w-[220px] flex-1">
+          <label className="ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Donatur
+          </label>
+          <select
+            value={selectedDonorId}
+            onChange={(event) => updateWakafFilter("donorId", event.target.value)}
+            className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-700 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="">Semua Donatur</option>
+            {donors.map((donor) => (
+              <option key={donor.id} value={String(donor.id)}>
+                {donor.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="min-w-[220px] flex-1">
+          <label className="ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Program
+          </label>
+          <select
+            value={selectedPurposeId}
+            onChange={(event) => updateWakafFilter("purposeId", event.target.value)}
+            className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-700 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="">Semua Program</option>
+            {purposes.map((purpose) => (
+              <option key={purpose.id} value={String(purpose.id)}>
+                {purpose.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(selectedDonorId || selectedPurposeId) && (
+          <button
+            onClick={clearDonorPurposeFilters}
+            className="rounded-xl px-3 py-2.5 text-xs font-bold text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700"
+          >
+            Reset Donatur/Program
+          </button>
+        )}
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

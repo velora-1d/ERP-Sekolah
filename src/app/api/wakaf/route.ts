@@ -10,6 +10,8 @@ export async function GET(request: Request) {
   const semester = searchParams.get("semester");
   const month = searchParams.get("month");
   const typeFilter = searchParams.get("type");
+  const donorId = searchParams.get("donorId");
+  const purposeId = searchParams.get("purposeId");
   const normalizedSemester = semester?.toLowerCase();
 
   let startDate: Date | null = null;
@@ -62,14 +64,23 @@ export async function GET(request: Request) {
     wakafTransactionConditions
   ];
 
-  const periodConditions = [...baseConditions];
+  const scopedConditions = [...baseConditions];
+  if (typeFilter && (typeFilter === "in" || typeFilter === "out")) {
+    scopedConditions.push(eq(generalTransactions.type, typeFilter));
+  }
+
+  if (donorId) {
+    scopedConditions.push(eq(generalTransactions.wakafDonorId, Number(donorId)));
+  }
+
+  if (purposeId) {
+    scopedConditions.push(eq(generalTransactions.wakafPurposeId, Number(purposeId)));
+  }
+
+  const periodConditions = [...scopedConditions];
   if (startDate && endDate) {
     periodConditions.push(gte(generalTransactions.transactionDate, startDate.toISOString().split("T")[0]));
     periodConditions.push(lte(generalTransactions.transactionDate, endDate.toISOString().split("T")[0]));
-  }
-
-  if (typeFilter && (typeFilter === "in" || typeFilter === "out")) {
-    periodConditions.push(eq(generalTransactions.type, typeFilter));
   }
 
   try {
@@ -101,7 +112,7 @@ export async function GET(request: Request) {
     })
     .from(generalTransactions)
     .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
-    .where(and(...baseConditions));
+    .where(and(...scopedConditions));
 
     // KPI Periode Terpilih
     const [periodStats] = await db.select({
