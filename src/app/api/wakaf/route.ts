@@ -4,6 +4,8 @@ import { generalTransactions, wakafDonors, wakafPurposes, cashAccounts, transact
 import { isNull, and, or, isNotNull, desc, eq, sql, gte, lte, ilike } from "drizzle-orm";
 import { academicYears } from "@/db/schema";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const academicYearId = searchParams.get("academicYearId");
