@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3Client, R2_BUCKET, R2_PUBLIC_URL, R2_PREFIX } from "@/lib/s3";
+import { v4 as uuidv4 } from 'uuid';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,29 +14,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Validasi env Cloudinary sebelum proses
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-  if (!cloudName || !apiKey || !apiSecret) {
-    console.error('Upload error: Konfigurasi Cloudinary tidak lengkap', {
-      cloudName: cloudName ? 'ada' : 'KOSONG',
-      apiKey: apiKey ? 'ada' : 'KOSONG',
-      apiSecret: apiSecret ? 'ada' : 'KOSONG',
-    });
+  // Validasi konfigurasi R2
+  if (!R2_BUCKET || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+    console.error('Upload error: Konfigurasi Cloudflare R2 tidak lengkap');
     return NextResponse.json(
-      { error: 'Konfigurasi Cloudinary tidak lengkap di server' },
+      { error: 'Konfigurasi storage tidak lengkap di server' },
       { status: 500, headers: corsHeaders }
     );
   }
-
-  // Konfigurasi Cloudinary langsung di sini (tidak pakai singleton global)
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-  });
 
   try {
     const formData = await request.formData();
@@ -67,36 +54,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Buat nama file unik
+    const fileExtension = file.name.split('.').pop() || 'jpg';
+    const fileName = `${R2_PREFIX}${uuidv4()}.${fileExtension}`;
 
-    const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder: 'mh-assaodah/cms',
-          resource_type: 'auto',
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else if (!result) {
-            reject(new Error('Cloudinary tidak mengembalikan hasil'));
-          } else {
-            resolve(result as { secure_url: string; public_id: string });
-          }
-        }
-      ).end(buffer);
+    const command = new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: fileName,
+      Body: buffer,
+      ContentType: file.type,
     });
+
+    await s3Client.send(command);
+
+    // Bangun URL publik
+    // Jika R2_PUBLIC_URL diakhiri dengan slash, hapus
+    const baseUrl = R2_PUBLIC_URL.endsWith('/') ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+    const publicUrl = `${baseUrl}/${fileName}`;
 
     return NextResponse.json({
       success: true,
-      url: result.secure_url,
-      public_id: result.public_id,
+      url: publicUrl,
+      key: fileName,
     }, { headers: corsHeaders });
 
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Upload error:', errMsg);
     return NextResponse.json(
-      { error: `Gagal mengunggah file: ${errMsg}` },
+      { error: `Gagal mengunggah file ke R2: ${errMsg}` },
       { status: 500, headers: corsHeaders }
     );
   }

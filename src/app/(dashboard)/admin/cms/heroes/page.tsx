@@ -78,7 +78,7 @@ export default function HeroesCMS() {
       } else {
         Swal.fire('Gagal', result.message, 'error');
       }
-    } catch (error) {
+    } catch {
       Swal.fire('Error', 'Terjadi kesalahan server', 'error');
     }
   };
@@ -101,7 +101,7 @@ export default function HeroesCMS() {
           Swal.fire('Terhapus', data.message, 'success');
           fetchHeroesSorted();
         }
-      } catch (error) {
+      } catch {
         Swal.fire('Error', 'Gagal menghapus banner', 'error');
       }
     }

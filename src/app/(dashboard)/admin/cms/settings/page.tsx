@@ -57,7 +57,7 @@ export default function SettingsCMS() {
       } else {
         Swal.fire('Gagal', result.message, 'error');
       }
-    } catch (error) {
+    } catch {
       Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
     } finally {
       setSaving(false);

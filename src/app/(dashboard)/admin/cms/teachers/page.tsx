@@ -73,7 +73,7 @@ export default function TeachersCMS() {
       } else {
         Swal.fire('Gagal', result.message, 'error');
       }
-    } catch (error) {
+    } catch {
       Swal.fire('Error', 'Terjadi kesalahan server', 'error');
     }
   };
@@ -96,7 +96,7 @@ export default function TeachersCMS() {
           Swal.fire('Terhapus', data.message, 'success');
           fetchTeachersData();
         }
-      } catch (error) {
+      } catch {
         Swal.fire('Error', 'Gagal menghapus data guru', 'error');
       }
     }

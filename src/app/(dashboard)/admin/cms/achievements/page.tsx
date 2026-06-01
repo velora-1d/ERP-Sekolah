@@ -82,7 +82,7 @@ export default function AchievementsCMS() {
       } else {
         Swal.fire('Gagal', result.message, 'error');
       }
-    } catch (error) {
+    } catch {
       Swal.fire('Error', 'Terjadi kesalahan server', 'error');
     }
   };
@@ -105,7 +105,7 @@ export default function AchievementsCMS() {
           Swal.fire('Terhapus', data.message, 'success');
           fetchAchievements();
         }
-      } catch (error) {
+      } catch {
         Swal.fire('Error', 'Gagal menghapus prestasi', 'error');
       }
     }

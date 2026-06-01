@@ -8,7 +8,7 @@ import {
   webPrograms, webStats, ppdbRegistrations,
   employees
 } from "@/db/schema";
-import { count, eq, and, isNull, asc } from "drizzle-orm";
+import { count, eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 
 async function getCMSStats() {

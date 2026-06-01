@@ -55,7 +55,7 @@ export default function PostsCMS() {
     };
 
     if (data.publishedAt) {
-      // @ts-ignore
+      // @ts-expect-error - payload type is dynamic
       payload.publishedAt = new Date(data.publishedAt as string);
     }
 
@@ -73,7 +73,7 @@ export default function PostsCMS() {
       } else {
         Swal.fire('Gagal', result.message, 'error');
       }
-    } catch (error) {
+    } catch {
       Swal.fire('Error', 'Terjadi kesalahan server', 'error');
     }
   };
@@ -96,7 +96,7 @@ export default function PostsCMS() {
           Swal.fire('Terhapus', data.message, 'success');
           fetchPosts();
         }
-      } catch (error) {
+      } catch {
         Swal.fire('Error', 'Gagal menghapus berita', 'error');
       }
     }
