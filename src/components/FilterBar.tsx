@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface AcademicYear {
   id: number;
@@ -39,9 +40,6 @@ export default function FilterBar({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
 
   const [filters, setFilters] = useState({
     academicYearId: searchParams.get("academicYearId") || "",
@@ -84,61 +82,77 @@ export default function FilterBar({
     }
 
     setFilters((prev) => ({ ...prev, [key]: value }));
-    router.push(`${pathname}?${params.toString()}`);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
   }, [pathname, router, searchParams]);
 
+  const { data: academicYears = [] } = useQuery<AcademicYear[]>({
+    queryKey: ["filter-options", "academic-years"],
+    queryFn: async () => {
+      const res = await fetch("/api/academic-years?options=true");
+      const data = await res.json();
+      return data.success ? data.data || [] : [];
+    },
+    enabled: visibleFilters.includes("academicYear") || visibleFilters.includes("classroom"),
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const classroomAcademicYearId =
+    filters.academicYearId && filters.academicYearId !== "all"
+      ? filters.academicYearId
+      : "all";
+
+  const { data: classrooms = [] } = useQuery<Classroom[]>({
+    queryKey: ["filter-options", "classrooms", classroomAcademicYearId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ options: "true" });
+      if (classroomAcademicYearId) {
+        params.set("academicYearId", classroomAcademicYearId);
+      }
+      const res = await fetch(`/api/classrooms?${params.toString()}`);
+      const data = await res.json();
+      return data.success ? data.data || [] : [];
+    },
+    enabled: visibleFilters.includes("classroom"),
+    staleTime: 1000 * 60 * 10,
+  });
+
   useEffect(() => {
-    // Ambil data Tahun Ajaran jika filter akademik aktif
-    if (visibleFilters.includes("academicYear") || visibleFilters.includes("classroom")) {
-      fetch("/api/academic-years?limit=1000")
-        .then((res) => res.json())
-        .then((data) => {
-          const years: AcademicYear[] = data.success ? data.data : (Array.isArray(data) ? data : []);
-          setAcademicYears(years);
-          
-          // Logika auto-select hanya jalan jika belum ada di URL
-          const params = new URLSearchParams(window.location.search);
-          const active = years.find((y) => y.isActive);
-          let needsUpdate = false;
+    if (academicYears.length === 0) return;
 
-          if (active && !params.get("academicYearId") && visibleFilters.includes("academicYear")) {
-            params.set("academicYearId", String(active.id));
-            needsUpdate = true;
-          }
+    const params = new URLSearchParams(window.location.search);
+    const active = academicYears.find((y) => y.isActive);
+    let needsUpdate = false;
 
-          const now = new Date();
-          const monthIdx = now.getMonth();
-          const monthsList = [
-            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-          ];
-          
-          if (!params.get("month") && visibleFilters.includes("month")) {
-            params.set("month", monthsList[monthIdx]);
-            needsUpdate = true;
-          }
-          
-          if (!params.get("semester") && visibleFilters.includes("semester")) {
-            params.set("semester", monthIdx >= 6 ? "ganjil" : "genap");
-            needsUpdate = true;
-          }
-
-          if (needsUpdate) {
-            router.replace(`${pathname}?${params.toString()}`);
-          }
-        });
+    if (active && !params.get("academicYearId") && visibleFilters.includes("academicYear")) {
+      params.set("academicYearId", String(active.id));
+      needsUpdate = true;
     }
 
-    // Ambil data Kelas jika filter kelas aktif
-    if (visibleFilters.includes("classroom")) {
-      fetch("/api/classrooms?limit=1000")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) setClassrooms(data.data);
-        });
+    const now = new Date();
+    const monthIdx = now.getMonth();
+    const monthsList = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    if (!params.get("month") && visibleFilters.includes("month")) {
+      params.set("month", monthsList[monthIdx]);
+      needsUpdate = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Hanya jalan sekali saat mount
+
+    if (!params.get("semester") && visibleFilters.includes("semester")) {
+      params.set("semester", monthIdx >= 6 ? "ganjil" : "genap");
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      });
+    }
+  }, [academicYears, pathname, router, visibleFilters]);
 
   const months = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -208,7 +222,6 @@ export default function FilterBar({
           >
             <option value="">Semua Kelas</option>
             {classrooms
-              .filter(c => !filters.academicYearId || filters.academicYearId === "all" || c.academicYearId === Number(filters.academicYearId))
               .map((c) => (
                 <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}

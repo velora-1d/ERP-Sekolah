@@ -1,30 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
+import {
+  BookOpen,
+  CalendarRange,
+  GraduationCap,
+  Layers3,
+  Plus,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Pagination from "@/components/Pagination";
 import FilterBar from "@/components/FilterBar";
-import { useSearchParams } from "next/navigation";
-import { 
-  createCurriculum, 
-  resetCurriculum, 
-  deleteGradeComponent, 
-  saveKkmValue 
-} from "@/app/actions/curriculum-actions";
-import { Trash, Plus, Save, BookOpen as BookOpenIcon } from "lucide-react";
-
-const BookOpen = ({ className }: { className?: string }) => (
-  <BookOpenIcon className={className} />
-);
 
 interface Curriculum {
   id: number;
   type: string;
-  academicYearId: number;
+  academicYearId: number | null;
   semester: string;
   isLocked: boolean;
+  createdAt?: string;
+  academicYear?: {
+    id: number;
+    year: string;
+  } | null;
 }
 
 interface GradeComponent {
@@ -41,448 +47,1095 @@ interface Subject {
   code: string;
 }
 
+interface KkmItem {
+  subjectId: number;
+  nilaiKKM: number;
+  deskripsiKKTP: string;
+}
+
+interface AcademicYearOption {
+  id: number;
+  year: string;
+  isActive: boolean;
+}
+
+interface GradeComponentResponse {
+  success: boolean;
+  data: GradeComponent[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface SubjectResponse {
+  success: boolean;
+  data: Subject[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+interface KkmResponse {
+  success: boolean;
+  data: KkmItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface AcademicYearOptionsResponse {
+  success: boolean;
+  data: AcademicYearOption[];
+}
+
+interface KkmDraft {
+  nilai: number;
+  deskripsi: string;
+  saving?: boolean;
+}
+
+const COMPONENTS_PER_PAGE = 5;
+const SUBJECTS_PER_PAGE = 10;
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    cache: "no-store",
+  });
+
+  const json = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof json?.message === "string"
+        ? json.message
+        : typeof json?.error === "string"
+          ? json.error
+          : "Terjadi kesalahan saat memproses data";
+
+    throw new Error(message);
+  }
+
+  return json as T;
+}
+
+function getCurriculumMeta(type: string) {
+  switch (type) {
+    case "KURMER":
+      return {
+        label: "Kurikulum Merdeka",
+        shortLabel: "KM",
+        badgeClass: "border-indigo-100 bg-indigo-50 text-indigo-700",
+        iconClass: "from-indigo-600 to-sky-500",
+      };
+    case "K13":
+      return {
+        label: "Kurikulum 2013",
+        shortLabel: "K13",
+        badgeClass: "border-emerald-100 bg-emerald-50 text-emerald-700",
+        iconClass: "from-emerald-600 to-teal-500",
+      };
+    default:
+      return {
+        label: "Kurikulum Kustom",
+        shortLabel: "CST",
+        badgeClass: "border-amber-100 bg-amber-50 text-amber-700",
+        iconClass: "from-amber-500 to-orange-500",
+      };
+  }
+}
+
+function getSemesterLabel(value: string) {
+  return value === "genap" ? "Genap" : "Ganjil";
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  caption,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  caption: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-300/50">
+        {icon}
+      </div>
+      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-black tracking-tight text-slate-800">
+        {value}
+      </p>
+      <p className="mt-1 text-sm text-slate-500">{caption}</p>
+    </div>
+  );
+}
+
 export default function CurriculumPage() {
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const selectedYearId = searchParams.get("academicYearId") || "";
   const semester = searchParams.get("semester") || "ganjil";
 
-  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
-  const [loading, setLoading] = useState(false);
-  
-  const [components, setComponents] = useState<GradeComponent[]>([]);
-  const [newComp, setNewComp] = useState({ name: "", code: "", bobot: 0 });
-  
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [kkmData, setKkmData] = useState<Record<number, { nilai: number; deskripsi: string; saving?: boolean }>>({});
-
-  // Pagination states
   const [subPage, setSubPage] = useState(1);
-  const [subPagination, setSubPagination] = useState({ total: 0, totalPages: 1 });
   const [compPage, setCompPage] = useState(1);
-  const [compPagination, setCompPagination] = useState({ total: 0, totalPages: 1 });
+  const [creatingType, setCreatingType] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isAddingComponent, setIsAddingComponent] = useState(false);
+  const [newComp, setNewComp] = useState({
+    name: "",
+    code: "",
+    bobot: "",
+  });
+  const [kkmDrafts, setKkmDrafts] = useState<Record<number, KkmDraft>>({});
 
-  const loadKkm = useCallback(async (curriculumId: number) => {
-    try {
-      const res = await fetch(`/api/grades/kkm?curriculumId=${curriculumId}&limit=1000`);
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        const mapped: Record<number, { nilai: number; deskripsi: string }> = {};
-        interface KkmItem {
-          subjectId: number;
-          nilaiKKM: number;
-          deskripsiKKTP: string;
-        }
-        json.data.forEach((k: KkmItem) => {
-          mapped[k.subjectId] = { nilai: k.nilaiKKM, deskripsi: k.deskripsiKKTP };
-        });
-        setKkmData(mapped);
-      }
-    } catch (error) { console.error(error); }
-  }, []);
+  useEffect(() => {
+    setSubPage(1);
+    setCompPage(1);
+  }, [selectedYearId, semester]);
 
-  const loadCurriculum = useCallback(async () => {
-    if (!selectedYearId || !semester) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/curriculum?academicYearId=${selectedYearId}&semester=${semester}`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
-      if (list.length > 0) {
-        setCurriculum(list[0]);
-        loadKkm(list[0].id);
-      } else {
-        setCurriculum(null);
-        setComponents([]);
-        setKkmData({});
-      }
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  }, [selectedYearId, semester, loadKkm]);
+  const academicYearsQuery = useQuery<AcademicYearOptionsResponse>({
+    queryKey: ["curriculum-academic-year-options"],
+    queryFn: () => fetchJson<AcademicYearOptionsResponse>("/api/academic-years?options=true"),
+    staleTime: 1000 * 60 * 5,
+  });
 
-  const loadComponents = useCallback(async () => {
-    if (!curriculum) return;
-    try {
-      const res = await fetch(`/api/grades/components?curriculumId=${curriculum.id}&page=${compPage}&limit=5`);
-      const json = await res.json();
-      if (json.success) {
-        setComponents(json.data);
-        setCompPagination({ total: json.total, totalPages: json.totalPages });
-      }
-    } catch (e) { console.error(e); }
-  }, [curriculum, compPage]);
+  const curriculumQuery = useQuery<Curriculum | null>({
+    queryKey: ["curriculum-config", selectedYearId, semester],
+    enabled: Boolean(selectedYearId),
+    queryFn: async () => {
+      const result = await fetchJson<Curriculum[]>(
+        `/api/curriculum?academicYearId=${selectedYearId}&semester=${semester}`
+      );
+      return result[0] ?? null;
+    },
+  });
 
-  const loadSubjects = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/subjects?page=${subPage}&limit=10`);
-      const json = await res.json();
-      if (json.success) {
-        setSubjects(json.data);
-        setSubPagination({ total: json.pagination.total, totalPages: json.pagination.totalPages });
-      }
-    } catch (e) { console.error(e); }
-  }, [subPage]);
+  const curriculum = curriculumQuery.data ?? null;
 
-  useEffect(() => { loadCurriculum(); }, [loadCurriculum]);
-  useEffect(() => { loadComponents(); }, [loadComponents]);
-  useEffect(() => { loadSubjects(); }, [loadSubjects]);
+  const componentsQuery = useQuery<GradeComponentResponse>({
+    queryKey: ["curriculum-components", curriculum?.id],
+    enabled: Boolean(curriculum?.id),
+    queryFn: () =>
+      fetchJson<GradeComponentResponse>(
+        `/api/grades/components?curriculumId=${curriculum?.id}&page=1&limit=100`
+      ),
+  });
 
-  const handleCreate = async (type: string) => {
-    const res = await createCurriculum({ 
-      type, 
-      academicYearId: Number(selectedYearId), 
-      semester 
-    });
-    if (res.success) {
-      Swal.fire("Berhasil", "Kurikulum telah dibuat", "success");
-      await loadCurriculum();
-    } else {
-      Swal.fire("Gagal", res.error, "error");
+  const kkmQuery = useQuery<KkmResponse>({
+    queryKey: ["curriculum-kkm", curriculum?.id],
+    enabled: Boolean(curriculum?.id),
+    queryFn: () =>
+      fetchJson<KkmResponse>(
+        `/api/grades/kkm?curriculumId=${curriculum?.id}&page=1&limit=1000`
+      ),
+  });
+
+  const subjectsQuery = useQuery<SubjectResponse>({
+    queryKey: ["curriculum-subjects", subPage],
+    queryFn: () =>
+      fetchJson<SubjectResponse>(
+        `/api/subjects?page=${subPage}&limit=${SUBJECTS_PER_PAGE}`
+      ),
+    placeholderData: (previous) => previous,
+  });
+
+  useEffect(() => {
+    if (!curriculum?.id) {
+      setKkmDrafts({});
+      return;
     }
+
+    const mapped = (kkmQuery.data?.data || []).reduce<Record<number, KkmDraft>>(
+      (acc, item) => {
+        acc[item.subjectId] = {
+          nilai: item.nilaiKKM,
+          deskripsi: item.deskripsiKKTP,
+          saving: false,
+        };
+        return acc;
+      },
+      {}
+    );
+
+    setKkmDrafts(mapped);
+  }, [curriculum?.id, kkmQuery.data]);
+
+  const allComponents = componentsQuery.data?.data || [];
+  const totalBobot = allComponents.reduce((total, item) => total + item.bobot, 0);
+  const componentTotalPages = Math.max(
+    1,
+    Math.ceil(allComponents.length / COMPONENTS_PER_PAGE)
+  );
+
+  useEffect(() => {
+    if (compPage > componentTotalPages) {
+      setCompPage(componentTotalPages);
+    }
+  }, [compPage, componentTotalPages]);
+
+  const pagedComponents = allComponents.slice(
+    (compPage - 1) * COMPONENTS_PER_PAGE,
+    compPage * COMPONENTS_PER_PAGE
+  );
+
+  const subjects = subjectsQuery.data?.data || [];
+  const subjectPagination = subjectsQuery.data?.pagination || {
+    total: 0,
+    page: 1,
+    limit: SUBJECTS_PER_PAGE,
+    totalPages: 1,
   };
 
-  const handleReset = async () => {
+  const activeAcademicYear = academicYearsQuery.data?.data.find(
+    (item) => item.id === Number(selectedYearId)
+  );
+  const academicYearLabel =
+    curriculum?.academicYear?.year || activeAcademicYear?.year || "-";
+
+  const savedKkmItems = kkmQuery.data?.data || [];
+  const averageKkm = savedKkmItems.length
+    ? Math.round(
+        savedKkmItems.reduce((sum, item) => sum + item.nilaiKKM, 0) /
+          savedKkmItems.length
+      )
+    : 75;
+
+  const curriculumMeta = getCurriculumMeta(curriculum?.type || "KURMER");
+  const curriculumLoading =
+    Boolean(selectedYearId) &&
+    (curriculumQuery.isLoading || curriculumQuery.isFetching) &&
+    !curriculum;
+  const hasCurriculumError = curriculumQuery.isError;
+
+  async function refetchCurriculumSection() {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["curriculum-config", selectedYearId, semester],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["curriculum-components", curriculum?.id],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["curriculum-kkm", curriculum?.id],
+      }),
+    ]);
+  }
+
+  async function handleCreate(type: string) {
+    if (!selectedYearId) {
+      await Swal.fire(
+        "Pilih periode dulu",
+        "Tentukan tahun ajaran pada filter sebelum membuat kurikulum.",
+        "warning"
+      );
+      return;
+    }
+
+    setCreatingType(type);
+
+    try {
+      await fetchJson("/api/curriculum", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          academicYearId: Number(selectedYearId),
+          semester,
+        }),
+      });
+
+      await Swal.fire("Berhasil", "Kurikulum aktif berhasil dibuat.", "success");
+      await refetchCurriculumSection();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal membuat kurikulum";
+      await Swal.fire("Gagal", message, "error");
+    } finally {
+      setCreatingType(null);
+    }
+  }
+
+  async function handleReset() {
+    if (!curriculum) return;
+
     const result = await Swal.fire({
-      title: "Reset Kurikulum?",
-      text: "Seluruh komponen nilai dan KKM akan dihapus permanen!",
+      title: "Reset kurikulum?",
+      text: "Semua komponen nilai dan KKM pada periode ini akan dihapus permanen.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      confirmButtonText: "Ya, Reset Semua",
-      cancelButtonText: "Batal"
+      confirmButtonColor: "#dc2626",
+      confirmButtonText: "Ya, reset semua",
+      cancelButtonText: "Batal",
     });
 
-    if (result.isConfirmed && curriculum) {
-      const res = await resetCurriculum(curriculum.id);
-      if (res.success) {
-        Swal.fire("Dihapus", "Kurikulum telah direset", "success");
-        await loadCurriculum();
-      }
-    }
-  };
+    if (!result.isConfirmed) return;
 
-  const handleAddComponent = async () => {
+    setIsResetting(true);
+
+    try {
+      await fetchJson(`/api/curriculum/${curriculum.id}/reset`, {
+        method: "POST",
+      });
+
+      setCompPage(1);
+      setKkmDrafts({});
+      await Swal.fire("Berhasil", "Kurikulum periode ini berhasil direset.", "success");
+      await refetchCurriculumSection();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal reset kurikulum";
+      await Swal.fire("Gagal", message, "error");
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  async function handleAddComponent() {
     if (!curriculum) return;
-    const res = await fetch("/api/grades/components", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        curriculumId: curriculum.id,
-        ...newComp,
-        urutan: compPagination.total + 1
-      }),
-    });
-    if (res.ok) {
-      setNewComp({ name: "", code: "", bobot: 0 });
-      await loadComponents();
-      Swal.fire({ title: "Berhasil", text: "Komponen ditambahkan", icon: "success", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });
-    }
-  };
 
-  const handleDeleteComponent = async (id: number) => {
-    const res = await deleteGradeComponent(id);
-    if (res.success) {
-      await loadComponents();
-      Swal.fire({ title: "Terhapus", icon: "success", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });
-    }
-  };
+    const normalizedName = newComp.name.trim();
+    const normalizedCode = newComp.code.trim().toUpperCase();
+    const bobot = Number(newComp.bobot);
 
-  const handleSaveKkm = async (subId: number) => {
-    const data = kkmData[subId];
-    if (!data || !curriculum) return;
-    
-    setKkmData(prev => ({ ...prev, [subId]: { ...prev[subId], saving: true } }));
-    const res = await saveKkmValue(curriculum.id, subId, data.nilai, data.deskripsi);
-    setKkmData(prev => ({ ...prev, [subId]: { ...prev[subId], saving: false } }));
-    
-    if (res.success) {
-      Swal.fire({ title: "KKM Tersimpan", icon: "success", toast: true, position: "top-end", showConfirmButton: false, timer: 1500 });
+    if (!normalizedName || !normalizedCode) {
+      await Swal.fire("Data belum lengkap", "Nama dan kode komponen wajib diisi.", "warning");
+      return;
     }
-  };
 
-  const totalBobot = components.reduce((acc, c) => acc + c.bobot, 0);
+    if (Number.isNaN(bobot) || bobot < 0) {
+      await Swal.fire("Bobot tidak valid", "Masukkan bobot komponen yang benar.", "warning");
+      return;
+    }
+
+    setIsAddingComponent(true);
+
+    try {
+      await fetchJson("/api/grades/components", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curriculumId: curriculum.id,
+          name: normalizedName,
+          code: normalizedCode,
+          bobot,
+          urutan: allComponents.length + 1,
+        }),
+      });
+
+      setNewComp({ name: "", code: "", bobot: "" });
+      setCompPage(1);
+      await queryClient.invalidateQueries({
+        queryKey: ["curriculum-components", curriculum.id],
+      });
+
+      await Swal.fire({
+        title: "Komponen ditambahkan",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1800,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menambah komponen";
+      await Swal.fire("Gagal", message, "error");
+    } finally {
+      setIsAddingComponent(false);
+    }
+  }
+
+  async function handleDeleteComponent(componentId: number) {
+    if (!curriculum) return;
+
+    try {
+      await fetchJson(`/api/grades/components?id=${componentId}`, {
+        method: "DELETE",
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["curriculum-components", curriculum.id],
+      });
+
+      await Swal.fire({
+        title: "Komponen dihapus",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1600,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menghapus komponen";
+      await Swal.fire("Gagal", message, "error");
+    }
+  }
+
+  async function handleSaveKkm(subjectId: number) {
+    if (!curriculum) return;
+
+    const draft = kkmDrafts[subjectId] || { nilai: 75, deskripsi: "" };
+
+    setKkmDrafts((previous) => ({
+      ...previous,
+      [subjectId]: {
+        ...draft,
+        saving: true,
+      },
+    }));
+
+    try {
+      await fetchJson("/api/grades/kkm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curriculumId: curriculum.id,
+          subjectId,
+          nilaiKKM: draft.nilai,
+          deskripsiKKTP: draft.deskripsi,
+        }),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["curriculum-kkm", curriculum.id],
+      });
+
+      await Swal.fire({
+        title: "KKM tersimpan",
+        icon: "success",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menyimpan KKM";
+      await Swal.fire("Gagal", message, "error");
+      setKkmDrafts((previous) => ({
+        ...previous,
+        [subjectId]: {
+          ...draft,
+          saving: false,
+        },
+      }));
+    }
+  }
 
   return (
     <div className="space-y-6 pb-20">
       <PageHeader
         title="Manajemen Kurikulum"
-        subtitle="Konfigurasi standar penilaian dan KKM per periode"
-        icon={<BookOpen className="w-5 h-5 text-white" />}
+        subtitle="Atur standar kurikulum, komponen penilaian, dan KKM per periode secara lebih rapi dan konsisten."
+        icon={<BookOpen className="h-5 w-5 text-white" />}
+        gradient="from-slate-900 via-indigo-800 to-sky-700"
+        actions={
+          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-right backdrop-blur-md">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">
+              Periode Aktif
+            </p>
+            <p className="mt-1 text-sm font-black text-white">
+              {academicYearLabel} • {getSemesterLabel(semester)}
+            </p>
+          </div>
+        }
       />
 
       <FilterBar visibleFilters={["academicYear", "semester"]} />
 
-      {loading ? (
-        <Card className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-sm">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+      {!selectedYearId ? (
+        <Card className="border-dashed border-slate-300 bg-slate-50/80">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-900 text-white shadow-lg shadow-slate-300/70">
+              <CalendarRange className="h-7 w-7" />
+            </div>
+            <h3 className="text-2xl font-black tracking-tight text-slate-800">
+              Pilih tahun ajaran dulu
+            </h3>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
+              Filter periode di atas tetap otomatis seperti pengaturan sekarang. Setelah
+              tahun ajaran terpilih, halaman ini akan langsung memuat konfigurasi kurikulum
+              yang sesuai.
+            </p>
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-500 animate-pulse">Memuat data kurikulum...</p>
+        </Card>
+      ) : curriculumLoading ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index} className="animate-pulse">
+                <div className="h-11 w-11 rounded-2xl bg-slate-200" />
+                <div className="mt-5 h-3 w-24 rounded-full bg-slate-200" />
+                <div className="mt-3 h-7 w-40 rounded-full bg-slate-200" />
+                <div className="mt-2 h-4 w-28 rounded-full bg-slate-100" />
+              </Card>
+            ))}
+          </div>
+          <Card className="animate-pulse">
+            <div className="h-72 rounded-3xl bg-slate-100" />
+          </Card>
+        </div>
+      ) : hasCurriculumError ? (
+        <Card className="border-rose-200 bg-rose-50/80">
+          <div className="py-12 text-center">
+            <h3 className="text-xl font-black text-rose-700">Data kurikulum gagal dimuat</h3>
+            <p className="mt-3 text-sm text-rose-600">
+              {curriculumQuery.error instanceof Error
+                ? curriculumQuery.error.message
+                : "Silakan coba muat ulang halaman ini."}
+            </p>
+          </div>
         </Card>
       ) : curriculum ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[70vh]">
-          <div className="lg:col-span-4 space-y-8">
-            <Card className="overflow-hidden border-none shadow-xl shadow-indigo-500/5 bg-linear-to-br from-white to-indigo-50/30 h-fit">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="font-bold text-slate-800 tracking-tight">Info Kurikulum</h3>
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${curriculum.isLocked ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
-                    {curriculum.isLocked ? "Locked" : "Active"}
-                  </span>
-                </div>
-                
-                <div className="space-y-6">
-                  <div className="flex items-center bg-white/60 p-4 rounded-3xl border border-white shadow-sm">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 mr-4">
-                      <span className="text-white font-bold text-sm tracking-tighter">{curriculum.type.slice(0, 3)}</span>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon={<ShieldCheck className="h-5 w-5" />}
+              label="Status"
+              value={curriculum.isLocked ? "Terkunci" : "Aktif"}
+              caption={
+                curriculum.isLocked
+                  ? "Perubahan nilai dibatasi untuk periode ini."
+                  : "Pengaturan kurikulum masih dapat diperbarui."
+              }
+            />
+            <MetricCard
+              icon={<BookOpen className="h-5 w-5" />}
+              label="Tipe Kurikulum"
+              value={curriculumMeta.label}
+              caption={`Semester ${getSemesterLabel(curriculum.semester)}`}
+            />
+            <MetricCard
+              icon={<Layers3 className="h-5 w-5" />}
+              label="Komponen Nilai"
+              value={`${allComponents.length} komponen`}
+              caption={`Total bobot ${totalBobot.toFixed(0)}%`}
+            />
+            <MetricCard
+              icon={<GraduationCap className="h-5 w-5" />}
+              label="Standar KKM"
+              value={`${averageKkm}`}
+              caption={`${savedKkmItems.length} mapel sudah tersimpan`}
+            />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-12">
+            <div className="space-y-6 xl:col-span-5">
+              <Card className="overflow-hidden border-none bg-linear-to-br from-white via-slate-50 to-indigo-50 shadow-xl shadow-indigo-100/40">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-3xl bg-linear-to-br ${curriculumMeta.iconClass} text-base font-black text-white shadow-lg shadow-slate-300/60`}
+                    >
+                      {curriculumMeta.shortLabel}
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1.5">Standardisasi</p>
-                      <p className="font-black text-slate-800">{curriculum.type === "KURMER" ? "Kurikulum Merdeka" : curriculum.type === "K13" ? "Kurikulum 2013" : "Kurikulum Kustom"}</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+                        Ringkasan Periode
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-800">
+                        {curriculumMeta.label}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Konfigurasi aktif untuk {academicYearLabel} semester{" "}
+                        {getSemesterLabel(curriculum.semester).toLowerCase()}.
+                      </p>
                     </div>
                   </div>
+                  <span
+                    className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${curriculumMeta.badgeClass}`}
+                  >
+                    {curriculum.isLocked ? "Locked" : "Editable"}
+                  </span>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/60 p-5 rounded-3xl border border-white shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 label-spacing">Semester</p>
-                      <p className="font-black text-slate-800 capitalize text-sm">{curriculum.semester}</p>
-                    </div>
-                    <div className="bg-white/60 p-5 rounded-3xl border border-white shadow-sm">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 label-spacing">Tahun</p>
-                      <p className="font-black text-slate-800 italic text-sm">2025/2026</p>
-                    </div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-slate-200/60">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Tahun Ajaran
+                    </p>
+                    <p className="mt-2 text-lg font-black tracking-tight text-slate-800">
+                      {academicYearLabel}
+                    </p>
+                  </div>
+                  <div className="rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-slate-200/60">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Semester
+                    </p>
+                    <p className="mt-2 text-lg font-black tracking-tight text-slate-800">
+                      {getSemesterLabel(curriculum.semester)}
+                    </p>
+                  </div>
+                  <div className="rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-slate-200/60">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Komponen Aktif
+                    </p>
+                    <p className="mt-2 text-lg font-black tracking-tight text-slate-800">
+                      {allComponents.length} item
+                    </p>
+                  </div>
+                  <div className="rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-slate-200/60">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      KKM Tersimpan
+                    </p>
+                    <p className="mt-2 text-lg font-black tracking-tight text-slate-800">
+                      {savedKkmItems.length} mapel
+                    </p>
                   </div>
                 </div>
 
-                <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col gap-4">
-                   <button 
-                    onClick={handleReset}
-                    className="w-full py-4 px-6 rounded-2xl bg-white text-rose-600 font-black text-[11px] uppercase tracking-widest border border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all flex items-center justify-center gap-3 shadow-sm"
-                   >
-                    <Trash className="w-4 h-4" />
-                    Reset Kurikulum
-                   </button>
-                   <p className="text-[10px] text-slate-400 text-center font-bold italic px-6 leading-relaxed opacity-60">Mengatur ulang kurikulum akan menghapus semua konfigurasi pada periode ini secara permanen.</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="overflow-hidden border-none shadow-xl shadow-slate-500/5 h-fit" noPadding>
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="font-bold text-slate-800 tracking-tight">Komponen Nilai</h3>
-                  <div className={`px-4 py-1.5 rounded-full text-xs font-bold ${totalBobot === 100 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
-                    Total: {totalBobot}%
+                <div className="mt-8 rounded-3xl border border-rose-100 bg-rose-50/70 p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black tracking-tight text-rose-700">
+                        Reset seluruh konfigurasi periode
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-rose-600/80">
+                        Menghapus kurikulum, komponen nilai, dan KKM pada periode ini.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleReset}
+                      disabled={isResetting}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-rose-200 transition-all hover:-translate-y-0.5 hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {isResetting ? "Mereset..." : "Reset Kurikulum"}
+                    </button>
                   </div>
                 </div>
+              </Card>
 
+              <Card
+                title="Komponen Penilaian"
+                icon={<Layers3 className="h-4 w-4" />}
+                actions={
+                  <div
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-black ${
+                      totalBobot === 100
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    Total {totalBobot.toFixed(0)}%
+                  </div>
+                }
+                className="shadow-lg shadow-slate-200/50"
+              >
                 <div className="space-y-4">
-                  {components.map((c) => (
-                    <div key={c.id} className="group flex items-center justify-between p-4 rounded-3xl bg-slate-50/50 border border-slate-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-indigo-100">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-black text-[11px] text-indigo-600 shadow-inner group-hover:scale-110 transition-transform">
-                          {c.code}
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-800 text-sm leading-tight mb-1.5">{c.name}</p>
-                          <div className="flex items-center gap-3">
-                             <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${c.bobot}%` }}></div>
-                             </div>
-                             <p className="text-[11px] text-slate-400 font-black tracking-tight">{c.bobot}%</p>
+                  {componentsQuery.isLoading ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="animate-pulse rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="h-4 w-28 rounded-full bg-slate-200" />
+                        <div className="mt-3 h-3 w-40 rounded-full bg-slate-100" />
+                      </div>
+                    ))
+                  ) : pagedComponents.length > 0 ? (
+                    pagedComponents.map((component) => (
+                      <div
+                        key={component.id}
+                        className="group flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50/70 p-4 transition-all hover:border-indigo-100 hover:bg-white hover:shadow-lg hover:shadow-slate-200/70"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-700 shadow-sm">
+                            {component.code}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800">
+                              {component.name}
+                            </p>
+                            <div className="mt-2 flex items-center gap-3">
+                              <div className="h-2 w-28 overflow-hidden rounded-full bg-slate-200">
+                                <div
+                                  className="h-full rounded-full bg-linear-to-r from-indigo-600 to-sky-500"
+                                  style={{ width: `${Math.min(component.bobot, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-xs font-bold text-slate-500">
+                                {component.bobot}%
+                              </p>
+                            </div>
                           </div>
                         </div>
+                        <button
+                          onClick={() => handleDeleteComponent(component.id)}
+                          disabled={curriculum.isLocked}
+                          className="rounded-2xl p-3 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Hapus komponen ${component.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                      <button 
-                        onClick={() => handleDeleteComponent(c.id)}
-                        className="p-3 text-slate-300 hover:text-rose-500 bg-transparent hover:bg-rose-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-8 text-center">
+                      <p className="text-lg font-black tracking-tight text-slate-700">
+                        Belum ada komponen nilai
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Tambahkan struktur komponen agar input nilai per mata pelajaran
+                        langsung konsisten.
+                      </p>
                     </div>
-                  ))}
-                  
-                  <div className="py-4 border-t border-slate-100 flex justify-center mt-2">
-                    <Pagination page={compPage} totalPages={compPagination.totalPages} total={compPagination.total} onPageChange={setCompPage} />
-                  </div>
+                  )}
+
+                  <Pagination
+                    page={compPage}
+                    totalPages={componentTotalPages}
+                    total={allComponents.length}
+                    limit={COMPONENTS_PER_PAGE}
+                    onPageChange={setCompPage}
+                  />
 
                   {!curriculum.isLocked && (
-                    <div className="mt-6 p-6 rounded-3xl bg-indigo-50/50 border border-indigo-100/50 space-y-4">
-                      <input 
-                        type="text" placeholder="Nama Komponen (E.g. Sumatif Akhir)" 
-                        className="w-full bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all"
-                        value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})}
-                      />
-                      <div className="flex gap-3">
-                        <input 
-                          type="text" placeholder="Kode" 
-                          className="flex-1 bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all uppercase"
-                          value={newComp.code} onChange={e => setNewComp({...newComp, code: e.target.value})}
+                    <div className="rounded-3xl border border-indigo-100 bg-linear-to-br from-indigo-50 to-sky-50 p-5">
+                      <p className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">
+                        Tambah Komponen Baru
+                      </p>
+                      <div className="mt-4 grid gap-3">
+                        <input
+                          type="text"
+                          placeholder="Nama komponen, contoh: Sumatif Akhir"
+                          className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                          value={newComp.name}
+                          onChange={(event) =>
+                            setNewComp((previous) => ({
+                              ...previous,
+                              name: event.target.value,
+                            }))
+                          }
                         />
-                        <input 
-                          type="number" placeholder="%" 
-                          className="w-24 bg-white border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-bold text-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 outline-none transition-all text-center"
-                          value={newComp.bobot || ""} onChange={e => setNewComp({...newComp, bobot: Number(e.target.value)})}
-                        />
+                        <div className="grid gap-3 sm:grid-cols-[1fr_130px]">
+                          <input
+                            type="text"
+                            placeholder="Kode"
+                            className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-sm font-semibold uppercase text-slate-700 outline-none transition-all focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                            value={newComp.code}
+                            onChange={(event) =>
+                              setNewComp((previous) => ({
+                                ...previous,
+                                code: event.target.value,
+                              }))
+                            }
+                          />
+                          <input
+                            type="number"
+                            placeholder="Bobot %"
+                            className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                            value={newComp.bobot}
+                            onChange={(event) =>
+                              setNewComp((previous) => ({
+                                ...previous,
+                                bobot: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <button
+                          onClick={handleAddComponent}
+                          disabled={isAddingComponent}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-300 transition-all hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Plus className="h-4 w-4" />
+                          {isAddingComponent ? "Menyimpan..." : "Tambah Komponen"}
+                        </button>
                       </div>
-                      <button 
-                        onClick={handleAddComponent}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
-                      >
-                        + Tambah Komponen
-                      </button>
                     </div>
                   )}
                 </div>
-              </div>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-8 flex flex-col">
-            <Card className="border-none shadow-xl shadow-slate-500/5 overflow-hidden flex-1 flex flex-col" noPadding>
-              <div className="p-8 border-b border-slate-100 bg-white flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-800 tracking-tight">Kriteria Ketuntasan (KKM/KKTP)</h3>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wide mt-1">Atur standar nilai minimal per mata pelajaran</p>
-                </div>
-              </div>
-              
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left text-sm border-collapse min-h-[400px]">
-                  <thead>
-                    <tr className="bg-slate-50/50 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] border-b border-slate-100">
-                      <th className="px-10 py-6">Mata Pelajaran</th>
-                      <th className="px-10 py-6 w-44 text-center">Nilai Minimal</th>
-                      <th className="px-10 py-6">Deskripsi KKTP / Target Capaian</th>
-                      <th className="px-10 py-6 w-36 text-center text-indigo-500">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {subjects.map((sub) => {
-                      const d = kkmData[sub.id] || { nilai: 75, deskripsi: "", saving: false };
-                      return (
-                        <tr key={sub.id} className="group hover:bg-indigo-50/20 transition-all">
-                          <td className="px-10 py-6">
-                            <p className="font-black text-slate-800 text-[15px] mb-1">{sub.name}</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{sub.code}</p>
-                          </td>
-                          <td className="px-10 py-6 text-center uppercase">
-                            <input 
-                              type="number" className="w-28 bg-slate-50/80 border border-slate-100 rounded-2xl px-4 py-3.5 text-base font-black text-indigo-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 transition-all outline-none text-center shadow-inner"
-                              value={d.nilai} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, nilai: Number(e.target.value)}})}
-                              disabled={curriculum.isLocked}
-                            />
-                          </td>
-                          <td className="px-10 py-6">
-                            <textarea 
-                              rows={1} placeholder="Input capaian target..."
-                              className="w-full bg-slate-50/80 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-600 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-200 transition-all outline-none resize-none shadow-inner min-h-[54px] flex items-center"
-                              value={d.deskripsi} onChange={e => setKkmData({...kkmData, [sub.id]: {...d, deskripsi: e.target.value}})}
-                              disabled={curriculum.isLocked}
-                            />
-                          </td>
-                          <td className="px-10 py-6 text-center">
-                            <button 
-                              onClick={() => handleSaveKkm(sub.id)}
-                              disabled={curriculum.isLocked || d.saving}
-                              className={`group relative flex items-center justify-center mx-auto w-14 h-14 rounded-2xl transition-all shadow-sm ${
-                                d.saving ? "bg-slate-100 text-slate-400" : "bg-white text-indigo-600 border border-slate-100 hover:bg-indigo-600 hover:text-white hover:shadow-2xl hover:shadow-indigo-200 hover:-translate-y-1"
-                              }`}
-                            >
-                              {d.saving ? (
-                                <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
-                              ) : (
-                                <Save className="w-6 h-6" />
-                              )}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="p-8 bg-slate-50/30 border-t border-slate-100 mt-auto">
-                <Pagination page={subPage} totalPages={subPagination.totalPages} total={subPagination.total} onPageChange={setSubPage} />
-              </div>
-            </Card>
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-[70vh] flex flex-col items-center justify-center">
-          <Card className="flex flex-col items-center justify-center py-24 px-10 border-none shadow-2xl shadow-indigo-500/10 bg-linear-to-b from-white to-indigo-50/50 rounded-5xl relative overflow-hidden max-w-5xl w-full">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-indigo-500 via-blue-500 to-violet-500"></div>
-            
-            <div className="relative mb-12">
-              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full"></div>
-              <div className="relative w-32 h-32 bg-indigo-50 rounded-4xl flex items-center justify-center text-indigo-600 shadow-inner border border-indigo-100 group">
-                 <BookOpenIcon className="w-14 h-14 group-hover:scale-110 transition-transform duration-500" />
-              </div>
+              </Card>
             </div>
 
-            <div className="text-center space-y-5 max-w-2xl px-6">
-              <h3 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight">Setup Kurikulum</h3>
-              <p className="text-slate-500 font-bold text-base leading-relaxed max-w-lg mx-auto">
-                Tahun ajaran ini belum memiliki konfigurasi kurikulum aktif. <br />
-                <span className="text-slate-400 text-sm">Pilih standar kurikulum di bawah ini untuk memulai digitalisasi rapor.</span>
+            <div className="xl:col-span-7">
+              <Card
+                title="KKM / KKTP Mata Pelajaran"
+                icon={<GraduationCap className="h-4 w-4" />}
+                className="h-full shadow-lg shadow-slate-200/50"
+              >
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="text-sm font-black text-slate-800">
+                    Data mapel dan KKM sekarang diambil langsung dari API terbaru per periode
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Tampilan ini tidak lagi bergantung pada Server Action client-side, jadi lebih
+                    aman saat deployment baru di Vercel.
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-4 md:hidden">
+                  {subjects.map((subject) => {
+                    const draft = kkmDrafts[subject.id] || {
+                      nilai: 75,
+                      deskripsi: "",
+                      saving: false,
+                    };
+
+                    return (
+                      <div
+                        key={subject.id}
+                        className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-black text-slate-800">{subject.name}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                              {subject.code}
+                            </p>
+                          </div>
+                          <input
+                            type="number"
+                            value={draft.nilai}
+                            onChange={(event) =>
+                              setKkmDrafts((previous) => ({
+                                ...previous,
+                                [subject.id]: {
+                                  ...draft,
+                                  nilai: Number(event.target.value),
+                                },
+                              }))
+                            }
+                            disabled={curriculum.isLocked}
+                            className="w-24 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-black text-indigo-600 outline-none focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                          />
+                        </div>
+                        <textarea
+                          rows={3}
+                          placeholder="Tuliskan target capaian atau deskripsi KKTP..."
+                          value={draft.deskripsi}
+                          onChange={(event) =>
+                            setKkmDrafts((previous) => ({
+                              ...previous,
+                              [subject.id]: {
+                                ...draft,
+                                deskripsi: event.target.value,
+                              },
+                            }))
+                          }
+                          disabled={curriculum.isLocked}
+                          className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                        />
+                        <button
+                          onClick={() => handleSaveKkm(subject.id)}
+                          disabled={curriculum.isLocked || draft.saving}
+                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Save className="h-4 w-4" />
+                          {draft.saving ? "Menyimpan..." : "Simpan KKM"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-5 hidden overflow-x-auto md:block">
+                  <table className="min-w-full border-separate border-spacing-y-3">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-2 text-left text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          Mata Pelajaran
+                        </th>
+                        <th className="px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          Nilai Minimal
+                        </th>
+                        <th className="px-4 py-2 text-left text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          Deskripsi KKTP
+                        </th>
+                        <th className="px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                          Simpan
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjects.map((subject) => {
+                        const draft = kkmDrafts[subject.id] || {
+                          nilai: 75,
+                          deskripsi: "",
+                          saving: false,
+                        };
+
+                        return (
+                          <tr key={subject.id} className="align-top">
+                            <td className="rounded-l-3xl border-y border-l border-slate-200 bg-white px-4 py-4">
+                              <p className="text-sm font-black text-slate-800">{subject.name}</p>
+                              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                                {subject.code}
+                              </p>
+                            </td>
+                            <td className="border-y border-slate-200 bg-white px-4 py-4 text-center">
+                              <input
+                                type="number"
+                                value={draft.nilai}
+                                onChange={(event) =>
+                                  setKkmDrafts((previous) => ({
+                                    ...previous,
+                                    [subject.id]: {
+                                      ...draft,
+                                      nilai: Number(event.target.value),
+                                    },
+                                  }))
+                                }
+                                disabled={curriculum.isLocked}
+                                className="w-24 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-black text-indigo-600 outline-none focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                              />
+                            </td>
+                            <td className="border-y border-slate-200 bg-white px-4 py-4">
+                              <textarea
+                                rows={2}
+                                placeholder="Tuliskan target capaian atau deskripsi KKTP..."
+                                value={draft.deskripsi}
+                                onChange={(event) =>
+                                  setKkmDrafts((previous) => ({
+                                    ...previous,
+                                    [subject.id]: {
+                                      ...draft,
+                                      deskripsi: event.target.value,
+                                    },
+                                  }))
+                                }
+                                disabled={curriculum.isLocked}
+                                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-indigo-200 focus:ring-4 focus:ring-indigo-500/10"
+                              />
+                            </td>
+                            <td className="rounded-r-3xl border-y border-r border-slate-200 bg-white px-4 py-4 text-center">
+                              <button
+                                onClick={() => handleSaveKkm(subject.id)}
+                                disabled={curriculum.isLocked || draft.saving}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-600 shadow-sm ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:bg-indigo-600 hover:text-white hover:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                <Save className="h-4 w-4" />
+                                {draft.saving ? "Menyimpan..." : "Simpan"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {subjectsQuery.isLoading && (
+                  <div className="mt-5 space-y-3">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-24 animate-pulse rounded-3xl bg-slate-100"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {subjectsQuery.isError && (
+                  <div className="mt-5 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                    Gagal memuat daftar mata pelajaran.
+                  </div>
+                )}
+
+                <div className="mt-6">
+                  <Pagination
+                    page={subPage}
+                    totalPages={subjectPagination.totalPages}
+                    total={subjectPagination.total}
+                    limit={subjectPagination.limit}
+                    onPageChange={setSubPage}
+                  />
+                </div>
+              </Card>
+            </div>
+          </div>
+        </>
+      ) : (
+        <Card className="overflow-hidden border-none bg-linear-to-br from-white via-slate-50 to-indigo-50 shadow-2xl shadow-indigo-100/60">
+          <div className="mx-auto max-w-5xl py-10">
+            <div className="text-center">
+              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-slate-900 text-white shadow-2xl shadow-slate-300/50">
+                <BookOpen className="h-10 w-10" />
+              </div>
+              <h3 className="mt-6 text-4xl font-black tracking-tight text-slate-800">
+                Setup kurikulum untuk {academicYearLabel}
+              </h3>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-500">
+                Belum ada konfigurasi kurikulum pada semester{" "}
+                {getSemesterLabel(semester).toLowerCase()}. Pilih standar yang ingin
+                dipakai, lalu halaman ini akan langsung memuat data sesuai periode aktif.
               </p>
             </div>
-            
-            <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8 w-full">
-              <button 
-                onClick={() => handleCreate("KURMER")}
-                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-indigo-500/5 hover:border-indigo-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-              >
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-50 rounded-full group-hover:bg-indigo-600/10 transition-colors"></div>
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
-                    <span className="font-black text-base tracking-tighter">KM</span>
-                  </div>
-                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum Merdeka</p>
-                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Standardisasi 2022/2024</p>
-                  <div className="mt-8 flex items-center text-indigo-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
-                  </div>
-                </div>
-              </button>
 
-              <button 
-                onClick={() => handleCreate("K13")}
-                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-blue-500/5 hover:border-blue-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-              >
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full group-hover:bg-blue-600/10 transition-colors"></div>
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
-                    <span className="font-black text-base tracking-tighter">K13</span>
+            <div className="mt-10 grid gap-5 lg:grid-cols-3">
+              {[
+                {
+                  type: "KURMER",
+                  title: "Kurikulum Merdeka",
+                  subtitle: "Fokus capaian pembelajaran yang fleksibel dan adaptif.",
+                  accent: "from-indigo-600 to-sky-500",
+                  surface: "bg-indigo-50 text-indigo-700",
+                },
+                {
+                  type: "K13",
+                  title: "Kurikulum 2013",
+                  subtitle: "Format penilaian familiar untuk kebutuhan operasional sekolah.",
+                  accent: "from-emerald-600 to-teal-500",
+                  surface: "bg-emerald-50 text-emerald-700",
+                },
+                {
+                  type: "CUSTOM",
+                  title: "Kurikulum Kustom",
+                  subtitle: "Struktur fleksibel untuk kebutuhan unit atau model belajar khusus.",
+                  accent: "from-amber-500 to-orange-500",
+                  surface: "bg-amber-50 text-amber-700",
+                },
+              ].map((option) => (
+                <button
+                  key={option.type}
+                  onClick={() => handleCreate(option.type)}
+                  disabled={creatingType !== null}
+                  className="group rounded-[2rem] border border-slate-200 bg-white p-6 text-left shadow-lg shadow-slate-200/50 transition-all hover:-translate-y-1.5 hover:border-slate-300 hover:shadow-2xl hover:shadow-slate-200/70 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div
+                    className={`inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-linear-to-br ${option.accent} text-lg font-black text-white shadow-lg shadow-slate-300/50`}
+                  >
+                    {option.type === "KURMER"
+                      ? "KM"
+                      : option.type === "K13"
+                        ? "K13"
+                        : "CST"}
                   </div>
-                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum 2013</p>
-                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Revisi Terakhir</p>
-                  <div className="mt-8 flex items-center text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
+                  <div className="mt-5">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${option.surface}`}
+                    >
+                      {getSemesterLabel(semester)}
+                    </span>
+                    <h4 className="mt-4 text-2xl font-black tracking-tight text-slate-800">
+                      {option.title}
+                    </h4>
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                      {option.subtitle}
+                    </p>
                   </div>
-                </div>
-              </button>
-
-              <button 
-                onClick={() => handleCreate("CUSTOM")}
-                className="group relative p-8 rounded-4xl bg-white border border-slate-100 shadow-2xl shadow-violet-500/5 hover:border-violet-500 hover:-translate-y-2 transition-all text-left overflow-hidden"
-              >
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-50 rounded-full group-hover:bg-violet-600/10 transition-colors"></div>
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-violet-50 group-hover:bg-violet-600 text-violet-600 group-hover:text-white flex items-center justify-center mb-6 transition-all shadow-inner">
-                    <span className="font-black text-base tracking-tighter">CP</span>
+                  <div className="mt-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-500 transition-all group-hover:text-slate-900">
+                    {creatingType === option.type ? "Membuat..." : "Pilih kurikulum"}
+                    <Plus className="h-4 w-4" />
                   </div>
-                  <p className="font-black text-xl text-slate-800 leading-tight">Kurikulum Kustom</p>
-                  <p className="text-[11px] text-slate-400 font-bold tracking-widest mt-3 uppercase">Fleksibel & Mandiri</p>
-                  <div className="mt-8 flex items-center text-violet-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-                    Pilih Sekarang <Plus className="ml-2 w-4 h-4" />
-                  </div>
-                </div>
-              </button>
+                </button>
+              ))}
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
       )}
     </div>
   );

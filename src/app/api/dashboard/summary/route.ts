@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { academicYears, studentEnrollments, employees, classrooms, infaqBills, ppdbRegistrations, generalTransactions, studentSavings, students, transactionCategories } from "@/db/schema";
 import { requireAuth, AuthError } from "@/lib/rbac";
-import { eq, and, isNull, ilike, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, ilike, gte, lte, sql, inArray, isNotNull, or } from "drizzle-orm";
 
 /**
  * GET /api/dashboard/summary — Semua data dashboard KPI dengan filter sinkron dengan Page Utama
@@ -128,7 +128,19 @@ export async function GET(request: Request) {
       db.select({ sum: sql<number>`coalesce(sum(${generalTransactions.amount}), 0)`.mapWith(Number) })
         .from(generalTransactions)
         .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
-        .where(and(eq(generalTransactions.type, "in"), eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), ilike(transactionCategories.name, "%wakaf%"))),
+        .where(and(
+          eq(generalTransactions.type, "in"),
+          eq(generalTransactions.status, "valid"),
+          isNull(generalTransactions.deletedAt),
+          or(
+            isNotNull(generalTransactions.wakafDonorId),
+            isNotNull(generalTransactions.wakafPurposeId),
+            ilike(transactionCategories.name, "%wakaf%"),
+            ilike(transactionCategories.name, "%waqaf%"),
+            ilike(generalTransactions.description, "%wakaf%"),
+            ilike(generalTransactions.description, "%waqaf%")
+          )
+        )),
     ]);
 
     const ppdbMap: Record<string, number> = {};

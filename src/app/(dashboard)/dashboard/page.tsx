@@ -13,7 +13,7 @@ import FilterBar from "@/components/FilterBar";
 import DashboardTabs from "@/components/DashboardTabs";
 import { Suspense } from "react";
 import DashboardCharts from "@/components/DashboardCharts";
-import { and, eq, ilike, gte, lte, isNull, inArray, not, sql } from "drizzle-orm";
+import { and, eq, ilike, gte, lte, isNull, inArray, isNotNull, not, or, sql } from "drizzle-orm";
 
 // Halaman berjalan full dynamic SSR — tidak ada ISR/caching
 // untuk menghindari tekanan koneksi database berlebih.
@@ -160,7 +160,18 @@ const getCachedDashboardData = async (searchParams: { [key: string]: string | un
     })
     .from(generalTransactions)
     .leftJoin(transactionCategories, eq(generalTransactions.transactionCategoryId, transactionCategories.id))
-    .where(and(eq(generalTransactions.status, "valid"), isNull(generalTransactions.deletedAt), ilike(transactionCategories.name, "%wakaf%"))),
+    .where(and(
+      eq(generalTransactions.status, "valid"),
+      isNull(generalTransactions.deletedAt),
+      or(
+        isNotNull(generalTransactions.wakafDonorId),
+        isNotNull(generalTransactions.wakafPurposeId),
+        ilike(transactionCategories.name, "%wakaf%"),
+        ilike(transactionCategories.name, "%waqaf%"),
+        ilike(generalTransactions.description, "%wakaf%"),
+        ilike(generalTransactions.description, "%waqaf%")
+      )
+    )),
 
     db.select({ sumValue: sql<number>`sum(${coopTransactions.total})`.mapWith(Number), count: sql<number>`count(*)`.mapWith(Number) })
       .from(coopTransactions)

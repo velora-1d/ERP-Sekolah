@@ -5,7 +5,7 @@
 const jwt = require('jsonwebtoken');
 
 const BASE_URL = 'http://localhost:3000/api';
-const JWT_SECRET = 'assaodah-super-secret-key-2025-secure-test';
+const JWT_SECRET = 'super_secret_school_erp_key_456';
 const TOKEN_NAME = 'erp_token';
 
 // 1. Generate Audit Token (Superadmin Role)

@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import Pagination from "@/components/Pagination";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FilterBar from "@/components/FilterBar";
 import { ExportButtons, fmtRupiah } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
@@ -49,30 +50,81 @@ export default function WakafPage() {
 
 function WakafContent() {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("riwayat"); // riwayat, donatur, tujuan
-  const [data, setData] = useState<WakafTransaction[]>([]);
-  const [donors, setDonors] = useState<WakafDonor[]>([]);
-  const [purposes, setPurposes] = useState<WakafPurpose[]>([]);
-  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
-  const [kpi, setKpi] = useState({ 
-    totalIn: 0, 
-    totalOut: 0, 
-    netBalance: 0, 
-    periodIn: 0, 
-    periodOut: 0, 
-    donorCount: 0, 
-    purposeCount: 0 
-  });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const queryString = searchParams.toString();
+
+  const { data: wakafQuery } = useQuery({
+    queryKey: ["wakaf", queryString],
+    queryFn: async () => {
+      const res = await fetch(`/api/wakaf?${queryString}`);
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+  });
+
+  const { data: donorsQuery } = useQuery({
+    queryKey: ["wakaf-donors"],
+    queryFn: async () => {
+      const res = await fetch("/api/wakaf/donors");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: purposesQuery } = useQuery({
+    queryKey: ["wakaf-purposes"],
+    queryFn: async () => {
+      const res = await fetch("/api/wakaf/purposes");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: cashAccountsQuery } = useQuery({
+    queryKey: ["cash-account-options"],
+    queryFn: async () => {
+      const res = await fetch("/api/cash-accounts?options=true");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const data: WakafTransaction[] = wakafQuery?.success ? wakafQuery.transactions || [] : [];
+  const kpi = wakafQuery?.success ? wakafQuery.kpi || {
+    totalIn: 0,
+    totalOut: 0,
+    netBalance: 0,
+    periodIn: 0,
+    periodOut: 0,
+    donorCount: 0,
+    purposeCount: 0
+  } : {
+    totalIn: 0,
+    totalOut: 0,
+    netBalance: 0,
+    periodIn: 0,
+    periodOut: 0,
+    donorCount: 0,
+    purposeCount: 0
+  };
+  const donors: WakafDonor[] = donorsQuery?.success ? donorsQuery.data || [] : [];
+  const purposes: WakafPurpose[] = purposesQuery?.success ? purposesQuery.data || [] : [];
+  const cashAccounts: CashAccount[] = (cashAccountsQuery?.success ? cashAccountsQuery.data || [] : []).map((account: CashAccount) => ({
+    ...account,
+    name: account.accountName || account.name,
+  }));
 
   const hasPeriodFilter = Boolean(
     searchParams.get("academicYearId") ||
     searchParams.get("semester") ||
     searchParams.get("month")
   );
-  const displayedTotalIn = hasPeriodFilter ? kpi.periodIn : kpi.totalIn;
-  const displayedTotalOut = hasPeriodFilter ? kpi.periodOut : kpi.totalOut;
+  const totalInCaption = hasPeriodFilter ? `Periode aktif: +${fmtRp(kpi.periodIn)}` : "total semua data";
+  const totalOutCaption = hasPeriodFilter ? `Periode aktif: -${fmtRp(kpi.periodOut)}` : "total semua data";
 
   const [openActionId, setOpenActionId] = useState<number | null>(null);
 
@@ -85,60 +137,19 @@ function WakafContent() {
     }
     return () => document.removeEventListener("click", handleClickOutside);
   }, [openActionId]);
+  const refreshWakafData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["wakaf"] });
+    queryClient.invalidateQueries({ queryKey: ["cash-accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["cash-account-options"] });
+  }, [queryClient]);
 
+  const refreshDonors = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["wakaf-donors"] });
+  }, [queryClient]);
 
-
-  const loadData = useCallback(async () => {
-    try {
-      const queryString = searchParams.toString();
-      const res = await fetch(`/api/wakaf?${queryString}`);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.transactions || []);
-        setKpi(json.kpi);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [searchParams]);
-
-  const loadDonors = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/wakaf/donors`);
-      const json = await res.json();
-      if (json.success) setDonors(json.data || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const loadPurposes = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/wakaf/purposes`);
-      const json = await res.json();
-      if (json.success) setPurposes(json.data || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const loadCashAccounts = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/cash-accounts?limit=100`);
-      const json = await res.json();
-      if (json.success) {
-        // Map accountName dari API ke name agar konsisten
-        const mapped = (json.data || []).map((a: CashAccount) => ({
-          ...a,
-          name: a.accountName || a.name
-        }));
-        setCashAccounts(mapped);
-      }
-    } catch (e) { console.error(e); }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    loadDonors();
-    loadPurposes();
-    loadCashAccounts();
-  }, [loadData, loadDonors, loadPurposes, loadCashAccounts]);
+  const refreshPurposes = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["wakaf-purposes"] });
+  }, [queryClient]);
 
   function fmtRp(n: number) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
@@ -218,7 +229,7 @@ function WakafContent() {
           Swal.close();
           if (res.ok && json.success) {
             Swal.fire("Berhasil", json.message, "success");
-            loadData();
+            refreshWakafData();
           } else Swal.fire("Gagal", json.error || "Gagal menyimpan", "error");
         } catch { Swal.fire("Error", "Terjadi kesalahan server", "error"); }
       }
@@ -240,7 +251,7 @@ function WakafContent() {
           const json = await res.json();
           if (res.ok && json.success) {
             Swal.fire("Berhasil", "Transaksi di-void.", "success");
-            loadData();
+            refreshWakafData();
           } else Swal.fire("Gagal", json.error || "Gagal", "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -274,7 +285,7 @@ function WakafContent() {
         try {
           const res = await fetch("/api/wakaf/donors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur ditambahkan", "success"); loadDonors(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur ditambahkan", "success"); refreshDonors(); }
           else Swal.fire("Gagal", json.error, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -304,7 +315,7 @@ function WakafContent() {
         try {
           const res = await fetch("/api/wakaf/purposes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(r.value) });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Tujuan ditambahkan", "success"); loadPurposes(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Tujuan ditambahkan", "success"); refreshPurposes(); }
           else Swal.fire("Gagal", json.error, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -328,7 +339,7 @@ function WakafContent() {
             body: JSON.stringify({ id })
           });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur dihapus", "success"); loadDonors(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur dihapus", "success"); refreshDonors(); }
           else Swal.fire("Gagal", json.error || json.message, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -368,7 +379,7 @@ function WakafContent() {
             body: JSON.stringify(r.value)
           });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Program diperbarui", "success"); loadPurposes(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Program diperbarui", "success"); refreshPurposes(); }
           else Swal.fire("Gagal", json.error || json.message, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -413,7 +424,7 @@ function WakafContent() {
             body: JSON.stringify(r.value)
           });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur diperbarui", "success"); loadDonors(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Donatur diperbarui", "success"); refreshDonors(); }
           else Swal.fire("Gagal", json.error || json.message, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -436,7 +447,7 @@ function WakafContent() {
             body: JSON.stringify({ id })
           });
           const json = await res.json();
-          if (res.ok && json.success) { Swal.fire("Berhasil", "Dihapus", "success"); loadPurposes(); }
+          if (res.ok && json.success) { Swal.fire("Berhasil", "Dihapus", "success"); refreshPurposes(); }
           else Swal.fire("Gagal", json.error, "error");
         } catch { Swal.fire("Error", "Server error", "error"); }
       }
@@ -458,18 +469,16 @@ function WakafContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 border-l-4 border-emerald-500 shadow-sm">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Terkumpul</p>
-          <p className="text-xl font-extrabold text-emerald-600">{fmtRp(displayedTotalIn)}</p>
+          <p className="text-xl font-extrabold text-emerald-600">{fmtRp(kpi.totalIn)}</p>
           <div className="mt-2 flex items-center text-[10px] text-slate-400">
-            <span className="font-bold text-emerald-500">+{fmtRp(kpi.totalIn)}</span>
-            <span className="ml-1">total semua data</span>
+            <span className="font-bold text-emerald-500">{totalInCaption}</span>
           </div>
         </Card>
         <Card className="p-5 border-l-4 border-rose-500 shadow-sm">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Penyaluran</p>
-          <p className="text-xl font-extrabold text-rose-600">{fmtRp(displayedTotalOut)}</p>
+          <p className="text-xl font-extrabold text-rose-600">{fmtRp(kpi.totalOut)}</p>
           <div className="mt-2 flex items-center text-[10px] text-slate-400">
-            <span className="font-bold text-rose-500">-{fmtRp(kpi.totalOut)}</span>
-            <span className="ml-1">total semua data</span>
+            <span className="font-bold text-rose-500">{totalOutCaption}</span>
           </div>
         </Card>
         <Card className="p-5 border-l-4 border-blue-500 shadow-sm bg-blue-50/30">

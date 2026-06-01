@@ -1,13 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
-import Swal from "sweetalert2";
+import { useState } from "react";
 import { ExportButtons, type ExportOptions, fmtRupiah } from "@/lib/export-utils";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import { FileText } from "lucide-react";
 import FilterBar from "@/components/FilterBar";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback } from "react";
+import { Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface InfaqReportItem {
   student_name?: string;
@@ -56,41 +56,23 @@ export default function ReportsPage() {
 function ReportsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("infaq");
-  
-  // Data State
-  const [infaqData, setInfaqData] = useState<InfaqReportItem[]>([]);
-  const [pendaftaranData, setPendaftaranData] = useState<RegistrationReportItem[]>([]);
-  const [tabunganData, setTabunganData] = useState<SavingReportItem[]>([]);
-  const [aruskasData, setAruskasData] = useState<CashflowReport | null>(null);
-  
-  const [loading, setLoading] = useState(false);
+  const queryString = searchParams.toString();
 
+  const { data: reportQuery, isLoading: loading } = useQuery({
+    queryKey: ["reports", activeTab, queryString],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/${activeTab}?${queryString}`);
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+  });
 
-
-  const loadData = useCallback(async (tab: string) => {
-    setLoading(true);
-    try {
-      const queryString = searchParams.toString();
-      const res = await fetch(`/api/reports/${tab}?${queryString}`);
-      const json = await res.json();
-      const d = json.data || json;
-      
-      if (tab === "infaq") setInfaqData(Array.isArray(d) ? d : []);
-      if (tab === "pendaftaran") setPendaftaranData(Array.isArray(d) ? d : []);
-      if (tab === "tabungan") setTabunganData(Array.isArray(d) ? d : []);
-      if (tab === "aruskas") setAruskasData(d || null);
-
-    } catch (error) {
-      console.error(error);
-      Swal.fire("Error", "Gagal memuat data laporan", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    loadData(activeTab);
-  }, [activeTab, loadData]);
+  const reportData = reportQuery?.data || reportQuery || null;
+  const infaqData: InfaqReportItem[] = activeTab === "infaq" && Array.isArray(reportData) ? reportData : [];
+  const pendaftaranData: RegistrationReportItem[] = activeTab === "pendaftaran" && Array.isArray(reportData) ? reportData : [];
+  const tabunganData: SavingReportItem[] = activeTab === "tabungan" && Array.isArray(reportData) ? reportData : [];
+  const aruskasData: CashflowReport | null = activeTab === "aruskas" && reportData && !Array.isArray(reportData) ? reportData as CashflowReport : null;
 
   const fmtRp = (n: number) => {
     return "Rp " + Number(n || 0).toLocaleString("id-ID");

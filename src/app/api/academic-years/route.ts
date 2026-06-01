@@ -6,6 +6,7 @@ import { and, ilike, isNull, desc, sql, eq } from "drizzle-orm";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const optionsOnly = searchParams.get("options") === "true";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const q = searchParams.get("q") || "";
@@ -16,6 +17,22 @@ export async function GET(req: NextRequest) {
       conditions.push(ilike(academicYears.year, `%${q}%`));
     }
     const whereClause = and(...conditions);
+
+    if (optionsOnly) {
+      const list = await db.select({
+        id: academicYears.id,
+        year: academicYears.year,
+        isActive: academicYears.isActive,
+      })
+        .from(academicYears)
+        .where(whereClause)
+        .orderBy(desc(academicYears.year));
+
+      return NextResponse.json(
+        { success: true, data: list },
+        { headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" } }
+      );
+    }
 
     const [list, totalRes] = await Promise.all([
       db.select()

@@ -30,14 +30,19 @@ export async function GET(req: NextRequest) {
 
     const total = totalResult[0]?.count || 0;
 
-    return NextResponse.json({
-      success: true,
-      data: results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: results,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      },
+      {
+        headers: { "Cache-Control": "no-store" },
+      }
+    );
   } catch (error) {
     console.error("Error fetching grade components:", error);
     return NextResponse.json(

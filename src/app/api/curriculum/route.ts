@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-
-export const revalidate = 60; // Cache selama 60 detik di Vercel Edge
 import { curriculums, academicYears, gradeComponents } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -48,7 +46,9 @@ export async function GET(req: Request) {
         };
     }));
 
-    return NextResponse.json(detailedData);
+    return NextResponse.json(detailedData, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (error) {
     console.error("Error fetching curriculums:", error);
     return NextResponse.json(

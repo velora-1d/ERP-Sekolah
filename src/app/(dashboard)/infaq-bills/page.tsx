@@ -45,8 +45,9 @@ interface AcademicYearItem {
 
 interface CashAccountItem {
   id: number;
-  name: string;
-  balance: number;
+  name?: string;
+  accountName?: string;
+  balance?: number;
 }
 
 interface PaginationInfo {
@@ -127,8 +128,6 @@ function InfaqBillsContent() {
   const [resetMonths, setResetMonths] = useState<number[]>([]);
   const [resetClassId, setResetClassId] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const [classrooms, setClassrooms] = useState<ClassroomItem[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYearItem[]>([]);
   const [bulkYearId, setBulkYearId] = useState("");
 
   // Payment form
@@ -138,8 +137,6 @@ function InfaqBillsContent() {
   const [payLoading, setPayLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<PaymentMethod>("tunai");
   const [payCashId, setPayCashId] = useState("");
-  const [cashAccounts, setCashAccounts] = useState<CashAccountItem[]>([]);
-
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -168,16 +165,45 @@ function InfaqBillsContent() {
   });
   const stats = statsQuery?.data || null;
 
+  const { data: cashAccountsQuery } = useQuery({
+    queryKey: ["cash-account-options"],
+    queryFn: async () => {
+      const res = await fetch("/api/cash-accounts?options=true");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: classroomsQuery } = useQuery({
+    queryKey: ["filter-options", "classrooms", "all"],
+    queryFn: async () => {
+      const res = await fetch("/api/classrooms?options=true&academicYearId=all");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: academicYearsQuery } = useQuery({
+    queryKey: ["filter-options", "academic-years"],
+    queryFn: async () => {
+      const res = await fetch("/api/academic-years?options=true");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 15,
+  });
+
+  const cashAccounts: CashAccountItem[] = (cashAccountsQuery?.success ? cashAccountsQuery.data || [] : []).map((account: CashAccountItem) => ({
+    ...account,
+    name: account.name || account.accountName || "",
+  }));
+  const classrooms: ClassroomItem[] = classroomsQuery?.success ? classroomsQuery.data || [] : [];
+  const academicYears: AcademicYearItem[] = academicYearsQuery?.success ? academicYearsQuery.data || [] : [];
+
   const refreshData = () => {
     queryClient.invalidateQueries({ queryKey: ["infaq-bills"] });
     queryClient.invalidateQueries({ queryKey: ["infaq-bills-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["filter-options", "classrooms"] });
   };
-
-  useEffect(() => {
-    fetch("/api/cash-accounts").then(r => r.json()).then(j => { if (j.success) setCashAccounts(j.data || []); }).catch(() => {});
-    fetch("/api/classrooms?limit=1000").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
-    fetch("/api/academic-years?limit=1000").then(r => r.json()).then(j => { if (j.success) setAcademicYears(j.data || []); }).catch(() => {});
-  }, []);
 
   // === Generate Tagihan ===
   async function handleGenerate() {
@@ -400,7 +426,7 @@ function InfaqBillsContent() {
         setShowBulkUpdate(false);
         setBulkClassIds([]);
         setBulkNominal("");
-    fetch("/api/classrooms?limit=1000").then(r => r.json()).then(j => { if (j.success) setClassrooms(j.data || []); }).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["filter-options", "classrooms"] });
       } else {
         showToast(json.message, "error");
       }

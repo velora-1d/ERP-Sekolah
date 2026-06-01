@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { academicYears, classrooms } from "@/db/schema";
 import { getClassroomsList } from "@/lib/classrooms";
-import { and, eq, ilike, isNull } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const optionsOnly = searchParams.get("options") === "true";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const q = searchParams.get("q") || "";
@@ -24,6 +25,33 @@ export async function GET(req: NextRequest) {
         .where(and(eq(academicYears.isActive, true), isNull(academicYears.deletedAt)))
         .limit(1);
       academicYearId = activeYear?.id ?? null;
+    }
+
+    if (optionsOnly) {
+      const conditions = [isNull(classrooms.deletedAt)];
+      if (q) {
+        conditions.push(ilike(classrooms.name, `%${q}%`));
+      }
+      if (academicYearId) {
+        conditions.push(eq(classrooms.academicYearId, academicYearId));
+      }
+
+      const data = await db.select({
+        id: classrooms.id,
+        name: classrooms.name,
+        academicYearId: classrooms.academicYearId,
+      })
+        .from(classrooms)
+        .where(and(...conditions))
+        .orderBy(asc(classrooms.level), asc(classrooms.name));
+
+      return NextResponse.json(
+        {
+          success: true,
+          data,
+        },
+        { headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" } }
+      );
     }
 
     const result = await getClassroomsList({ page, limit, q, academicYearId });

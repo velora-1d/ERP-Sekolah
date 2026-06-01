@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, Suspense, useCallback } from "react";
+import { useState, Suspense, useCallback } from "react";
 import { Plus, Search, Filter, Download, CreditCard, MoreHorizontal, Pencil, Trash2, Building2, Hash, ShieldCheck, LayoutGrid, ArrowUpRight, Wallet, Landmark, AlertCircle, RefreshCcw } from "lucide-react";
 import Swal from "sweetalert2";
 import { useSearchParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FilterBar from "@/components/FilterBar";
 
 const Toast = Swal.mixin({
@@ -33,8 +34,7 @@ export default function CashAccountsPage() {
 
 function CashAccountsContent() {
   const searchParams = useSearchParams();
-  const [items, setItems] = useState<CashAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,25 +45,24 @@ function CashAccountsContent() {
     status: "active",
   });
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const queryString = searchParams.toString();
-      const res = await fetch(`/api/cash-accounts?${queryString}`);
-      const data = await res.json();
-      if (data.success) {
-        setItems(data.data || []);
-      }
-    } catch {
-      Toast.fire({ icon: 'error', title: "Gagal mengambil data akun kas" });
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams]);
+  const queryString = searchParams.toString();
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const { data: cashAccountsQuery, isLoading: loading, refetch, isFetching } = useQuery({
+    queryKey: ["cash-accounts", queryString],
+    queryFn: async () => {
+      const res = await fetch(`/api/cash-accounts?${queryString}`);
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev,
+  });
+
+  const items: CashAccount[] = cashAccountsQuery?.success ? cashAccountsQuery.data || [] : [];
+
+  const refreshCashAccounts = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["cash-accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["cash-account-options"] });
+  }, [queryClient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +82,7 @@ function CashAccountsContent() {
         setModalOpen(false);
         setEditingId(null);
         setForm({ accountName: "", accountNumber: "", bankName: "", status: "active" });
-        fetchData();
+        refreshCashAccounts();
       } else {
         Toast.fire({ icon: 'error', title: data.message || "Terjadi kesalahan" });
       }
@@ -114,7 +113,7 @@ function CashAccountsContent() {
         const data = await res.json();
         if (data.success) {
           Toast.fire({ icon: 'success', title: "Akun berhasil dihapus" });
-          fetchData();
+          refreshCashAccounts();
         }
       } catch {
         Toast.fire({ icon: 'error', title: "Gagal menghapus data" });
@@ -150,10 +149,10 @@ function CashAccountsContent() {
         
         <div className="flex items-center gap-3">
           <button 
-            onClick={fetchData}
+            onClick={() => { void refetch(); }}
             className="p-3 text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
           >
-            <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`w-5 h-5 ${(loading || isFetching) ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={() => {

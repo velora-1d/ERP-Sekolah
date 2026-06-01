@@ -10,9 +10,34 @@ import { academicYears } from "@/db/schema";
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const optionsOnly = searchParams.get("options") === "true";
   const academicYearId = searchParams.get("academicYearId");
   const semester = searchParams.get("semester");
   const month = searchParams.get("month");
+
+  if (optionsOnly) {
+    try {
+      const records = await db.select({
+        id: cashAccounts.id,
+        accountName: cashAccounts.name,
+        status: cashAccounts.status,
+      })
+        .from(cashAccounts)
+        .where(isNull(cashAccounts.deletedAt))
+        .orderBy(asc(cashAccounts.name));
+
+      return NextResponse.json(
+        { success: true, data: records },
+        { headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" } }
+      );
+    } catch (error) {
+      console.error("Cash accounts options GET error:", error);
+      return NextResponse.json(
+        { success: false, message: "Gagal mengambil opsi akun kas" },
+        { status: 500 }
+      );
+    }
+  }
 
   let startDate: Date | null = null;
   let endDate: Date | null = null;
