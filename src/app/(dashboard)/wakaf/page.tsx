@@ -463,7 +463,13 @@ function WakafContent() {
         gradient="from-emerald-600 via-teal-600 to-green-600"
       />
 
-      <FilterBar />
+      <FilterBar 
+        visibleFilters={["academicYear", "semester", "month", "type"]}
+        customTypeOptions={[
+          { label: "Masuk (Penerimaan)", value: "in" },
+          { label: "Keluar (Penyaluran)", value: "out" },
+        ]}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

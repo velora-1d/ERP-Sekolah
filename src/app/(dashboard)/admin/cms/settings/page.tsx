@@ -1,40 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { saveSettings } from '@/app/actions/cms-actions';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ImageUpload from '@/components/ui/ImageUpload';
+import Swal from 'sweetalert2';
 
 export default function SettingsCMS() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchSettingsData = async () => {
-      try {
-        const res = await fetch('/api/web/settings');
-        const data = await res.json();
-        
-        // Flatten the grouped data if necessary
-        let flat: Record<string, string> = {};
-        if (data.data && typeof data.data === 'object') {
-          const firstValue = Object.values(data.data)[0];
-          if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
-            Object.values(data.data).forEach((group: unknown) => {
-              if (typeof group === 'object' && group !== null) Object.assign(flat, group);
-            });
-          } else {
-            flat = data.data as Record<string, string>;
-          }
+  const fetchSettingsData = async () => {
+    try {
+      const res = await fetch('/api/web/settings');
+      const data = await res.json();
+      
+      let flat: Record<string, string> = {};
+      if (data.data && typeof data.data === 'object') {
+        const firstValue = Object.values(data.data)[0];
+        if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
+          Object.values(data.data).forEach((group: unknown) => {
+            if (typeof group === 'object' && group !== null) Object.assign(flat, group);
+          });
+        } else {
+          flat = data.data as Record<string, string>;
         }
-        
-        setSettings(flat || {});
-      } finally {
-        setLoading(false);
       }
-    };
+      
+      setSettings(flat || {});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSettingsData();
   }, []);
 
@@ -44,25 +44,24 @@ export default function SettingsCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries()) as Record<string, string>;
     
-    await saveSettings(data);
-    setSaving(false);
-    alert('Pengaturan website berhasil disimpan!');
-    
-    // Refresh settings
-    const res = await fetch('/api/web/settings');
-    const updatedData = await res.json();
-    let flat: Record<string, string> = {};
-    if (updatedData.data && typeof updatedData.data === 'object') {
-      const firstValue = Object.values(updatedData.data)[0];
-      if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
-        Object.values(updatedData.data).forEach((group: unknown) => {
-          if (typeof group === 'object' && group !== null) Object.assign(flat, group);
-        });
+    try {
+      const res = await fetch('/api/cms/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: data })
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', result.message, 'success');
+        fetchSettingsData();
       } else {
-        flat = updatedData.data as Record<string, string>;
+        Swal.fire('Gagal', result.message, 'error');
       }
+    } catch (error) {
+      Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
+    } finally {
+      setSaving(false);
     }
-    setSettings(flat || {});
   }
 
   const sections = [

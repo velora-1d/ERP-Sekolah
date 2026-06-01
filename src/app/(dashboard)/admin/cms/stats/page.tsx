@@ -60,7 +60,7 @@ export default function StatsCMS() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/web/stats");
+      const res = await fetch("/api/cms/stats");
       const data = await res.json();
       if (data.success) {
         setStats(data.data);
@@ -77,17 +77,22 @@ export default function StatsCMS() {
     setLoading(true);
     
     try {
-      const { saveStat } = await import("@/app/actions/cms-actions");
-      const res = await saveStat(editingStat?.id ? { ...formData, id: editingStat.id } : formData);
+      const payload = editingStat?.id ? { ...formData, id: editingStat.id } : formData;
+      const res = await fetch("/api/cms/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
       
-      if (res.success) {
+      if (result.success) {
         toast.success(editingStat ? "Statistik diperbarui" : "Statistik ditambahkan");
         setIsModalOpen(false);
         setEditingStat(null);
         setFormData({ label: "", value: 0, suffix: "+", iconName: "Trophy", color: "from-amber-500 to-orange-600", order: 0, status: "aktif" });
         fetchStats();
       } else {
-        toast.error(res.message || "Gagal menyimpan statistik");
+        toast.error(result.message || "Gagal menyimpan statistik");
       }
     } catch {
       toast.error("Terjadi kesalahan sistem");
@@ -100,9 +105,9 @@ export default function StatsCMS() {
     if (!confirm("Yakin ingin menghapus statistik ini?")) return;
     
     try {
-      const { deleteStat } = await import("@/app/actions/cms-actions");
-      const res = await deleteStat(id);
-      if (res.success) {
+      const res = await fetch(`/api/cms/stats?id=${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.success) {
         toast.success("Statistik dihapus");
         fetchStats();
       }

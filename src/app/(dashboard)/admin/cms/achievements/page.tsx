@@ -5,9 +5,9 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
-import { getAchievements, saveAchievement, deleteAchievement } from '@/app/actions/cms-actions';
 import { ensureHttpsUrl } from '@/lib/url';
 import Image from 'next/image';
+import Swal from 'sweetalert2';
 
 interface Achievement {
   id?: number;
@@ -31,16 +31,21 @@ export default function AchievementsCMS() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Achievement | null>(null);
 
-  useEffect(() => {
-    const fetchAchievements = async () => {
-      try {
-        const data = await getAchievements();
-        setAchievements(data as Achievement[]);
-      } finally {
-        setLoading(false);
+  const fetchAchievements = async () => {
+    try {
+      const res = await fetch('/api/cms/achievements');
+      const data = await res.json();
+      if (data.success) {
+        setAchievements(data.data as Achievement[]);
       }
-    };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAchievements();
   }, []);
 
@@ -63,17 +68,46 @@ export default function AchievementsCMS() {
       imageUrl: (data.image_url || data.imageUrl) as string,
     };
 
-    await saveAchievement(payload);
-    setEditing(null);
-    const updated = await getAchievements();
-    setAchievements(updated as Achievement[]);
+    try {
+      const res = await fetch('/api/cms/achievements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', result.message, 'success');
+        setEditing(null);
+        fetchAchievements();
+      } else {
+        Swal.fire('Gagal', result.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Terjadi kesalahan server', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Hapus prestasi ini?')) {
-      await deleteAchievement(id);
-      const updated = await getAchievements();
-      setAchievements(updated as Achievement[]);
+    const result = await Swal.fire({
+      title: 'Hapus prestasi ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/cms/achievements?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          Swal.fire('Terhapus', data.message, 'success');
+          fetchAchievements();
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Gagal menghapus prestasi', 'error');
+      }
     }
   };
 

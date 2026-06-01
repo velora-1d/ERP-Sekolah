@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const academicYearId = searchParams.get("academicYearId");
   const semester = searchParams.get("semester");
   const month = searchParams.get("month");
+  const typeFilter = searchParams.get("type");
   const normalizedSemester = semester?.toLowerCase();
 
   let startDate: Date | null = null;
@@ -65,6 +66,10 @@ export async function GET(request: Request) {
   if (startDate && endDate) {
     periodConditions.push(gte(generalTransactions.transactionDate, startDate.toISOString().split("T")[0]));
     periodConditions.push(lte(generalTransactions.transactionDate, endDate.toISOString().split("T")[0]));
+  }
+
+  if (typeFilter && (typeFilter === "in" || typeFilter === "out")) {
+    periodConditions.push(eq(generalTransactions.type, typeFilter));
   }
 
   try {

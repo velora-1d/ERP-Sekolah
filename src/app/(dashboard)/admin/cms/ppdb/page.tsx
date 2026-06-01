@@ -58,9 +58,18 @@ export default function PpdbCMS() {
     setSaving(true);
     
     try {
-      const { saveSettings } = await import("@/app/actions/cms-actions");
-      await saveSettings(formData, "ppdb");
-      toast.success("Pengaturan PPDB disimpan");
+      const res = await fetch("/api/cms/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: formData, group: "ppdb" })
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Pengaturan PPDB disimpan");
+        fetchPpdbInfo();
+      } else {
+        toast.error(result.message || "Gagal menyimpan pengaturan");
+      }
     } catch {
       toast.error("Gagal menyimpan pengaturan");
     } finally {

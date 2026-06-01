@@ -5,15 +5,15 @@ import { db } from "@/db";
 import { 
   webPosts, webFacilities, 
   webAchievements, webHeroes,
-  webPrograms, webStats, ppdbRegistrations
+  webPrograms, webStats, ppdbRegistrations,
+  employees
 } from "@/db/schema";
-import { count, eq, and, isNull } from "drizzle-orm";
+import { count, eq, and, isNull, asc } from "drizzle-orm";
 import Link from "next/link";
-import { getTeachers } from "@/app/actions/cms-actions";
 
 async function getCMSStats() {
   const [
-    teachers,
+    teachersCount,
     postsCount,
     facilitiesCount,
     achievementsCount,
@@ -23,7 +23,12 @@ async function getCMSStats() {
     ppdbTotal,
     ppdbWeb
   ] = await Promise.all([
-    getTeachers(),
+    db.select({ count: count() }).from(employees).where(
+      and(
+        eq(employees.type, 'guru'),
+        isNull(employees.deletedAt)
+      )
+    ),
     db.select({ count: count() }).from(webPosts),
     db.select({ count: count() }).from(webFacilities),
     db.select({ count: count() }).from(webAchievements),
@@ -41,7 +46,7 @@ async function getCMSStats() {
 
   return {
     posts: postsCount[0]?.count || 0,
-    teachers: teachers.length || 0,
+    teachers: teachersCount[0]?.count || 0,
     facilities: facilitiesCount[0]?.count || 0,
     achievements: achievementsCount[0]?.count || 0,
     heroes: heroesCount[0]?.count || 0,

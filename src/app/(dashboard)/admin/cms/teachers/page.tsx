@@ -5,8 +5,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
-import { getTeachers, saveTeacher, deleteTeacher, type TeacherData } from '@/app/actions/cms-actions';
 import { ensureHttpsUrl } from '@/lib/url';
+import Swal from 'sweetalert2';
 
 import Image from 'next/image';
 
@@ -26,15 +26,21 @@ export default function TeachersCMS() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Teacher | null>(null);
 
-  useEffect(() => {
-    const fetchTeachersData = async () => {
-      try {
-        const data = await getTeachers();
-        setTeachers(data as Teacher[]);
-      } finally {
-        setLoading(false);
+  const fetchTeachersData = async () => {
+    try {
+      const res = await fetch('/api/cms/teachers');
+      const data = await res.json();
+      if (data.success) {
+        setTeachers(data.data as Teacher[]);
       }
-    };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTeachersData();
   }, []);
 
@@ -43,28 +49,56 @@ export default function TeachersCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    // Align with TeacherData interface
-    const payload: TeacherData = {
+    const payload = {
       name: data.name as string,
       position: data.position as string,
       bio: (data.bio || data.description) as string,
-      photoUrl: (data.photo_url || data.photoUrl) as string,
+      photoUrl: (data.photoUrl || data.photo_url) as string,
       order: Number(data.order),
       status: data.status as string,
       id: editing?.id,
     };
 
-    await saveTeacher(payload);
-    setEditing(null);
-    const updated = await getTeachers();
-    setTeachers(updated as Teacher[]);
+    try {
+      const res = await fetch('/api/cms/teachers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', result.message, 'success');
+        setEditing(null);
+        fetchTeachersData();
+      } else {
+        Swal.fire('Gagal', result.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Terjadi kesalahan server', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Hapus data guru ini?')) {
-      await deleteTeacher(id);
-      const updated = await getTeachers();
-      setTeachers(updated as Teacher[]);
+    const result = await Swal.fire({
+      title: 'Hapus data guru ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/cms/teachers?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          Swal.fire('Terhapus', data.message, 'success');
+          fetchTeachersData();
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Gagal menghapus data guru', 'error');
+      }
     }
   };
 

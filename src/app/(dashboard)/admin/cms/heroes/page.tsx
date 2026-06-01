@@ -5,8 +5,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
-import { getHeroes, saveHero, deleteHero } from '@/app/actions/cms-actions';
 import { ensureHttpsUrl } from '@/lib/url';
+import Swal from 'sweetalert2';
 
 import Image from 'next/image';
 
@@ -31,15 +31,21 @@ export default function HeroesCMS() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Hero | null>(null);
 
-  useEffect(() => {
-    const fetchHeroesSorted = async () => {
-      try {
-        const data = await getHeroes();
-        setHeroes(data as Hero[]);
-      } finally {
-        setLoading(false);
+  const fetchHeroesSorted = async () => {
+    try {
+      const res = await fetch('/api/cms/heroes');
+      const data = await res.json();
+      if (data.success) {
+        setHeroes(data.data as Hero[]);
       }
-    };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchHeroesSorted();
   }, []);
 
@@ -48,8 +54,7 @@ export default function HeroesCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    // Align with HeroData interface (mediaUrl vs image_url)
-    const payload: Hero = { 
+    const payload = { 
       id: editing?.id, 
       title: data.title as string,
       subtitle: data.subtitle as string,
@@ -59,17 +64,46 @@ export default function HeroesCMS() {
       order: Number(data.order)
     };
 
-    await saveHero(payload);
-    setEditing(null);
-    const updated = await getHeroes();
-    setHeroes(updated as Hero[]);
+    try {
+      const res = await fetch('/api/cms/heroes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', result.message, 'success');
+        setEditing(null);
+        fetchHeroesSorted();
+      } else {
+        Swal.fire('Gagal', result.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Terjadi kesalahan server', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Hapus slide hero ini?')) {
-      await deleteHero(id);
-      const updated = await getHeroes();
-      setHeroes(updated as Hero[]);
+    const result = await Swal.fire({
+      title: 'Hapus slide hero ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/cms/heroes?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          Swal.fire('Terhapus', data.message, 'success');
+          fetchHeroesSorted();
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Gagal menghapus banner', 'error');
+      }
     }
   };
 

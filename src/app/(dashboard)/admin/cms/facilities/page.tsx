@@ -6,8 +6,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
-import { getFacilities, saveFacility, deleteFacility } from '@/app/actions/cms-actions';
 import { ensureHttpsUrl } from '@/lib/url';
+import Swal from 'sweetalert2';
 
 import Image from 'next/image';
 
@@ -28,50 +28,49 @@ export default function FacilitiesCMS() {
 
   const { data: facilities = [], isLoading: loading } = useQuery({
     queryKey: ['facilities'],
-    queryFn: () => getFacilities() as Promise<Facility[]>,
+    queryFn: async () => {
+      const res = await fetch('/api/cms/facilities');
+      const data = await res.json();
+      return data.data as Facility[];
+    },
   });
 
   const saveMutation = useMutation({
-    mutationFn: (payload: Facility) => saveFacility(payload),
-    onMutate: async (newFac) => {
-      await queryClient.cancelQueries({ queryKey: ['facilities'] });
-      const previous = queryClient.getQueryData<Facility[]>(['facilities']);
-      
-      queryClient.setQueryData<Facility[]>(['facilities'], (old = []) => {
-        if (newFac.id) {
-          return old.map(f => f.id === newFac.id ? { ...f, ...newFac } : f);
-        } else {
-          return [{ ...newFac, id: Math.random() }, ...old].sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
+    mutationFn: async (payload: Facility) => {
+      const res = await fetch('/api/cms/facilities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      
-      return { previous };
+      return res.json();
     },
-    onError: (err, newFac, context) => {
-      queryClient.setQueryData(['facilities'], context?.previous);
+    onSuccess: (data) => {
+      if (data.success) {
+        Swal.fire('Berhasil', data.message, 'success');
+        queryClient.invalidateQueries({ queryKey: ['facilities'] });
+        setEditing(null);
+      } else {
+        Swal.fire('Gagal', data.message, 'error');
+      }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] });
+    onError: () => {
+      Swal.fire('Error', 'Terjadi kesalahan server', 'error');
     }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteFacility(id),
-    onMutate: async (idToDelete) => {
-      await queryClient.cancelQueries({ queryKey: ['facilities'] });
-      const previous = queryClient.getQueryData<Facility[]>(['facilities']);
-      
-      queryClient.setQueryData<Facility[]>(['facilities'], (old = []) => 
-        old.filter(f => f.id !== idToDelete)
-      );
-      
-      return { previous };
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/cms/facilities?id=${id}`, { method: 'DELETE' });
+      return res.json();
     },
-    onError: (err, id, context) => {
-      queryClient.setQueryData(['facilities'], context?.previous);
+    onSuccess: (data) => {
+      if (data.success) {
+        Swal.fire('Terhapus', data.message, 'success');
+        queryClient.invalidateQueries({ queryKey: ['facilities'] });
+      }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['facilities'] });
+    onError: () => {
+      Swal.fire('Error', 'Gagal menghapus fasilitas', 'error');
     }
   });
 
@@ -80,7 +79,6 @@ export default function FacilitiesCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    // Align with FacilityData interface
     const payload: Facility = {
       name: data.name as string,
       description: data.description as string,
@@ -92,11 +90,19 @@ export default function FacilitiesCMS() {
     };
 
     saveMutation.mutate(payload);
-    setEditing(null);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('Hapus fasilitas ini?')) {
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Hapus fasilitas ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48'
+    });
+
+    if (result.isConfirmed) {
       deleteMutation.mutate(id);
     }
   };

@@ -66,7 +66,7 @@ export default function ProgramsCMS() {
 
   const fetchPrograms = async () => {
     try {
-      const res = await fetch("/api/web/programs");
+      const res = await fetch("/api/cms/programs");
       const data = await res.json();
       if (data.success) {
         setPrograms(data.data);
@@ -83,17 +83,22 @@ export default function ProgramsCMS() {
     setLoading(true);
     
     try {
-      const { saveProgram } = await import("@/app/actions/cms-actions");
-      const res = await saveProgram(editingProgram?.id ? { ...formData, id: editingProgram.id } : formData);
+      const payload = editingProgram?.id ? { ...formData, id: editingProgram.id } : formData;
+      const res = await fetch("/api/cms/programs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
       
-      if (res.success) {
+      if (result.success) {
         toast.success(editingProgram ? "Program diperbarui" : "Program ditambahkan");
         setIsModalOpen(false);
         setEditingProgram(null);
         setFormData({ title: "", description: "", iconName: "BookOpen", color: "from-emerald-500 to-teal-600", order: 0, status: "aktif" });
         fetchPrograms();
       } else {
-        toast.error(res.message || "Gagal menyimpan program");
+        toast.error(result.message || "Gagal menyimpan program");
       }
     } catch {
       toast.error("Terjadi kesalahan sistem");
@@ -106,9 +111,9 @@ export default function ProgramsCMS() {
     if (!confirm("Yakin ingin menghapus program ini?")) return;
     
     try {
-      const { deleteProgram } = await import("@/app/actions/cms-actions");
-      const res = await deleteProgram(id);
-      if (res.success) {
+      const res = await fetch(`/api/cms/programs?id=${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.success) {
         toast.success("Program dihapus");
         fetchPrograms();
       }

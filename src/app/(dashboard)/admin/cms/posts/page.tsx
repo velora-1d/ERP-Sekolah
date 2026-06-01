@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPosts, savePost, deletePost, type PostData } from '@/app/actions/cms-actions';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import ImageUpload from '@/components/ui/ImageUpload';
+import Swal from 'sweetalert2';
 
 interface Post {
   id?: number;
@@ -25,15 +25,21 @@ export default function PostsCMS() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Post | null>(null);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const data = await getPosts();
-        setPosts(data as Post[]);
-      } finally {
-        setLoading(false);
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('/api/cms/posts');
+      const data = await res.json();
+      if (data.success) {
+        setPosts(data.data as Post[]);
       }
-    };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPosts();
   }, []);
 
@@ -42,34 +48,57 @@ export default function PostsCMS() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     
-    // Align with PostData interface
-    const payload: PostData = {
-      title: data.title as string,
-      slug: data.slug as string,
-      excerpt: data.excerpt as string,
-      content: data.content as string,
+    const payload = {
+      ...data,
       thumbnailUrl: (data.thumbnail_url || data.thumbnailUrl) as string,
-      category: data.category as string,
-      status: data.status as string,
       id: editing?.id,
     };
 
-    // Correctly handle Date for publishedAt if present
     if (data.publishedAt) {
+      // @ts-ignore
       payload.publishedAt = new Date(data.publishedAt as string);
     }
 
-    await savePost(payload);
-    setEditing(null);
-    const updated = await getPosts();
-    setPosts(updated as Post[]);
+    try {
+      const res = await fetch('/api/cms/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', result.message, 'success');
+        setEditing(null);
+        fetchPosts();
+      } else {
+        Swal.fire('Gagal', result.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Terjadi kesalahan server', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Hapus berita ini?')) {
-      await deletePost(id);
-      const updated = await getPosts();
-      setPosts(updated as Post[]);
+    const result = await Swal.fire({
+      title: 'Hapus berita ini?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/cms/posts?id=${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          Swal.fire('Terhapus', data.message, 'success');
+          fetchPosts();
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Gagal menghapus berita', 'error');
+      }
     }
   };
 
