@@ -6,8 +6,10 @@ import * as schema from "@/db/schema";
 type DbSchema = typeof schema;
 type DbInstance = NodePgDatabase<DbSchema>;
 
-let globalPool: Pool | null = null;
-let globalDb: DbInstance | null = null;
+const globalForDb = globalThis as unknown as {
+  globalPool: Pool | undefined;
+  globalDb: DbInstance | undefined;
+};
 
 function normalizeConnectionString(url: string): string {
   try {
@@ -33,14 +35,14 @@ function createPool(): Pool {
 }
 
 function createDb(): DbInstance {
-  globalPool ??= createPool();
-  return drizzle(globalPool, { schema });
+  globalForDb.globalPool ??= createPool();
+  return drizzle(globalForDb.globalPool, { schema });
 }
 
 /** Gunakan ini untuk semua query DB. */
 export const getDb = (): DbInstance => {
-  globalDb ??= createDb();
-  return globalDb;
+  globalForDb.globalDb ??= createDb();
+  return globalForDb.globalDb;
 };
 
 /**
