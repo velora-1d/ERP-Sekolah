@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, useCallback, startTransition } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 interface AcademicYear {
@@ -82,10 +82,12 @@ export default function FilterBar({
     }
 
     setFilters((prev) => ({ ...prev, [key]: value }));
-    startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    });
-  }, [pathname, router, searchParams]);
+    
+    // Update URL instantly without hitting the server for RSC payload
+    window.history.pushState(null, "", `${pathname}?${params.toString()}`);
+    // Trigger popstate to notify Next.js searchParams hook to update
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [pathname, searchParams]);
 
   const { data: academicYears = [] } = useQuery<AcademicYear[]>({
     queryKey: ["filter-options", "academic-years"],
@@ -148,11 +150,10 @@ export default function FilterBar({
     }
 
     if (needsUpdate) {
-      startTransition(() => {
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-      });
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
     }
-  }, [academicYears, pathname, router, visibleFilters]);
+  }, [academicYears, pathname, visibleFilters]);
 
   const months = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
