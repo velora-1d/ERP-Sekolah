@@ -1,14 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const fs = require('fs');
+const path = require('path');
 
 const apiDir = path.join(__dirname, 'src', 'app', 'api');
 
 function getAllRoutes(dir, fileList = []) {
-  if (!fs.existsSync(dir)) return [];
   const files = fs.readdirSync(dir);
   for (const file of files) {
     const filePath = path.join(dir, file);
@@ -36,7 +31,7 @@ for (const route of routes) {
   const hasPrismaPagination = content.includes('skip:') || content.includes('take:');
   
   // Also check if they get all data via findMany without pagination
-  const usesFindMany = content.includes('.findMany(') || content.includes('.find(');
+  const usesFindMany = content.includes('.findMany(');
 
   results.push({
     endpoint: `/api/${relativePath}`,
@@ -50,11 +45,8 @@ for (const route of routes) {
 const missingPagination = results.filter(r => r.hasFindMany && !r.hasPagination);
 const withPagination = results.filter(r => r.hasFindMany && r.hasPagination);
 
-console.log('\n=== ENDPOINTS DENGAN PAGINASI ===');
-if (withPagination.length === 0) console.log('(Tidak ada)');
+console.log('=== ENDPOINTS DENGAN PAGINASI ===');
 withPagination.forEach(r => console.log(`[V] ${r.endpoint}`));
 
 console.log('\n=== ENDPOINTS TANPA PAGINASI (MEMBUTUHKAN AUDIT) ===');
-if (missingPagination.length === 0) console.log('(Semua sudah terpaginasi)');
 missingPagination.forEach(r => console.log(`[X] ${r.endpoint}`));
-console.log('\n');

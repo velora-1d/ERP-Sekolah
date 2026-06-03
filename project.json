@@ -1,12 +1,12 @@
 {
-  "name": "erp-sekolah",
-  "description": "Enterprise Resource Planning for Schools",
+  "name": "erp-sekolah-management-digital",
+  "description": "Enterprise Resource Planning for Schools - Management Digital Node",
   "version": "1.0.0",
-  "lastUpdated": "2026-05-21",
+  "lastUpdated": "2026-06-01",
 
   "stack": {
-    "frontend": "next.js-16",
-    "backend": "next.js-16",
+    "frontend": "next.js-15",
+    "backend": "next.js-15",
     "database": "postgresql",
     "orm": "drizzle",
     "auth": "custom-jwt",
@@ -36,5 +36,5 @@
     "drizzle-orm"
   ],
 
-  "notes": "Implementasi dashboard dinamis, perbaikan Cloudflare runtime, dan penguatan validasi duplikasi data."
+  "notes": "Synchronized development node sharing erp_sekolah_db database locally."
 }

@@ -217,7 +217,7 @@ export async function POST(request: Request) {
       return inserted;
     });
 
-    revalidateTag("students", { expire: 0 });
+    revalidateTag("students");
 
     return NextResponse.json({ success: true, message: "Data siswa berhasil ditambahkan", data: newStudent });
   } catch (error: unknown) {

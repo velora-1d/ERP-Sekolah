@@ -1,10 +1,10 @@
-# ERP Sekolah
+# ERP Sekolah (Management Digital)
 
 ## Deskripsi
-Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, penugasan guru, keuangan, dan administrasi siswa.
+Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, penugasan guru, keuangan, dan administrasi siswa. Proyek ini disinkronkan dengan database ERP Sekolah pusat.
 
 ## Stack Teknologi
-- Frontend: Next.js 16.2.6 (App Router)
+- Frontend: Next.js 16.1.6 (App Router)
 - Backend: Next.js API Routes (Route Handlers)
 - Database: PostgreSQL (Regular/Standard)
 - ORM: Drizzle ORM
@@ -37,26 +37,21 @@ Sistem Informasi Manajemen Sekolah Terpadu (ERP) yang mencakup modul akademik, p
 
 ## Hosting & Infra
 - Development: Local
-- Production: Vercel / VPS (Docker + Dokploy)
+- Production: Vercel
 
 ## Catatan Khusus
 - Menggunakan soft delete (`deletedAt`) di sebagian besar tabel.
 - Validasi data menggunakan logika kustom dan Zod (di beberapa tempat).
 - Integrasi RBAC melalui middleware dan permission registry.
+- Berbagi database `erp_sekolah_db` secara lokal agar sinkron dengan proyek ERP-Sekolah.
 
 ## Progress Terakhir
-- Implementasi metrik dashboard dinamis (KPI trend & charts).
-- Perbaikan error Cloudflare Edge Runtime.
-- Migrasi middleware ke proxy logic.
-- Penambahan integrasi Database Unique Constraints dan validasi duplikasi pada CRUD Surat, Siswa, Pegawai, dan Inventaris.
-- Sinkronisasi penyimpanan field Surat (Tahun Ajaran/Semester) pada operasi Update.
-- Menginisialisasi setup proyek ERP-Sekolah setelah kloning baru: membuat environment file (`.env`, `.env.local`, `.env.production`), menginstal Node packages, dan mengonfigurasi database `erp_sekolah_db`.
-- Menjalankan Drizzle migrations (`npm run db:migrate`) untuk membuat 56 tabel database.
-- Memverifikasi build Next.js (`npm run build`) berjalan sukses secara menyeluruh.
-- Perbaikan modul kurikulum: menghapus ketergantungan client ke Server Action dan memindahkan reset kurikulum ke Route Handler agar stabil saat deployment Vercel.
-- Redesign halaman kurikulum: ringkasan periode lebih akurat, tahun ajaran tidak lagi hardcoded, komponen nilai dan KKM dimuat sesuai periode aktif.
-- Menonaktifkan cache GET untuk endpoint kurikulum, komponen nilai, dan KKM agar refetch admin selalu mengambil data terbaru setelah simpan/reset.
-- Audit performa VPS: Upgrade Next.js ke versi 16.2.6 (memperbaiki bug worker Server Actions), optimasi `next.config.ts` untuk standalone, dan perbaikan koneksi database pooling menggunakan pola `globalThis` di `src/db/index.ts` untuk load yang lebih cepat di self-hosted.
+- Setup awal proyek Management-Digital setelah kloning baru.
+- Konfigurasi environment `.env`, `.env.local`, dan `.env.production` terhubung ke database `erp_sekolah_db`.
+- Instalasi dependensi npm (`npm install`).
+- Sinkronisasi dengan konfigurasi ERP-Sekolah pusat.
+- Sinkronisasi penuh dengan proyek ERP-Sekolah (source code `src/`, schema `drizzle/`, public assets `public/`, config, dan dependensi `package.json`).
+- Verifikasi build (`npm run build`) berjalan sukses 100% setelah sinkronisasi.
 
 ## Last Updated
 2026-06-01

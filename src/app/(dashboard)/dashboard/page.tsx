@@ -14,16 +14,17 @@ import DashboardTabs from "@/components/DashboardTabs";
 import { Suspense } from "react";
 import DashboardCharts from "@/components/DashboardCharts";
 import { and, eq, ilike, gte, lte, isNull, inArray, isNotNull, not, or, sql } from "drizzle-orm";
-import { unstable_cache } from "next/cache";
 
-// Caching dashboard data to avoid excessive database connection load on VPS
-const getDashboardDataRaw = async (
-  academicYearId: number | null,
-  semester: string | undefined,
-  month: string | undefined,
-  classroomId: number | null,
-  gender: string | undefined
-) => {
+// Halaman berjalan full dynamic SSR — tidak ada ISR/caching
+// untuk menghindari tekanan koneksi database berlebih.
+
+const getCachedDashboardData = async (searchParams: { [key: string]: string | undefined }) => {
+  const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
+  const semester = searchParams.semester;
+  const month = searchParams.month;
+  const classroomId = searchParams.classroomId ? Number(searchParams.classroomId) : null;
+  const gender = searchParams.gender;
+
   // 1. Tentukan Tahun Ajaran Target & Detailnya
   let targetAcademicYearId = academicYearId;
   const activeYearRes = await db.select()
@@ -227,32 +228,6 @@ const getDashboardDataRaw = async (
     lettersCount: lettersCountRes[0]?.count || 0,
     currentMonthName: month || monthsList[now.getMonth()],
   };
-};
-
-const getCachedDashboardDataFn = unstable_cache(
-  async (
-    academicYearId: number | null,
-    semester: string | undefined,
-    month: string | undefined,
-    classroomId: number | null,
-    gender: string | undefined
-  ) => {
-    return getDashboardDataRaw(academicYearId, semester, month, classroomId, gender);
-  },
-  ["dashboard-data-cache"],
-  {
-    revalidate: 30, // Caching selama 30 detik untuk menghindari overload database
-    tags: ["dashboard-data"]
-  }
-);
-
-const getCachedDashboardData = async (searchParams: { [key: string]: string | undefined }) => {
-  const academicYearId = searchParams.academicYearId ? Number(searchParams.academicYearId) : null;
-  const semester = searchParams.semester;
-  const month = searchParams.month;
-  const classroomId = searchParams.classroomId ? Number(searchParams.classroomId) : null;
-  const gender = searchParams.gender;
-  return getCachedDashboardDataFn(academicYearId, semester, month, classroomId, gender);
 };
 
 function fmtRp(n: number) {

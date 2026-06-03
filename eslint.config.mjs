@@ -1,15 +1,18 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
-import nextVitals from 'eslint-config-next/core-web-vitals';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  resolvePluginsRelativeTo: __dirname,
+});
 
 export default defineConfig([
-  ...nextVitals,
-  {
-    rules: {
-      "react-hooks/set-state-in-effect": "off",
-      "react-hooks/static-components": "off",
-      "react-hooks/immutability": "off",
-    }
-  },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
   globalIgnores([
     ".next/**",
     ".open-next/**",

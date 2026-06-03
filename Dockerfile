@@ -1,15 +1,14 @@
-FROM node:20-alpine AS base
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS deps
 
-RUN apk add --no-cache libc6-compat
-
 COPY package.json package-lock.json ./
 
-# Install in a clean Linux environment so optional native bindings are resolved for alpine
+# Install in a clean Linux environment so optional native bindings such as
+# @tailwindcss/oxide are resolved for the target platform, not copied from Windows.
 RUN npm ci --include=optional
 
 FROM base AS builder
@@ -51,7 +50,7 @@ COPY . .
 
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 
 WORKDIR /app
 ARG DATABASE_URL
@@ -73,9 +72,7 @@ ARG NEXT_PUBLIC_APP_NAME
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
-ENV PORT=3001
-ENV NODE_OPTIONS="--max-old-space-size=512"
-
+ENV PORT=3002
 ENV DATABASE_URL=$DATABASE_URL
 ENV JWT_SECRET=$JWT_SECRET
 ENV R2_ACCOUNT_ID=$R2_ACCOUNT_ID
@@ -92,18 +89,13 @@ ENV SUMOPOD_AI_KEY=$SUMOPOD_AI_KEY
 ENV SUMOPOD_AI_BASE_URL=$SUMOPOD_AI_BASE_URL
 ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
+COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown node:node .next
+EXPOSE 3002
 
-# Copy standalone build files
-COPY --from=builder --chown=node:node /app/.next/standalone ./
-COPY --from=builder --chown=node:node /app/.next/static ./.next/static
-
-USER node
-
-EXPOSE 3001
-
-CMD ["node", "server.js"]
+CMD ["npm", "run", "start"]

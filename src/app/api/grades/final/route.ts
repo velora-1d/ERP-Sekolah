@@ -169,7 +169,7 @@ export async function POST(req: Request) {
         });
     }
 
-    revalidateTag("grades", { expire: 0 });
+    revalidateTag("grades");
 
     return NextResponse.json({ success: true, count: upsertData.length });
   } catch (error) {
